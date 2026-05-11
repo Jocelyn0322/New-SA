@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/skinTonesData.js"></script>
+    <title>AI Beauty App - 膚色檢測</title>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div id="app" class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 m-4 border-t-8 border-black">
+
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-black tracking-tighter text-gray-900">膚色檢測</h1>
+            <p class="text-gray-400 text-sm mt-3 font-medium">為您精確標記膚色座標</p>
+        </div>
+
+        <div class="space-y-6">
+            <!-- 相機掃描選項 -->
+            <div class="p-4 border rounded-lg bg-gray-50">
+                <h3 class="font-bold mb-2">📸 相機掃描</h3>
+                <button @click="startCamera" class="w-full bg-black text-white py-3 rounded-lg font-bold hover:bg-gray-800 transition">
+                    啟動相機
+                </button>
+                <video v-if="cameraActive" ref="video" autoplay class="mt-4 w-full rounded-lg"></video>
+                <div v-if="cameraActive" class="mt-2 flex gap-2">
+                    <button @click="captureImage" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold">
+                        拍攝並分析
+                    </button>
+                    <button @click="stopCamera" class="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold">
+                        停止相機
+                    </button>
+                </div>
+                <canvas ref="canvas" class="hidden"></canvas>
+            </div>
+
+            <!-- 手動輸入選項 -->
+            <div class="p-4 border rounded-lg bg-gray-50">
+                <h3 class="font-bold mb-2">✏️ 手動輸入參數</h3>
+                <select v-model="skinTone" class="w-full p-3 border rounded-lg">
+                    <option value="">選擇膚色類型</option>
+                    <option v-for="tone in skinTonesData" :key="tone.toneName" :value="tone.toneName">
+                        {{ tone.toneName }}
+                    </option>
+                </select>
+                <button @click="analyzeManual" class="w-full bg-green-600 text-white py-3 rounded-lg mt-3 font-bold">
+                    分析並推薦
+                </button>
+            </div>
+
+            <!-- 結果顯示 -->
+            <div v-if="skinCoordinate" class="p-4 border rounded-lg bg-blue-50">
+                <h3 class="font-bold mb-2">🎯 您的膚色座標</h3>
+                <p>類型: {{ skinCoordinate.type }}</p>
+                <p>RGB: {{ skinCoordinate.rgb }}</p>
+                <p>HEX: {{ skinCoordinate.hex }}</p>
+            </div>
+
+            <!-- 產品推薦 -->
+            <div v-if="recommendations.length > 0" class="p-4 border rounded-lg bg-green-50">
+                <h3 class="font-bold mb-2">💄 推薦產品</h3>
+                <div v-for="product in recommendations" :key="product.id" class="mb-2 p-2 bg-white rounded">
+                    <p class="font-bold">{{ product.name }}</p>
+                    <p class="text-sm text-gray-600">{{ product.description }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="index.php" class="text-blue-600 underline">返回首頁</a>
+        </div>
+
+    </div>
+
+    <script src="/skinTonesData.js"></script>
+    <script>
+        // Pre-initialize skin tones data
+        window.skinTonesData = [];
+        
+        // Load skin tone data from JSON immediately
+        let dataLoadPromise = fetch('/skinTones.json')
+            .then(response => response.json())
+            .then(data => {
+                window.skinTonesData = data;
+                window.skinTonesDataReady = true;
+                console.log('skinTonesData loaded:', data.length, 'items');
+                return data;
+            })
+            .catch(error => {
+                console.error('Failed to load skinTonesData:', error);
+                return [];
+            });
+        
+        // Initialize Vue app only after data is loaded
+        async function initializeVueApp() {
+            await dataLoadPromise;
+            // Add extra delay to ensure data is ready
+            await new Promise(r => setTimeout(r, 100));
+            
+            const { createApp, ref, nextTick, onUnmounted, reactive, watch } = Vue
+            
+            const appInstance = createApp({
+                setup() {
+                    const cameraActive = ref(false)
+                    const video = ref(null)
+                    const canvas = ref(null)
+                    const skinTone = ref('')
+                    const skinCoordinate = ref(null)
+                    const recommendations = ref([])
+                    // Use reactive ref for skinTonesData - use direct window reference
+                    const skinTonesData = ref(Array.from(window.skinTonesData || []))
+
+                    const startCamera = async () => {
+                    try {
+                        // 檢查瀏覽器支持
+                        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                            throw new Error('您的瀏覽器不支持相機功能')
+                        }
+
+                        // 檢查是否在安全上下文中
+                        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                            throw new Error('相機功能需要在HTTPS環境下運行，或在localhost上運行')
+                        }
+
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                width: { ideal: 640 },
+                                height: { ideal: 480 },
+                                facingMode: 'user'
+                            }
+                        })
+
+                        cameraActive.value = true
+                        await nextTick()
+
+                        if (video.value) {
+                            video.value.srcObject = stream
+                            video.value.onloadedmetadata = () => {
+                                video.value.play()
+                            }
+                        } else {
+                            throw new Error('視頻元素未找到')
+                        }
+
+                    } catch (error) {
+                        console.error('相機錯誤:', error)
+                        let errorMessage = '無法訪問相機: '
+
+                        if (error.name === 'NotAllowedError') {
+                            errorMessage += '請允許相機權限'
+                        } else if (error.name === 'NotFoundError') {
+                            errorMessage += '未找到相機設備'
+                        } else if (error.name === 'NotReadableError') {
+                            errorMessage += '相機被其他應用占用'
+                        } else if (error.name === 'OverconstrainedError') {
+                            errorMessage += '相機不支持請求的配置'
+                        } else {
+                            errorMessage += error.message
+                        }
+
+                        alert(errorMessage)
+                    }
+                }
+
+                const stopCamera = () => {
+                    if (video.value && video.value.srcObject) {
+                        const stream = video.value.srcObject
+                        const tracks = stream.getTracks()
+                        tracks.forEach(track => track.stop())
+                        video.value.srcObject = null
+                    }
+                    cameraActive.value = false
+                }
+
+                const captureImage = () => {
+                    if (!video.value || !canvas.value) {
+                        alert('相機未啟動或畫布未準備好')
+                        return
+                    }
+
+                    const ctx = canvas.value.getContext('2d')
+                    canvas.value.width = video.value.videoWidth
+                    canvas.value.height = video.value.videoHeight
+                    ctx.drawImage(video.value, 0, 0)
+
+                    // 進行真正的膚色分析
+                    analyzeSkinFromImage()
+                }
+
+                const analyzeSkinFromImage = () => {
+                    const ctx = canvas.value.getContext('2d')
+                    const imageData = ctx.getImageData(0, 0, canvas.value.width, canvas.value.height)
+                    const data = imageData.data
+
+                    // 分析中央區域的膚色 (避免邊緣干擾)
+                    const centerX = Math.floor(canvas.value.width / 2)
+                    const centerY = Math.floor(canvas.value.height / 2)
+                    const sampleSize = Math.min(100, Math.floor(Math.min(canvas.value.width, canvas.value.height) / 4))
+
+                    let totalR = 0, totalG = 0, totalB = 0
+                    let pixelCount = 0
+
+                    // 採樣中央區域的像素
+                    for (let y = centerY - sampleSize; y < centerY + sampleSize; y++) {
+                        for (let x = centerX - sampleSize; x < centerX + sampleSize; x++) {
+                            if (x >= 0 && x < canvas.value.width && y >= 0 && y < canvas.value.height) {
+                                const index = (y * canvas.value.width + x) * 4
+                                const r = data[index]
+                                const g = data[index + 1]
+                                const b = data[index + 2]
+
+                                // 簡單的膚色過濾 (基於常見的膚色範圍)
+                                if (isSkinColor(r, g, b)) {
+                                    totalR += r
+                                    totalG += g
+                                    totalB += b
+                                    pixelCount++
+                                }
+                            }
+                        }
+                    }
+
+                    if (pixelCount === 0) {
+                        alert('未檢測到足夠的膚色像素，請調整角度或光線')
+                        return
+                    }
+
+                    // 計算平均膚色
+                    const avgR = Math.round(totalR / pixelCount)
+                    const avgG = Math.round(totalG / pixelCount)
+                    const avgB = Math.round(totalB / pixelCount)
+
+                    // 將RGB轉換為HEX
+                    const hex = rgbToHex(avgR, avgG, avgB)
+
+                    // 分類膚色
+                    const skinType = classifySkinTone(avgR, avgG, avgB)
+
+                    skinCoordinate.value = {
+                        type: skinType,
+                        rgb: `${avgR}, ${avgG}, ${avgB}`,
+                        hex: hex
+                    }
+
+                    // 基於檢測到的膚色推薦產品
+                    recommendProducts(skinType)
+                }
+
+                // 簡單的膚色檢測函數 (基於YCbCr色彩空間)
+                const isSkinColor = (r, g, b) => {
+                    // 轉換到YCbCr色彩空間
+                    const y = 0.299 * r + 0.587 * g + 0.114 * b
+                    const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b
+                    const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b
+
+                    // 膚色範圍 (經驗值)
+                    return y > 80 && cb > 85 && cb < 135 && cr > 135 && cr < 180
+                }
+
+                // RGB轉HEX
+                const rgbToHex = (r, g, b) => {
+                    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()
+                }
+
+                // 基於RGB值分類膚色
+                const classifySkinTone = (r, g, b) => {
+                    // 計算亮度和色調
+                    const brightness = (r + g + b) / 3
+                    const warmth = r - b  // 紅色減藍色，值越大越暖
+
+                    // 簡單的分類邏輯
+                    if (brightness > 200) {
+                        return warmth > 20 ? '暖白皮' : '冷白皮'
+                    } else if (brightness > 150) {
+                        if (warmth > 30) {
+                            return '小麥皮'
+                        } else if (warmth > 10) {
+                            return '黃皮'
+                        } else {
+                            return '冷白皮'
+                        }
+                    } else {
+                        return '古銅皮'
+                    }
+                }
+
+                // 基於膚色推薦產品
+                const recommendProducts = (skinType) => {
+                    const productMap = {
+                        '粉一白': [
+                            { id: 1, name: '玫瑰色調粉底', description: '適合粉一白，打造自然玫瑰氣色' },
+                            { id: 2, name: '藍色系遮瑕膏', description: '中和泛紅，適合粉白肌膚' }
+                        ],
+                        '黃一白': [
+                            { id: 1, name: '暖黃色調粉底', description: '適合黃一白，營造健康小麥色' },
+                            { id: 2, name: '黃色系遮瑕膏', description: '修飾暗沉，適合黃白肌膚' }
+                        ],
+                        '中一白': [
+                            { id: 1, name: '中性色調粉底', description: '適合中一白，打造自然妝感' },
+                            { id: 2, name: '綠色系遮瑕膏', description: '中和泛黃，提亮膚色' }
+                        ],
+                        '橄欖一白': [
+                            { id: 1, name: '橄欖色調粉底', description: '適合橄欖一白，展現清新活力' },
+                            { id: 2, name: '紫色系遮瑕膏', description: '平衡暖調，均勻膚色' }
+                        ],
+                        '粉二白': [
+                            { id: 1, name: '粉色調粉底', description: '適合粉二白，打造溫柔氣質' },
+                            { id: 2, name: '藍色系遮瑕膏', description: '中和泛紅，適合粉白肌膚' }
+                        ],
+                        '黃二白': [
+                            { id: 1, name: '黃色調粉底', description: '適合黃二白，營造健康活力' },
+                            { id: 2, name: '黃色系遮瑕膏', description: '修飾暗沉，適合黃白肌膚' }
+                        ],
+                        '中二白': [
+                            { id: 1, name: '中性色調粉底', description: '適合中二白，打造自然妝感' },
+                            { id: 2, name: '綠色系遮瑕膏', description: '中和泛黃，提亮膚色' }
+                        ],
+                        '橄欖二白': [
+                            { id: 1, name: '橄欖色調粉底', description: '適合橄欖二白，展現清新活力' },
+                            { id: 2, name: '紫色系遮瑕膏', description: '平衡暖調，均勻膚色' }
+                        ],
+                        '粉三白': [
+                            { id: 1, name: '粉色調粉底', description: '適合粉三白，打造溫柔氣質' },
+                            { id: 2, name: '藍色系遮瑕膏', description: '中和泛紅，適合粉白肌膚' }
+                        ],
+                        '黃三白': [
+                            { id: 1, name: '黃色調粉底', description: '適合黃三白，營造健康活力' },
+                            { id: 2, name: '黃色系遮瑕膏', description: '修飾暗沉，適合黃白肌膚' }
+                        ],
+                        '中三白': [
+                            { id: 1, name: '中性色調粉底', description: '適合中三白，打造自然妝感' },
+                            { id: 2, name: '綠色系遮瑕膏', description: '中和泛黃，提亮膚色' }
+                        ],
+                        '橄欖三白': [
+                            { id: 1, name: '橄欖色調粉底', description: '適合橄欖三白，展現清新活力' },
+                            { id: 2, name: '紫色系遮瑕膏', description: '平衡暖調，均勻膚色' }
+                        ],
+                        '偏紅冷一白': [
+                            { id: 1, name: '冷紅色調粉底', description: '適合偏紅冷一白，打造冷冽氣質' },
+                            { id: 2, name: '藍色系遮瑕膏', description: '中和泛紅，適合冷紅肌膚' }
+                        ],
+                        '偏紅冷二白': [
+                            { id: 1, name: '冷紅色調粉底', description: '適合偏紅冷二白，打造冷冽氣質' },
+                            { id: 2, name: '藍色系遮瑕膏', description: '中和泛紅，適合冷紅肌膚' }
+                        ],
+                        '偏紅暖一白': [
+                            { id: 1, name: '暖紅色調粉底', description: '適合偏紅暖一白，營造溫暖氣息' },
+                            { id: 2, name: '黃色系遮瑕膏', description: '修飾暗沉，適合暖紅肌膚' }
+                        ],
+                        '偏紅暖二白': [
+                            { id: 1, name: '暖紅色調粉底', description: '適合偏紅暖二白，營造溫暖氣息' },
+                            { id: 2, name: '黃色系遮瑕膏', description: '修飾暗沉，適合暖紅肌膚' }
+                        ],
+                        '中性冷一白': [
+                            { id: 1, name: '冷中性色調粉底', description: '適合中性冷一白，打造清冷氣質' },
+                            { id: 2, name: '藍色系遮瑕膏', description: '中和泛紅，適合冷中性肌膚' }
+                        ],
+                        '中性冷二白': [
+                            { id: 1, name: '冷中性色調粉底', description: '適合中性冷二白，打造清冷氣質' },
+                            { id: 2, name: '藍色系遮瑕膏', description: '中和泛紅，適合冷中性肌膚' }
+                        ],
+                        '中性暖一白': [
+                            { id: 1, name: '暖中性色調粉底', description: '適合中性暖一白，營造溫暖氣息' },
+                            { id: 2, name: '黃色系遮瑕膏', description: '修飾暗沉，適合暖中性肌膚' }
+                        ],
+                        '中性暖二白': [
+                            { id: 1, name: '暖中性色調粉底', description: '適合中性暖二白，營造溫暖氣息' },
+                            { id: 2, name: '黃色系遮瑕膏', description: '修飾暗沉，適合暖中性肌膚' }
+                        ],
+                        '偏綠冷一白': [
+                            { id: 1, name: '冷綠色調粉底', description: '適合偏綠冷一白，打造清新氣質' },
+                            { id: 2, name: '粉色系遮瑕膏', description: '平衡冷綠調，均勻膚色' }
+                        ],
+                        '偏綠冷二白': [
+                            { id: 1, name: '冷綠色調粉底', description: '適合偏綠冷二白，打造清新氣質' },
+                            { id: 2, name: '粉色系遮瑕膏', description: '平衡冷綠調，均勻膚色' }
+                        ],
+                        '偏綠暖一白': [
+                            { id: 1, name: '暖綠色調粉底', description: '適合偏綠暖一白，營造自然氣息' },
+                            { id: 2, name: '紫色系遮瑕膏', description: '平衡暖綠調，均勻膚色' }
+                        ],
+                        '偏綠暖二白': [
+                            { id: 1, name: '暖綠色調粉底', description: '適合偏綠暖二白，營造自然氣息' },
+                            { id: 2, name: '紫色系遮瑕膏', description: '平衡暖綠調，均勻膚色' }
+                        ]
+                    }
+
+                    recommendations.value = productMap[skinType] || [
+                        { id: 1, name: '通用粉底液', description: '適合多種膚色，提供自然遮瑕' },
+                        { id: 2, name: '保濕霜', description: '補充水分，維持肌膚健康' }
+                    ]
+                }
+
+                const analyzeManual = () => {
+                    if (!skinTone.value) {
+                        alert('請選擇膚色類型')
+                        return
+                    }
+                    analyzeSkinTone()
+                }
+
+                const analyzeSkinTone = () => {
+                    // 使用真實的膚色資料來生成模擬座標
+                    const selectedTone = skinTonesData.value.find(tone => tone.toneName === skinTone.value)
+
+                    if (selectedTone) {
+                        skinCoordinate.value = {
+                            type: selectedTone.toneName,
+                            rgb: `模擬RGB值 (${selectedTone.hex})`,
+                            hex: selectedTone.hex
+                        }
+                    } else {
+                        skinCoordinate.value = { type: '未選擇', rgb: '...', hex: '...' }
+                    }
+
+                    // 基於選擇的膚色推薦產品
+                    recommendProducts(skinTone.value)
+                }
+
+                // 組件卸載時清理資源
+                onUnmounted(() => {
+                    stopCamera()
+                })
+
+                return {
+                    cameraActive,
+                    video,
+                    canvas,
+                    skinTone,
+                    skinCoordinate,
+                    recommendations,
+                    skinTonesData,
+                    startCamera,
+                    stopCamera,
+                    captureImage,
+                    analyzeManual
+                }
+            }
+        }).mount('#app');
+        
+            // Store app instance for later reference
+            window.vueAppInstance = appInstance;
+        }
+        
+        // Initialize Vue app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeVueApp);
+        } else {
+            initializeVueApp();
+        }
+    </script>
+
+    <style>
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+    </style>
+</body>
+</html>
