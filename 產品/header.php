@@ -11,7 +11,7 @@
             <a href="favorite.php">收藏</a>
         </div>
 
-        <a href="login.php" class="login-link">登入</a>
+        <a href="首頁/login.php" class="login-link">登入</a>
 
     </div>
 </header>

@@ -441,12 +441,14 @@ if ($view === 'personal') {
             background: #000;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
         }
 
         .video-player video {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            pointer-events: none;
         }
 
         .play-icon {
@@ -525,9 +527,12 @@ if ($view === 'personal') {
         }
 
         .video-detail-content {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
         }
 
         .video-detail-close {
@@ -546,12 +551,13 @@ if ($view === 'personal') {
         }
 
         .video-detail-player {
-            width: 100%;
+            width: 65%;
             max-height: 70vh;
             background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .video-detail-player video {
@@ -560,22 +566,25 @@ if ($view === 'personal') {
         }
 
         .video-detail-info {
-            padding: 20px;
+            padding: 0;
             color: white;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 70vh;
         }
 
         .video-detail-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .video-detail-meta {
             display: flex;
             align-items: center;
-            gap: 20px;
-            margin-bottom: 15px;
-            font-size: 14px;
+            gap: 15px;
+            margin-bottom: 12px;
+            font-size: 13px;
             color: #ccc;
         }
 
@@ -600,25 +609,259 @@ if ($view === 'personal') {
 
         .video-detail-description {
             color: #aaa;
-            line-height: 1.6;
-            margin-top: 15px;
+            line-height: 1.5;
+            margin-top: 0;
+            font-size: 13px;
         }
 
-        .video-detail-like {
+        /* 評論區樣式 */
+        .comments-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comments-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .comment-form {
             display: flex;
-            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .comment-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: #fff;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .comment-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .comment-input:focus {
+            border-color: rgba(255, 90, 126, 0.5);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .comment-submit-btn {
+            background: #ff5a7e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .comment-submit-btn:hover {
+            background: #ff3a6f;
+        }
+
+        .comments-list {
+            max-height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             gap: 10px;
         }
 
-        .video-detail-like-btn {
-            background: rgba(255, 90, 126, 0.2);
-            border: 1px solid #ff5a7e;
+        .comment-item {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .comment-author {
+            font-size: 12px;
+            font-weight: 600;
             color: #ff5a7e;
-            padding: 8px 20px;
-            border-radius: 20px;
+        }
+
+        .comment-time {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .comment-content {
+            font-size: 12px;
+            color: #ddd;
+            margin-bottom: 8px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .comment-like-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
             cursor: pointer;
-            font-size: 14px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
             transition: all 0.2s;
+        }
+
+        .comment-like-btn:hover {
+            color: #ff5a7e;
+        }
+
+        .comment-like-btn.liked {
+            color: #ff5a7e;
+        }
+
+        .comment-reply-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .comment-reply-btn:hover {
+            color: #ff5a7e;
+        }
+
+        .comment-delete-btn {
+            background: none;
+            border: none;
+            color: rgba(220, 53, 69, 0.8);
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .comment-delete-btn:hover {
+            color: #dc3545;
+        }
+
+        .replies {
+            margin-top: 8px;
+            padding-left: 12px;
+            border-left: 2px solid rgba(255, 90, 126, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .reply-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        .reply-form {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .reply-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 6px 8px;
+            color: #fff;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .reply-input:focus {
+            border-color: rgba(255, 90, 126, 0.4);
+        }
+
+        .reply-submit-btn {
+            background: #ff5a7e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .reply-submit-btn:hover {
+            background: #ff3a6f;
+        }
+
+        .empty-comments {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            padding: 20px 0;
+        }
+
+        .video-detail-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            margin-bottom: 12px;
+        }
+
+        .video-detail-like-btn,
+        .report-trigger-btn {
+            border: none;
+            border-radius: 18px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .video-detail-like-btn {
+            background: #ff5a7e;
+            color: white;
+        }
+
+        .video-detail-like-btn:hover,
+        .report-trigger-btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.95;
+        }
+
+        .video-detail-like-btn.liked {
+            background: #d6336c;
+            color: white;
+        }
+
+        .report-trigger-btn {
+            background: #dc3545;
+            color: white;
         }
 
         .video-detail-like-btn:hover {
@@ -629,6 +872,100 @@ if ($view === 'personal') {
         .video-detail-like-btn.liked {
             background: #ff5a7e;
             color: white;
+        }
+
+        .video-detail-report {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .report-trigger-btn,
+        .report-submit-btn,
+        .report-cancel-btn {
+            border: none;
+            border-radius: 20px;
+            padding: 10px 18px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .report-trigger-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ff5a7e;
+        }
+
+        .report-trigger-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .report-form {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .report-form.active {
+            display: flex;
+        }
+
+        .report-form label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 13px;
+        }
+
+        .report-form input[type="radio"],
+        .report-form textarea {
+            margin-right: 6px;
+        }
+
+        .report-form textarea {
+            width: 100%;
+            min-height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px;
+            color: #fff;
+            resize: vertical;
+            font-size: 12px;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .report-message {
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .report-message.success {
+            display: block;
+            background: rgba(72, 187, 120, 0.15);
+            color: #d4f8dc;
+            border: 1px solid rgba(72, 187, 120, 0.35);
+        }
+
+        .report-message.error {
+            display: block;
+            background: rgba(220, 53, 69, 0.15);
+            color: #ffd5dc;
+            border: 1px solid rgba(220, 53, 69, 0.35);
         }
 
         .video-info {
@@ -1001,10 +1338,9 @@ if ($view === 'personal') {
                          data-likes="<?php echo $video['likes']; ?>"
                          data-is-liked="<?php echo $video['is_liked']; ?>"
                          data-description="<?php echo htmlspecialchars($video['description'] ?? ''); ?>"
-                         data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>"
-                         onclick="openVideoDetail(<?php echo $video['id']; ?>)">
-                        <div class="video-player">
-                            <video controls playsinline <?php echo $index === 0 ? 'autoplay muted' : ''; ?>>
+                         data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>">
+                        <div class="video-player" onclick="event.stopPropagation(); openVideoDetail(<?php echo (int)$video['id']; ?>);">
+                            <video controls playsinline <?php echo $index === 0 ? 'autoplay muted' : ''; ?> onclick="event.stopPropagation();">
                                 <source src="<?php echo htmlspecialchars($video['file_path']); ?>" type="video/mp4">
                                 您的瀏覽器不支援影片播放。
                             </video>
@@ -1041,9 +1377,45 @@ if ($view === 'personal') {
                     <div class="video-detail-time"></div>
                     <div class="video-detail-likes"></div>
                 </div>
-                <div class="video-detail-like">
+                <div class="video-detail-actions">
                     <button class="video-detail-like-btn" onclick="toggleLike()">🤍 讚</button>
+                    <button class="report-trigger-btn" onclick="toggleReportForm()">🚩 檢舉</button>
                 </div>
+                <div id="reportForm" class="report-form">
+                    <div>
+                        <strong style="color:#fff;">請選擇檢舉原因</strong>
+                    </div>
+                    <label><input type="radio" name="report_reason" value="不當內容" checked> 不當內容</label>
+                    <label><input type="radio" name="report_reason" value="侵權影片"> 侵權影片</label>
+                    <label><input type="radio" name="report_reason" value="騷擾或仇恨言論"> 騷擾或仇恨言論</label>
+                    <label><input type="radio" name="report_reason" value="其他"> 其他</label>
+                    <textarea id="reportDescription" placeholder="請說明檢舉原因，至少 10 個字"></textarea>
+                    <div class="report-actions">
+                        <button class="report-submit-btn" onclick="submitReport(event)">送出檢舉</button>
+                        <button class="report-cancel-btn" onclick="hideReportForm(event)">取消</button>
+                    </div>
+                    <div id="reportMessage" class="report-message"></div>
+                </div>
+                
+                <!-- 評論區 -->
+                <div class="comments-section">
+                    <div class="comments-header">💬 評論</div>
+                    
+                    <div class="comment-form">
+                        <input 
+                            type="text" 
+                            class="comment-input" 
+                            id="commentInput" 
+                            placeholder="分享你的想法..." 
+                            maxlength="200">
+                        <button class="comment-submit-btn" onclick="submitComment()">發表</button>
+                    </div>
+
+                    <div id="commentsList" class="comments-list">
+                        <div class="empty-comments">尚無評論</div>
+                    </div>
+                </div>
+
                 <div class="video-detail-description"></div>
             </div>
         </div>
@@ -1055,6 +1427,11 @@ if ($view === 'personal') {
 <script>
     let currentVideoIndex = 0;
     let videoIds = [];
+    let currentDetailVideoId = null;
+    
+    // 儲存當前用戶資訊
+    const currentUser = '<?php echo isset($_SESSION['user']) ? htmlspecialchars($_SESSION['user']) : ''; ?>';
+    const currentRole = '<?php echo isset($_SESSION['role']) ? htmlspecialchars($_SESSION['role']) : ''; ?>';
 
     // 初始化影片ID列表
     function initVideoIds() {
@@ -1066,17 +1443,33 @@ if ($view === 'personal') {
     document.addEventListener('DOMContentLoaded', function() {
         initVideoIds();
         
+        // 為影片卡片添加點擊事件監聽
+        const videoCards = document.querySelectorAll('.video-card');
+        videoCards.forEach(card => {
+            card.addEventListener('click', function() {
+                const videoId = this.dataset.videoId;
+                openVideoDetail(videoId);
+            });
+        });
+        
         const overlay = document.getElementById('videoDetailOverlay');
         if (overlay) {
             overlay.addEventListener('wheel', function(e) {
-                if (e.deltaY > 0) {
-                    // 向下滾動 → 下一則
+                // 檢查是否有可滾動的內容
+                const scrollableContent = overlay.querySelector('.video-detail-content');
+                if (!scrollableContent) return;
+                
+                const isAtBottom = scrollableContent.scrollHeight - scrollableContent.scrollTop <= scrollableContent.clientHeight + 10;
+                const isAtTop = scrollableContent.scrollTop <= 0;
+                
+                // 只在無法再滾動時才切換影片
+                if (e.deltaY > 0 && isAtBottom) {
                     nextVideo();
-                } else {
-                    // 向上滾動 → 上一則
+                    e.preventDefault();
+                } else if (e.deltaY < 0 && isAtTop) {
                     prevVideo();
+                    e.preventDefault();
                 }
-                e.preventDefault();
             }, { passive: false });
         }
     });
@@ -1124,6 +1517,8 @@ if ($view === 'personal') {
                 const description = card.dataset.description;
                 const filePath = card.dataset.filePath;
 
+                currentDetailVideoId = videoId;
+
                 const overlay = document.getElementById('videoDetailOverlay');
                 overlay.querySelector('.video-detail-title').textContent = title;
                 overlay.querySelector('.video-detail-author').innerHTML = `
@@ -1145,8 +1540,107 @@ if ($view === 'personal') {
                     // 重新載入影片
                     const video = overlay.querySelector('.video-detail-player video');
                     video.load();
+                    
+                    // 移除舊的 ended 事件監聽器並新增新的
+                    const newVideo = video.cloneNode(true);
+                    video.parentNode.replaceChild(newVideo, video);
+                    // 播放完畢時不自動跳下一個
+                    // newVideo.addEventListener('ended', function() {
+                    //     nextVideo();
+                    // });
                 }
+
+                // 載入評論
+                loadComments();
             }
+        });
+    }
+
+    function toggleReportForm() {
+        const form = document.getElementById('reportForm');
+        const messageBox = document.getElementById('reportMessage');
+        if (!form) return;
+        
+        form.classList.toggle('active');
+        if (messageBox) {
+            messageBox.style.display = 'none';
+        }
+    }
+
+    function hideReportForm(event) {
+        event.preventDefault();
+        const form = document.getElementById('reportForm');
+        const messageBox = document.getElementById('reportMessage');
+        if (form) {
+            form.classList.remove('active');
+        }
+        if (messageBox) {
+            messageBox.style.display = 'none';
+        }
+    }
+
+    function submitReport(event) {
+        event.preventDefault();
+
+        const reasonInput = document.querySelector('input[name="report_reason"]:checked');
+        const descriptionInput = document.getElementById('reportDescription');
+        const messageBox = document.getElementById('reportMessage');
+
+        if (!reasonInput || !descriptionInput || !messageBox) {
+            return;
+        }
+
+        const reason = reasonInput.value.trim();
+        const description = descriptionInput.value.trim();
+
+        if (reason === '' || description.length < 10) {
+            messageBox.textContent = '請提供有效的檢舉資訊，說明至少 10 個字';
+            messageBox.className = 'report-message error';
+            messageBox.style.display = 'block';
+            return;
+        }
+
+        if (!currentDetailVideoId) {
+            messageBox.textContent = '無法取得影片資料，請重新整理頁面後重試';
+            messageBox.className = 'report-message error';
+            messageBox.style.display = 'block';
+            return;
+        }
+
+        fetch('report_video.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                video_id: currentDetailVideoId,
+                reason: reason,
+                description: description
+            })
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (response.ok && data.success) {
+                messageBox.textContent = data.message || '檢舉已送出，我們會盡快處理';
+                messageBox.className = 'report-message success';
+                messageBox.style.display = 'block';
+                descriptionInput.value = '';
+                setTimeout(() => {
+                    const form = document.getElementById('reportForm');
+                    if (form) {
+                        form.classList.remove('active');
+                    }
+                }, 1800);
+            } else {
+                messageBox.textContent = data.message || '檢舉失敗，請稍後再試';
+                messageBox.className = 'report-message error';
+                messageBox.style.display = 'block';
+            }
+        })
+        .catch(() => {
+            messageBox.textContent = '網路連線失敗，請稍後再試';
+            messageBox.className = 'report-message error';
+            messageBox.style.display = 'block';
         });
     }
 
@@ -1183,6 +1677,228 @@ if ($view === 'personal') {
         form.appendChild(toggleLikeInput);
         document.body.appendChild(form);
         form.submit();
+    }
+
+    // 評論功能
+    function loadComments() {
+        if (!currentDetailVideoId) return;
+
+        fetch(`comment_video.php?action=get&video_id=${currentDetailVideoId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayComments(data.comments, data.replies);
+                }
+            })
+            .catch(error => console.error('載入評論失敗:', error));
+    }
+
+    function displayComments(comments, replies) {
+        const commentsList = document.getElementById('commentsList');
+        
+        if (comments.length === 0) {
+            commentsList.innerHTML = '<div class="empty-comments">尚無評論</div>';
+            return;
+        }
+
+        let html = '';
+        comments.forEach(comment => {
+            const replyList = replies[comment.id] || [];
+            const time = new Date(comment.created_at).toLocaleString('zh-Hant', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            html += `
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-author">${escapeHtml(comment.username)}</span>
+                        <span class="comment-time">${time}</span>
+                    </div>
+                    <div class="comment-content">${escapeHtml(comment.content)}</div>
+                    <div class="comment-actions">
+                        <button class="comment-like-btn ${comment.is_liked ? 'liked' : ''}" onclick="toggleCommentLike(${comment.id})">
+                            ${comment.is_liked ? '❤️' : '🤍'} ${comment.likes}
+                        </button>
+                        <button class="comment-reply-btn" onclick="toggleReplyForm(${comment.id})">回覆</button>
+                        ${comment.username === currentUser || currentRole === 'admin' ? `<button class="comment-delete-btn" onclick="deleteComment(${comment.id})">刪除</button>` : ''}
+                    </div>
+
+                    ${replyList.length > 0 ? `
+                        <div class="replies">
+                            ${replyList.map(reply => {
+                                const replyTime = new Date(reply.created_at).toLocaleString('zh-Hant', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                return `
+                                    <div class="reply-item">
+                                        <div><strong class="comment-author">${escapeHtml(reply.username)}</strong> <span class="comment-time">${replyTime}</span></div>
+                                        <div>${escapeHtml(reply.content)}</div>
+                                        <div class="comment-actions" style="margin-top: 4px;">
+                                            <button class="comment-like-btn ${reply.is_liked ? 'liked' : ''}" onclick="toggleCommentLike(${reply.id})">
+                                                ${reply.is_liked ? '❤️' : '🤍'} ${reply.likes}
+                                            </button>
+                                            ${reply.username === currentUser || currentRole === 'admin' ? `<button class="comment-delete-btn" onclick="deleteComment(${reply.id})">刪除</button>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+
+                    <div id="replyForm-${comment.id}" class="reply-form" style="display: none;">
+                        <input type="text" class="reply-input" placeholder="輸入回覆..." maxlength="200" id="replyInput-${comment.id}">
+                        <button class="reply-submit-btn" onclick="submitReply(${comment.id})">回覆</button>
+                        <button class="reply-submit-btn" style="background: #666;" onclick="toggleReplyForm(${comment.id})">取消</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        commentsList.innerHTML = html;
+    }
+
+    function submitComment() {
+        const input = document.getElementById('commentInput');
+        const content = input.value.trim();
+
+        if (!currentDetailVideoId || !content) {
+            alert('請輸入評論內容');
+            return;
+        }
+
+        if (content.length < 2) {
+            alert('評論至少需要2個字');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'add');
+        formData.append('video_id', currentDetailVideoId);
+        formData.append('content', content);
+
+        fetch('comment_video.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                input.value = '';
+                loadComments();
+            } else {
+                alert(data.message || '發表評論失敗');
+            }
+        })
+        .catch(error => {
+            console.error('提交評論失敗:', error);
+            alert('網路連線失敗');
+        });
+    }
+
+    function submitReply(parentId) {
+        const input = document.getElementById(`replyInput-${parentId}`);
+        const content = input.value.trim();
+
+        if (!currentDetailVideoId || !content) {
+            alert('請輸入回覆內容');
+            return;
+        }
+
+        if (content.length < 2) {
+            alert('回覆至少需要2個字');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'add');
+        formData.append('video_id', currentDetailVideoId);
+        formData.append('parent_id', parentId);
+        formData.append('content', content);
+
+        fetch('comment_video.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadComments();
+                toggleReplyForm(parentId);
+            } else {
+                alert(data.message || '發表回覆失敗');
+            }
+        })
+        .catch(error => {
+            console.error('提交回覆失敗:', error);
+            alert('網路連線失敗');
+        });
+    }
+
+    function toggleCommentLike(commentId) {
+        const formData = new FormData();
+        formData.append('action', 'toggle_like');
+        formData.append('comment_id', commentId);
+
+        fetch('comment_video.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadComments();
+            }
+        })
+        .catch(error => console.error('按讚失敗:', error));
+    }
+
+    function deleteComment(commentId) {
+        if (!confirm('確定要刪除此評論嗎？')) return;
+
+        const formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('comment_id', commentId);
+
+        fetch('comment_video.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadComments();
+            } else {
+                alert(data.message || '刪除失敗');
+            }
+        })
+        .catch(error => console.error('刪除失敗:', error));
+    }
+
+    function toggleReplyForm(commentId) {
+        const form = document.getElementById(`replyForm-${commentId}`);
+        if (form) {
+            form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+            if (form.style.display === 'flex') {
+                document.getElementById(`replyInput-${commentId}`).focus();
+            }
+        }
+    }
+
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
     }
 
     // 關閉浮層

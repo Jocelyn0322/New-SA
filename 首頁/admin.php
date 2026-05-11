@@ -85,6 +85,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete'])) {
     }
 }
 
+// 強制刪除影片
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['force_delete_video']) && isset($_POST['video_id'])) {
+    $videoId = (int)$_POST['video_id'];
+    $stmt = $pdo->prepare("SELECT file_path FROM videos WHERE id = ?");
+    $stmt->execute([$videoId]);
+    $video = $stmt->fetch();
+
+    if ($video) {
+        $fullPath = __DIR__ . '/' . $video['file_path'];
+        if (file_exists($fullPath) && is_file($fullPath)) {
+            unlink($fullPath);
+        }
+
+        $deleteStmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
+        $deleteStmt->execute([$videoId]);
+
+        $message = '已強制刪除該影片';
+        $messageType = 'success';
+    } else {
+        $message = '找不到該影片';
+        $messageType = 'error';
+    }
+}
+
+// 確保影片檢舉表存在
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS video_reports (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        video_id INT NOT NULL,
+        reported_by VARCHAR(100) NOT NULL,
+        reason VARCHAR(100) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'pending',
+        FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+    )");
+} catch (Exception $e) {
+    // 這裡不影響管理頁面主要功能
+}
+
+// 讀取檢舉影片資料
+$reportedVideos = [];
+$reportedReasons = [];
+try {
+    $reportStmt = $pdo->query("SELECT v.id, v.title, v.uploaded_by, COUNT(r.id) AS report_count, MAX(r.created_at) AS last_reported_at
+        FROM videos v
+        JOIN video_reports r ON v.id = r.video_id
+        WHERE v.is_active = 1
+        GROUP BY v.id
+        ORDER BY report_count DESC, last_reported_at DESC");
+    $reportedVideos = $reportStmt->fetchAll();
+
+    $reasonStmt = $pdo->query("SELECT video_id, reason, COUNT(*) AS count
+        FROM video_reports
+        GROUP BY video_id, reason
+        ORDER BY video_id, count DESC");
+    foreach ($reasonStmt->fetchAll() as $row) {
+        $reportedReasons[$row['video_id']][] = $row;
+    }
+} catch (Exception $e) {
+    // 無需處理，若沒有檢舉資料則保持空陣列
+}
+
 // 讀取所有圖片
 $stmt = $pdo->query("SELECT * FROM carousel_images ORDER BY sort_order ASC, id ASC");
 $images = $stmt->fetchAll();
@@ -204,6 +267,53 @@ $images = $stmt->fetchAll();
             border-radius: 4px;
             cursor: pointer;
         }
+        .report-section {
+            margin-top: 50px;
+            background: #fff5f7;
+            border: 1px solid #f5c6d0;
+            border-radius: 16px;
+            padding: 24px;
+        }
+        .report-section h2 {
+            margin-bottom: 18px;
+            color: #c82333;
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+        .report-table th,
+        .report-table td {
+            padding: 12px 14px;
+            border: 1px solid #f1d1dc;
+            text-align: left;
+            vertical-align: top;
+            font-size: 14px;
+        }
+        .report-table th {
+            background: #ffe3eb;
+            color: #9c2132;
+        }
+        .report-table tbody tr:nth-child(odd) {
+            background: #fff7f9;
+        }
+        .report-reason-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .force-delete-btn {
+            background: #c82333;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 14px;
+            cursor: pointer;
+        }
+        .force-delete-btn:hover {
+            background: #a71d2a;
+        }
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -270,6 +380,58 @@ $images = $stmt->fetchAll();
                         </div>
                     <?php endforeach; ?>
                 </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="report-section">
+            <h2>🎯 影片檢舉管理</h2>
+
+            <?php if (empty($reportedVideos)): ?>
+                <div class="empty-state">
+                    目前沒有影片被檢舉。
+                </div>
+            <?php else: ?>
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>影片 ID</th>
+                            <th>標題</th>
+                            <th>上傳者</th>
+                            <th>檢舉次數</th>
+                            <th>檢舉原因統計</th>
+                            <th>最後檢舉時間</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($reportedVideos as $video): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($video['id']); ?></td>
+                                <td><?php echo htmlspecialchars($video['title']); ?></td>
+                                <td><?php echo htmlspecialchars($video['uploaded_by']); ?></td>
+                                <td><?php echo htmlspecialchars($video['report_count']); ?></td>
+                                <td>
+                                    <div class="report-reason-list">
+                                        <?php if (!empty($reportedReasons[$video['id']])): ?>
+                                            <?php foreach ($reportedReasons[$video['id']] as $reason): ?>
+                                                <div><?php echo htmlspecialchars($reason['reason']); ?>：<?php echo htmlspecialchars($reason['count']); ?> 次</div>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <div>尚無詳細原因</div>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td><?php echo htmlspecialchars(date('Y-m-d H:i', strtotime($video['last_reported_at']))); ?></td>
+                                <td>
+                                    <form method="post" onsubmit="return confirm('確定要強制刪除此影片嗎？此操作會移除影片與所有檢舉記錄。');">
+                                        <input type="hidden" name="video_id" value="<?php echo htmlspecialchars($video['id']); ?>">
+                                        <button type="submit" name="force_delete_video" value="1" class="force-delete-btn">強制刪除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             <?php endif; ?>
         </div>
     </div>
