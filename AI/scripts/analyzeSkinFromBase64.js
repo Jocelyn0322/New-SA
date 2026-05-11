@@ -31,6 +31,9 @@ async function main() {
   const makeupPreference = payload.makeupPreference && typeof payload.makeupPreference === 'object'
     ? payload.makeupPreference
     : {};
+  const userContext = payload.userContext && typeof payload.userContext === 'object'
+    ? payload.userContext
+    : {};
 
   if (!imageBase64) {
     throw new Error('缺少 imageBase64');
@@ -47,7 +50,7 @@ async function main() {
 
   const service = new SkinAnalysisService();
   const analysis = await service.uploadAndAnalyze(imageBuffer);
-  const linkedResult = await service.resolveSkinProfileAndProducts(analysis, userPreference, makeupPreference);
+  const linkedResult = await service.resolveSkinProfileAndProducts(analysis, userPreference, makeupPreference, userContext);
 
   process.stdout.write(JSON.stringify(linkedResult));
 }

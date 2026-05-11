@@ -17,10 +17,22 @@ include 'db.php';
 <?php include 'header.php'; ?>
 
 <?php
-$id = intval($_GET['id']);
+$id = intval($_GET['id'] ?? 0);
+
+if ($id <= 0) {
+    echo '<div class="products"><div class="empty-state"><h3>缺少產品編號</h3><p><a href="products.php">返回產品列表</a></p></div></div>';
+    include 'footer.php';
+    exit;
+}
 
 $sql = "SELECT * FROM products WHERE p_id=$id";
 $result = $conn->query($sql);
+if (!$result) {
+    echo '<div class="products"><div class="empty-state"><h3>查詢失敗</h3><p>產品資料表可能尚未匯入，或資料庫連線名稱不正確。</p><p><a href="products.php">返回產品列表</a></p></div></div>';
+    include 'footer.php';
+    exit;
+}
+
 $row = $result->fetch_assoc();
 
 if(!$row){
@@ -85,6 +97,12 @@ $isFav = in_array($row['p_id'], $favorites);
     <?php
     $sql2 = "SELECT * FROM product_colors WHERE p_id=$id";
     $result2 = $conn->query($sql2);
+
+    if (!$result2) {
+        echo '<p style="color: #999;">色號資料查詢失敗，請確認 product_colors 資料表已匯入</p>';
+        include 'footer.php';
+        exit;
+    }
 
     if($result2->num_rows > 0){
     ?>
