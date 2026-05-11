@@ -151,7 +151,7 @@ export class SkinAnalysisService {
     return this.validateAnalysis(parsed);
   }
 
-  async resolveSkinProfileAndProducts(analysis, userPreference = 'Matte', makeupPreference = {}) {
+  async resolveSkinProfileAndProducts(analysis, userPreference = 'Matte', makeupPreference = {}, userContext = {}) {
     const mysqlClient = await loadMysqlClient();
     if (!mysqlClient) {
       return {
@@ -177,12 +177,15 @@ export class SkinAnalysisService {
         finish: makeupPreference?.finish || userPreference || 'Matte',
         style: makeupPreference?.style || '日常通勤'
       };
+      const normalizedUsername = typeof userContext?.username === 'string' ? userContext.username.trim() : '';
+      const userLabWeights = normalizedUsername ? await this.getUserLabWeights(conn, normalizedUsername) : null;
+      const userTextureBias = normalizedUsername ? await this.getUserTextureBias(conn, normalizedUsername) : null;
       let nearestSkinTone = null;
       if (!skinTonesTable) {
         warnings.push('缺少 SkinTones 資料表，已跳過最近膚色色號匹配');
       } else {
         try {
-          nearestSkinTone = await this.findNearestSkinTone(conn, skinTonesTable, analysis.detected_lab);
+          nearestSkinTone = await this.findNearestSkinTone(conn, skinTonesTable, analysis.detected_lab, userLabWeights);
         } catch (error) {
           warnings.push(`最近膚色色號匹配失敗：${error.message}`);
         }
@@ -208,6 +211,7 @@ export class SkinAnalysisService {
               const ranked = await this.rankProductsWithAI({
                 analysis,
                 makeupPreference: resolvedMakeupPreference,
+                userTextureBias,
                 candidates
               });
               products = this.mergeRankedProducts(candidates, ranked);
@@ -215,7 +219,7 @@ export class SkinAnalysisService {
               console.warn('[SkinAnalysisService] AI ranking failed:', rankError.message);
               warnings.push(`AI 產品排名失敗，改用智能本地排名`);
               // Use local smart ranking when AI fails
-              products = this.localSmartRank(analysis, resolvedMakeupPreference, candidates);
+              products = this.localSmartRank(analysis, resolvedMakeupPreference, candidates, userTextureBias);
             }
           }
 
@@ -227,11 +231,24 @@ export class SkinAnalysisService {
         }
       }
 
+      if (products.length) {
+        products = this.applyTextureBiasToProducts(products, userTextureBias);
+        if (productColorsTable && nearestSkinTone?.id) {
+          try {
+            products = await this.attachShadeRecommendations(conn, products, productColorsTable, nearestSkinTone, analysis.detected_lab);
+          } catch (shadeError) {
+            warnings.push(`色號推薦補充失敗：${shadeError.message}`);
+          }
+        }
+      }
+
       return {
         analysis,
         nearestSkinTone,
         products,
         makeupPreference: resolvedMakeupPreference,
+        userLabWeights,
+        userTextureBias,
         warnings
       };
     } finally {
@@ -239,7 +256,13 @@ export class SkinAnalysisService {
     }
   }
 
-  async findNearestSkinTone(conn, tableName, lab) {
+  async findNearestSkinTone(conn, tableName, lab, labWeights = null) {
+    const weights = {
+      L: Number(labWeights?.weightL || 1),
+      a: Number(labWeights?.weightA || 1),
+      b: Number(labWeights?.weightB || 1)
+    };
+
     const [rows] = await conn.execute(
       `SELECT
         id,
@@ -247,14 +270,14 @@ export class SkinAnalysisService {
         HexValue,
         ToneCategory,
         SQRT(
-          POW(LAB_L - ?, 2) +
-          POW(LAB_a - ?, 2) +
-          POW(LAB_b - ?, 2)
+          POW((LAB_L - ?) * ?, 2) +
+          POW((LAB_a - ?) * ?, 2) +
+          POW((LAB_b - ?) * ?, 2)
         ) AS delta_e
       FROM \`${tableName}\`
       ORDER BY delta_e ASC
       LIMIT 1`,
-      [lab.L, lab.a, lab.b]
+      [lab.L, weights.L, lab.a, weights.a, lab.b, weights.b]
     );
 
     if (!rows.length) {
@@ -267,8 +290,148 @@ export class SkinAnalysisService {
       toneName: row.ToneName,
       hex: row.HexValue,
       category: row.ToneCategory,
-      deltaE: Number(row.delta_e)
+      deltaE: Number(row.delta_e),
+      weights
     };
+  }
+
+  async getUserLabWeights(conn, username) {
+    if (!username) {
+      return null;
+    }
+
+    const [rows] = await conn.execute(
+      `SELECT weight_L, weight_a, weight_b
+       FROM \`UserLabWeights\`
+       WHERE username = ?
+       LIMIT 1`,
+      [username]
+    ).catch(() => [[], null]);
+
+    if (!Array.isArray(rows) || !rows.length) {
+      return { username, weightL: 1, weightA: 1, weightB: 1 };
+    }
+
+    const row = rows[0];
+    return {
+      username,
+      weightL: Number(row.weight_L) || 1,
+      weightA: Number(row.weight_a) || 1,
+      weightB: Number(row.weight_b) || 1
+    };
+  }
+
+  async getUserTextureBias(conn, username) {
+    if (!username) {
+      return { hydrationBias: 0, tooDryCount: 0, tooOilyCount: 0 };
+    }
+
+    const [rows] = await conn.execute(
+      `SELECT feedback_type, COUNT(*) AS cnt
+       FROM \`UserProductFeedback\`
+       WHERE username = ?
+         AND feedback_type IN ('too_dry', 'too_oily')
+       GROUP BY feedback_type`
+      ,
+      [username]
+    ).catch(() => [[], null]);
+
+    let tooDryCount = 0;
+    let tooOilyCount = 0;
+    for (const row of rows || []) {
+      if (row.feedback_type === 'too_dry') {
+        tooDryCount = Number(row.cnt) || 0;
+      }
+      if (row.feedback_type === 'too_oily') {
+        tooOilyCount = Number(row.cnt) || 0;
+      }
+    }
+
+    const hydrationBias = Math.max(-3, Math.min(3, tooDryCount - tooOilyCount));
+    return { hydrationBias, tooDryCount, tooOilyCount };
+  }
+
+  async attachShadeRecommendations(conn, products, productColorsTable, nearestSkinTone, detectedLab) {
+    const columns = await this.getTableColumns(conn, productColorsTable);
+    const productIdCol = this.pickExistingColumn(columns, ['ProductID', 'product_id', 'p_id', 'productId']);
+    const shadeNameCol = this.pickExistingColumn(columns, ['ShadeName', 'shade_name', 'Shade', 'shade', 'ColorName', 'color_name', 'name']);
+    const skinToneIdCol = this.pickExistingColumn(columns, ['SkinToneID', 'skin_tone_id', 'tone_id', 'SkinToneId']);
+    const labLCol = this.pickExistingColumn(columns, ['LAB_L', 'lab_l', 'L']);
+    const labACol = this.pickExistingColumn(columns, ['LAB_a', 'lab_a', 'A']);
+    const labBCol = this.pickExistingColumn(columns, ['LAB_b', 'lab_b', 'B']);
+    const hexCol = this.pickExistingColumn(columns, ['HexValue', 'hex', 'Hex', 'hex_value']);
+
+    if (!productIdCol || !shadeNameCol) {
+      return products;
+    }
+
+    const withShade = [];
+    for (const product of products) {
+      const productId = product.p_id ?? product.id ?? product.ProductID ?? product.productId;
+      if (productId === undefined || productId === null) {
+        withShade.push(product);
+        continue;
+      }
+
+      let shadeRow = null;
+
+      if (skinToneIdCol && nearestSkinTone?.id) {
+        const [exactRows] = await conn.execute(
+          `SELECT *
+           FROM \`${productColorsTable}\`
+           WHERE \`${productIdCol}\` = ? AND \`${skinToneIdCol}\` = ?
+           LIMIT 1`,
+          [productId, nearestSkinTone.id]
+        );
+        if (Array.isArray(exactRows) && exactRows.length) {
+          shadeRow = exactRows[0];
+        }
+      }
+
+      if (!shadeRow && labLCol && labACol && labBCol && detectedLab) {
+        const [labRows] = await conn.execute(
+          `SELECT *,
+             SQRT(
+               POW(\`${labLCol}\` - ?, 2) +
+               POW(\`${labACol}\` - ?, 2) +
+               POW(\`${labBCol}\` - ?, 2)
+             ) AS shade_delta
+           FROM \`${productColorsTable}\`
+           WHERE \`${productIdCol}\` = ?
+           ORDER BY shade_delta ASC
+           LIMIT 1`,
+          [detectedLab.L, detectedLab.a, detectedLab.b, productId]
+        );
+        if (Array.isArray(labRows) && labRows.length) {
+          shadeRow = labRows[0];
+        }
+      }
+
+      if (!shadeRow) {
+        const [fallbackRows] = await conn.execute(
+          `SELECT *
+           FROM \`${productColorsTable}\`
+           WHERE \`${productIdCol}\` = ?
+           LIMIT 1`,
+          [productId]
+        );
+        if (Array.isArray(fallbackRows) && fallbackRows.length) {
+          shadeRow = fallbackRows[0];
+        }
+      }
+
+      if (shadeRow) {
+        withShade.push({
+          ...product,
+          recommendedShade: shadeRow[shadeNameCol] ?? null,
+          recommendedShadeHex: hexCol ? (shadeRow[hexCol] ?? null) : null
+        });
+      } else {
+        withShade.push(product);
+      }
+    }
+
+    return withShade;
   }
 
 
@@ -283,7 +446,7 @@ export class SkinAnalysisService {
     return columnsRows.map((item) => item.Field);
   }
 
-  async rankProductsWithAI({ analysis, makeupPreference, candidates }) {
+  async rankProductsWithAI({ analysis, makeupPreference, userTextureBias, candidates }) {
     // If we have very few candidates or API fails, use smart local ranking
     // This ensures recommendations are always reasonable even without AI
     if (candidates.length <= 3) {
@@ -321,7 +484,8 @@ export class SkinAnalysisService {
               skin_type: analysis.skin_type,
               confidence_score: analysis.confidence_score,
               features: analysis.features,
-              makeup_preference: makeupPreference
+              makeup_preference: makeupPreference,
+              texture_bias: userTextureBias || { hydrationBias: 0 }
             },
             candidates: candidatePayload
           })
@@ -390,7 +554,7 @@ export class SkinAnalysisService {
     return merged.slice(0, 3);
   }
 
-  localSmartRank(analysis, makeupPreference, candidates) {
+  localSmartRank(analysis, makeupPreference, candidates, userTextureBias = null) {
     // Score products based on features and user's skin profile
     const scored = candidates.map((item, idx) => {
       let score = 0.5; // Base score
@@ -416,6 +580,17 @@ export class SkinAnalysisService {
         if (makeupPreference.finish === '霧面' || makeupPreference.finish === 'Matte') score += 0.1;
       }
 
+      const hydrationBias = Number(userTextureBias?.hydrationBias || 0);
+      if (hydrationBias > 0) {
+        if (purpose.includes('保濕') || purpose.includes('水潤') || purpose.includes('修護')) {
+          score += Math.min(0.12, hydrationBias * 0.04);
+        }
+      } else if (hydrationBias < 0) {
+        if (purpose.includes('控油') || purpose.includes('持妝') || purpose.includes('清爽')) {
+          score += Math.min(0.12, Math.abs(hydrationBias) * 0.04);
+        }
+      }
+
       return { item, score: Math.min(score, 1.0), reason: this.generateReason(analysis, item) };
     });
 
@@ -427,6 +602,42 @@ export class SkinAnalysisService {
         recommendationReason: entry.reason,
         matchScore: entry.score
       }));
+  }
+
+  applyTextureBiasToProducts(products, userTextureBias = null) {
+    if (!Array.isArray(products) || !products.length) {
+      return products;
+    }
+
+    const hydrationBias = Number(userTextureBias?.hydrationBias || 0);
+    if (!hydrationBias) {
+      return products;
+    }
+
+    return products
+      .map((item) => {
+        const purpose = String(item.purpose || item.Purpose || '').toLowerCase();
+        const current = Number(item.matchScore);
+        const baseScore = Number.isFinite(current) ? current : 0.6;
+        let bonus = 0;
+
+        if (hydrationBias > 0) {
+          if (purpose.includes('保濕') || purpose.includes('水潤') || purpose.includes('修護')) {
+            bonus = Math.min(0.08, hydrationBias * 0.025);
+          }
+        } else {
+          if (purpose.includes('控油') || purpose.includes('持妝') || purpose.includes('清爽')) {
+            bonus = Math.min(0.08, Math.abs(hydrationBias) * 0.025);
+          }
+        }
+
+        return {
+          ...item,
+          matchScore: Number(Math.min(1, baseScore + bonus).toFixed(3))
+        };
+      })
+      .sort((left, right) => (right.matchScore || 0) - (left.matchScore || 0))
+      .slice(0, 3);
   }
 
   generateReason(analysis, product) {

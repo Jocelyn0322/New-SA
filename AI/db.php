@@ -17,11 +17,19 @@ $options = [
 ];
 
 try {
-    // 嘗試建立連線
+    // PDO：給新 API 與預備語句使用
     $pdo = new PDO($dsn, $user, $pass, $options);
-    // echo "連線成功！"; // 測試時可以取消註解，確認後請刪除
+
+    // mysqli：相容既有頁面（例如 index.php 使用 $conn->query）
+    $conn = new mysqli($host, $user, $pass, $db);
+    if ($conn->connect_error) {
+        throw new RuntimeException('mysqli 連線失敗：' . $conn->connect_error);
+    }
+    $conn->set_charset($charset);
 } catch (\PDOException $e) {
     // 如果連線失敗，顯示錯誤訊息
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
+} catch (\RuntimeException $e) {
+    throw $e;
 }
 ?>

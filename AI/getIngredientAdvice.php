@@ -16,6 +16,43 @@ function sanitizeText(string $text): string
     return $masked;
 }
 
+function loadEnvFile(string $filePath): void
+{
+    if (!is_file($filePath) || !is_readable($filePath)) {
+        return;
+    }
+
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines)) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '' || str_starts_with($trimmed, '#') || !str_contains($trimmed, '=')) {
+            continue;
+        }
+
+        [$name, $value] = explode('=', $trimmed, 2);
+        $name = trim($name);
+        $value = trim($value);
+
+        if ($name === '' || getenv($name) !== false) {
+            continue;
+        }
+
+        if (
+            (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+            (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        ) {
+            $value = substr($value, 1, -1);
+        }
+
+        putenv($name . '=' . $value);
+        $_ENV[$name] = $value;
+    }
+}
+
 function errorResponse(int $status, string $publicMessage, array $debugContext = []): void
 {
     http_response_code($status);
@@ -62,6 +99,40 @@ function resolveNodeBinary(): string
     return '';
 }
 
+function buildChildEnvironment(): array
+{
+    $env = $_ENV;
+    $keys = [
+        'GROQ_API_KEY',
+        'GROQ_VISION_MODEL',
+        'GROQ_TEXT_MODEL',
+        'DB_HOST',
+        'DB_PORT',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_NAME',
+    ];
+
+    foreach ($keys as $key) {
+        $value = getenv($key);
+        if (is_string($value) && $value !== '') {
+            $env[$key] = $value;
+        }
+    }
+
+    $env['PATH'] = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin';
+
+    foreach (['DYLD_LIBRARY_PATH', 'DYLD_INSERT_LIBRARIES', 'LD_LIBRARY_PATH'] as $dangerKey) {
+        if (isset($env[$dangerKey])) {
+            unset($env[$dangerKey]);
+        }
+    }
+
+    return $env;
+}
+
+loadEnvFile(__DIR__ . '/.env');
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     errorResponse(405, '只支援 POST');
 }
@@ -95,14 +166,7 @@ $descriptorSpec = [
     2 => ['pipe', 'w'],
 ];
 
-$safeEnv = $_ENV;
-$safeEnv['PATH'] = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin';
-
-foreach (['DYLD_LIBRARY_PATH', 'DYLD_INSERT_LIBRARIES', 'LD_LIBRARY_PATH'] as $dangerKey) {
-    if (isset($safeEnv[$dangerKey])) {
-        unset($safeEnv[$dangerKey]);
-    }
-}
+$safeEnv = buildChildEnvironment();
 
 $process = proc_open([$nodeBin, $scriptPath], $descriptorSpec, $pipes, $projectRoot, $safeEnv);
 if (!is_resource($process)) {
