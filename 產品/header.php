@@ -7,6 +7,7 @@
         <div class="nav">
             <a href="/sa/New-SA/產品/index.php">首頁</a>
             <a href="/sa/New-SA/產品/products.php">產品</a>
+            <a href="/sa/New-SA/AI/index.php">AI檢測</a>
             <a href="/sa/New-SA/產品/skinmatch.php">膚色配對</a>
             <a href="/sa/New-SA/產品/compare.php">比較</a>
             <a href="/sa/New-SA/產品/favorite.php">收藏</a>
