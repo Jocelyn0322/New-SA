@@ -10,7 +10,9 @@ if (session_status() === PHP_SESSION_NONE) {
             <span class="username">
                 <?php echo htmlspecialchars($_SESSION['user']); ?>
             </span>
-            <?php if (($_SESSION['role'] ?? '') !== 'admin'): ?>
+            <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+                <a href="admin.php" class="admin-link">🛠️ 管理後台</a>
+            <?php else: ?>
                 <a href="profile.php" class="profile-link">👤 個人資料</a>
             <?php endif; ?>
             <a href="logout.php" class="logout-link">登出</a>

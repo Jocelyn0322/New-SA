@@ -25,27 +25,30 @@ if (!isset($data['video_id']) || !isset($data['reason']) || !isset($data['descri
     exit;
 }
 
-try {
-    // 建立檢舉表
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS video_reports (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            video_id INT NOT NULL,
-            reported_by VARCHAR(100) NOT NULL,
-            reason VARCHAR(100) NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status VARCHAR(20) DEFAULT 'pending',
-            FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-        )
-    ");
+$videoId = (int)$data['video_id'];
+$reason = trim($data['reason']);
+$description = trim($data['description']);
 
+if ($videoId <= 0 || $reason === '' || mb_strlen($description) < 10) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => '請提供有效的檢舉資訊，說明至少 10 字']);
+    exit;
+}
+
+try {
+    $checkVideo = $pdo->prepare("SELECT id FROM videos WHERE id = ?");
+    $checkVideo->execute([$videoId]);
+    if (!$checkVideo->fetch()) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => '找不到該影片']);
+        exit;
+    }
     // 檢查是否重複檢舉
     $stmt = $pdo->prepare("
-        SELECT id FROM video_reports 
+        SELECT id FROM video_reports
         WHERE video_id = ? AND reported_by = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
     ");
-    $stmt->execute([$data['video_id'], $_SESSION['user']]);
+    $stmt->execute([$videoId, $_SESSION['user']]);
     
     if ($stmt->fetch()) {
         http_response_code(400);
@@ -59,10 +62,10 @@ try {
         VALUES (?, ?, ?, ?)
     ");
     $stmt->execute([
-        $data['video_id'],
+        $videoId,
         $_SESSION['user'],
-        $data['reason'],
-        $data['description']
+        $reason,
+        $description
     ]);
 
     echo json_encode([
