@@ -9,7 +9,13 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+// 支援 JSON body（fetch 送來的）
+$jsonBody = [];
+$rawInput = file_get_contents('php://input');
+if ($rawInput) {
+    $jsonBody = json_decode($rawInput, true) ?? [];
+}
+$action   = $jsonBody['action']   ?? $_POST['action']   ?? $_GET['action'] ?? '';
 $username = $_SESSION['user'];
 
 try {
@@ -157,6 +163,41 @@ try {
             'comments' => $mainComments,
             'replies' => $replies
         ]);
+
+    } elseif ($action === 'report_comment') {
+        $commentId  = (int)($jsonBody['comment_id'] ?? 0);
+        $reason     = trim($jsonBody['reason']      ?? '');
+        $description = trim($jsonBody['description'] ?? '');
+
+        if (!$commentId || !$reason || mb_strlen($description) < 5) {
+            echo json_encode(['success' => false, 'message' => '請完整填寫檢舉內容']);
+            exit;
+        }
+
+        // 建立 comment_reports 表（首次使用時）
+        $pdo->exec("CREATE TABLE IF NOT EXISTS comment_reports (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            comment_id INT NOT NULL,
+            reported_by VARCHAR(100) NOT NULL,
+            reason VARCHAR(100) NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) DEFAULT 'pending',
+            FOREIGN KEY (comment_id) REFERENCES video_comments(id) ON DELETE CASCADE
+        )");
+
+        // 防重複：24小時內只能檢舉同一則留言一次
+        $dup = $pdo->prepare("SELECT id FROM comment_reports WHERE comment_id = ? AND reported_by = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+        $dup->execute([$commentId, $username]);
+        if ($dup->fetch()) {
+            echo json_encode(['success' => false, 'message' => '您已在24小時內檢舉過此留言']);
+            exit;
+        }
+
+        $pdo->prepare("INSERT INTO comment_reports (comment_id, reported_by, reason, description) VALUES (?, ?, ?, ?)")
+            ->execute([$commentId, $username, $reason, $description]);
+
+        echo json_encode(['success' => true]);
 
     } else {
         echo json_encode(['success' => false, 'message' => '不支援的操作']);

@@ -866,6 +866,47 @@ if ($view === 'personal') {
             color: #dc3545;
         }
 
+        .comment-report-btn {
+            background: none;
+            border: none;
+            color: rgba(150, 100, 0, 0.7);
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .comment-report-btn:hover { color: #856404; }
+
+        .comment-report-form {
+            margin-top: 8px;
+            background: #fff8e8;
+            border: 1px solid #ffc;
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: none;
+            flex-direction: column;
+            gap: 7px;
+        }
+        .comment-report-form select,
+        .comment-report-form textarea {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+            background: #fff;
+        }
+        .comment-report-form textarea { resize: none; height: 54px; }
+        .comment-report-actions { display: flex; gap: 6px; }
+        .comment-report-actions button {
+            padding: 5px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .comment-report-submit { background: #e83e5a; color: #fff; }
+        .comment-report-cancel { background: #e0e0e0; color: #555; }
+
         .replies {
             margin-top: 8px;
             padding-left: 12px;
@@ -2005,7 +2046,22 @@ if ($view === 'personal') {
                             ${comment.is_liked ? '❤️' : '🤍'} ${comment.likes}
                         </button>
                         <button class="comment-reply-btn" onclick="toggleReplyForm(${comment.id})">回覆</button>
+                        ${comment.username !== currentUser && currentUser ? `<button class="comment-report-btn" onclick="toggleCommentReportForm(${comment.id})">🚩 檢舉</button>` : ''}
                         ${comment.username === currentUser || currentRole === 'admin' ? `<button class="comment-delete-btn" onclick="deleteComment(${comment.id})">刪除</button>` : ''}
+                    </div>
+                    <div class="comment-report-form" id="commentReportForm-${comment.id}">
+                        <select id="commentReportReason-${comment.id}">
+                            <option value="">選擇檢舉原因</option>
+                            <option value="不當言論">不當言論</option>
+                            <option value="騷擾或霸凌">騷擾或霸凌</option>
+                            <option value="垃圾訊息">垃圾訊息</option>
+                            <option value="其他">其他</option>
+                        </select>
+                        <textarea id="commentReportDesc-${comment.id}" placeholder="請說明檢舉原因（至少 5 字）"></textarea>
+                        <div class="comment-report-actions">
+                            <button class="comment-report-submit" onclick="submitCommentReport(${comment.id})">送出</button>
+                            <button class="comment-report-cancel" onclick="toggleCommentReportForm(${comment.id})">取消</button>
+                        </div>
                     </div>
 
                     ${replyList.length > 0 ? `
@@ -2025,7 +2081,22 @@ if ($view === 'personal') {
                                             <button class="comment-like-btn ${reply.is_liked ? 'liked' : ''}" onclick="toggleCommentLike(${reply.id})">
                                                 ${reply.is_liked ? '❤️' : '🤍'} ${reply.likes}
                                             </button>
+                                            ${reply.username !== currentUser && currentUser ? `<button class="comment-report-btn" onclick="toggleCommentReportForm(${reply.id})">🚩 檢舉</button>` : ''}
                                             ${reply.username === currentUser || currentRole === 'admin' ? `<button class="comment-delete-btn" onclick="deleteComment(${reply.id})">刪除</button>` : ''}
+                                        </div>
+                                        <div class="comment-report-form" id="commentReportForm-${reply.id}">
+                                            <select id="commentReportReason-${reply.id}">
+                                                <option value="">選擇檢舉原因</option>
+                                                <option value="不當言論">不當言論</option>
+                                                <option value="騷擾或霸凌">騷擾或霸凌</option>
+                                                <option value="垃圾訊息">垃圾訊息</option>
+                                                <option value="其他">其他</option>
+                                            </select>
+                                            <textarea id="commentReportDesc-${reply.id}" placeholder="請說明檢舉原因（至少 5 字）"></textarea>
+                                            <div class="comment-report-actions">
+                                                <button class="comment-report-submit" onclick="submitCommentReport(${reply.id})">送出</button>
+                                                <button class="comment-report-cancel" onclick="toggleCommentReportForm(${reply.id})">取消</button>
+                                            </div>
                                         </div>
                                     </div>
                                 `;
@@ -2170,6 +2241,34 @@ if ($view === 'personal') {
                 document.getElementById(`replyInput-${commentId}`).focus();
             }
         }
+    }
+
+    function toggleCommentReportForm(commentId) {
+        const form = document.getElementById(`commentReportForm-${commentId}`);
+        if (form) form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function submitCommentReport(commentId) {
+        const reason = document.getElementById(`commentReportReason-${commentId}`).value;
+        const desc   = document.getElementById(`commentReportDesc-${commentId}`).value.trim();
+        if (!reason) { alert('請選擇檢舉原因'); return; }
+        if (desc.length < 5) { alert('請說明檢舉原因（至少 5 字）'); return; }
+
+        fetch('comment_video.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'report_comment', comment_id: commentId, reason, description: desc })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                toggleCommentReportForm(commentId);
+                alert('感謝你的檢舉，我們會盡快查看');
+            } else {
+                alert(data.message || '檢舉失敗，請重試');
+            }
+        })
+        .catch(() => alert('網路錯誤，請重試'));
     }
 
     function escapeHtml(text) {

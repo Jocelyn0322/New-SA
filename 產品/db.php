@@ -1,16 +1,25 @@
 <?php
-$host = "127.0.0.1";
 $user = "root";
 $pass = "";
-$port = 3307;
+$socket = "/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock";
+$dbCandidates = ["sa_db", "makeupmakeup", "project"];
 
-// 產品資料是匯入 makeupmakeup.sql，原本的 project 資料庫名稱會導致查不到表
-$dbCandidates = ["makeupmakeup", "project"];
+// Try socket first (Mac), then TCP port 3307 (friend's PC)
+$connections = [];
+foreach ($dbCandidates as $db) {
+    $connections[] = ['host' => 'localhost', 'port' => 3306, 'socket' => $socket, 'db' => $db];
+}
+foreach ($dbCandidates as $db) {
+    $connections[] = ['host' => '127.0.0.1', 'port' => 3307, 'socket' => '', 'db' => $db];
+}
+
 $conn = null;
 $lastError = '';
 
-foreach ($dbCandidates as $db) {
-    $tryConn = @new mysqli($host, $user, $pass, $db, $port);
+foreach ($connections as $c) {
+    $tryConn = $c['socket']
+        ? @new mysqli($c['host'], $user, $pass, $c['db'], $c['port'], $c['socket'])
+        : @new mysqli($c['host'], $user, $pass, $c['db'], $c['port']);
     if (!$tryConn->connect_error) {
         $tryConn->set_charset('utf8mb4');
         $conn = $tryConn;
