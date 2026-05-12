@@ -43,23 +43,9 @@ try {
         echo json_encode(['success' => false, 'message' => '找不到該影片']);
         exit;
     }
-    // 建立檢舉表
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS video_reports (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            video_id INT NOT NULL,
-            reported_by VARCHAR(100) NOT NULL,
-            reason VARCHAR(100) NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status VARCHAR(20) DEFAULT 'pending',
-            FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-        )
-    ");
-
     // 檢查是否重複檢舉
     $stmt = $pdo->prepare("
-        SELECT id FROM video_reports 
+        SELECT id FROM video_reports
         WHERE video_id = ? AND reported_by = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
     ");
     $stmt->execute([$videoId, $_SESSION['user']]);
