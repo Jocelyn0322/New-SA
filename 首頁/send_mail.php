@@ -7,17 +7,27 @@ require __DIR__ . '/../vendor/autoload.php';
 function sendVerificationEmail($toEmail, $username, $code) {
     $mail = new PHPMailer(true);
 
+    // 從環境變數讀取。設定方式：在 XAMPP httpd.conf 加入：
+    //   SetEnv GMAIL_USER yourname@gmail.com
+    //   SetEnv GMAIL_PASS xxxx xxxx xxxx xxxx（Google App 密碼，16碼）
+    $gmailUser = getenv('GMAIL_USER');
+    $gmailPass = getenv('GMAIL_PASS');
+    if (!$gmailUser || !$gmailPass) {
+        error_log('Email 設定遺失：請設定 GMAIL_USER 與 GMAIL_PASS 環境變數');
+        return false;
+    }
+
     try {
         $mail->isSMTP();
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
-        $mail->Username = 'your-email@gmail.com';  // 改成你的 Gmail
-        $mail->Password = 'your-app-password';      // Google App Password
+        $mail->Username = $gmailUser;
+        $mail->Password = $gmailPass;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
         $mail->CharSet = 'UTF-8';
-        $mail->setFrom('your-email@gmail.com', 'Makeup Website');
+        $mail->setFrom($gmailUser, 'Makeup Website');
         $mail->addAddress($toEmail, $username);
 
         $mail->isHTML(true);

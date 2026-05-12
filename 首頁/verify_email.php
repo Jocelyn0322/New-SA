@@ -12,33 +12,15 @@ $email = $_SESSION['pending_email'];
 $error = '';
 $success = '';
 
-$conn = new mysqli(
-    "localhost", 
-    "root", 
-    "", 
-    "sa_db",
-    3306,
-    "/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock"
-);
-
-if ($conn->connect_error) {
-    die("資料庫連線失敗：" . $conn->connect_error);
-}
+require 'db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['verify_code'])) {
         $code = trim($_POST['verify_code']);
 
-        $stmt = $conn->prepare("
-            SELECT id, role, verification_code, verification_expiry
-            FROM users
-            WHERE username = ?
-        ");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $userRow = $result->fetch_assoc();
-        $stmt->close();
+        $stmt = $pdo->prepare("SELECT id, role, verification_code, verification_expiry FROM users WHERE username = ?");
+        $stmt->execute([$username]);
+        $userRow = $stmt->fetch();
 
         if (!$userRow) {
             $error = "找不到使用者資料";
@@ -47,24 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($userRow['verification_expiry'] < date("Y-m-d H:i:s")) {
             $error = "驗證碼已過期，請重新產生";
         } else {
-            $stmt = $conn->prepare("
-                UPDATE users
-                SET email_verified = 1,
-                    verification_code = NULL,
-                    verification_expiry = NULL
-                WHERE id = ?
-            ");
-            $stmt->bind_param("i", $userRow['id']);
-            $stmt->execute();
-            $stmt->close();
+            $pdo->prepare("UPDATE users SET email_verified = 1, verification_code = NULL, verification_expiry = NULL WHERE id = ?")
+                ->execute([$userRow['id']]);
 
             $_SESSION['user'] = $username;
             $_SESSION['role'] = $userRow['role'];
 
-            unset($_SESSION['pending_user']);
-            unset($_SESSION['pending_email']);
-
-            $conn->close();
+            unset($_SESSION['pending_user'], $_SESSION['pending_email']);
 
             header("Location: index.php");
             exit();
@@ -72,35 +43,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['resend_code'])) {
+        require_once 'send_mail.php';
+
         $newCode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiry = date("Y-m-d H:i:s", strtotime("+15 minutes"));
+        $expiry  = date("Y-m-d H:i:s", strtotime("+15 minutes"));
 
-        $stmt = $conn->prepare("
-            UPDATE users
-            SET verification_code = ?,
-                verification_expiry = ?
-            WHERE username = ?
-        ");
-        $stmt->bind_param("sss", $newCode, $expiry, $username);
-        $stmt->execute();
-        $stmt->close();
+        $pdo->prepare("UPDATE users SET verification_code = ?, verification_expiry = ? WHERE username = ?")
+            ->execute([$newCode, $expiry, $username]);
 
-        $success = "新的驗證碼已產生";
+        if (sendVerificationEmail($email, $username, $newCode)) {
+            $success = "驗證碼已重新寄送至 " . htmlspecialchars($email);
+            unset($_SESSION['email_send_failed']);
+        } else {
+            $error = "驗證信寄送失敗，請確認 Gmail 設定是否正確";
+        }
     }
 }
 
-$stmt = $conn->prepare("
-    SELECT verification_code, verification_expiry
-    FROM users
-    WHERE username = ?
-");
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$result = $stmt->get_result();
-$userRow = $result->fetch_assoc();
-$stmt->close();
-
-$conn->close();
+$stmt = $pdo->prepare("SELECT verification_code, verification_expiry FROM users WHERE username = ?");
+$stmt->execute([$username]);
+$userRow = $stmt->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -117,20 +79,6 @@ $conn->close();
             border-radius: 14px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.1);
             text-align: center;
-        }
-
-        .code-box {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
-            padding: 16px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-
-        .code-box strong {
-            font-size: 26px;
-            color: #d32f2f;
-            letter-spacing: 3px;
         }
 
         .verify-form {
@@ -199,28 +147,25 @@ $conn->close();
         <div class="message success"><?php echo htmlspecialchars($success); ?></div>
     <?php endif; ?>
 
-    <p class="note">
-        帳號：<?php echo htmlspecialchars($username); ?><br>
-        Email：<?php echo htmlspecialchars($email); ?>
-    </p>
-
-    <?php if ($userRow && !empty($userRow['verification_code'])): ?>
-        <div class="code-box">
-            <div>你的驗證碼</div>
-            <strong><?php echo htmlspecialchars($userRow['verification_code']); ?></strong>
-            <div class="note">
-                到期時間：<?php echo htmlspecialchars($userRow['verification_expiry']); ?>
-            </div>
+    <?php if (!empty($_SESSION['email_send_failed'])): ?>
+        <div class="message error">
+            驗證信寄送失敗（Gmail 尚未設定），請點「重新寄送驗證碼」，或確認 send_mail.php 的 Gmail 帳密設定後再試。
         </div>
+        <?php unset($_SESSION['email_send_failed']); ?>
     <?php endif; ?>
 
+    <p class="note">
+        帳號：<?php echo htmlspecialchars($username); ?><br>
+        驗證碼已寄送至：<?php echo htmlspecialchars($email); ?>
+    </p>
+
     <form class="verify-form" method="post">
-        <input type="text" name="verify_code" placeholder="輸入驗證碼" required>
+        <input type="text" name="verify_code" placeholder="輸入驗證碼" maxlength="6" required>
         <button type="submit">確認驗證</button>
     </form>
 
     <form class="verify-form" method="post">
-        <button type="submit" name="resend_code" class="secondary">重新產生驗證碼</button>
+        <button type="submit" name="resend_code" class="secondary">重新寄送驗證碼</button>
     </form>
 </div>
 

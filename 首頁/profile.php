@@ -9,26 +9,6 @@ if (!isset($_SESSION['user'])) {
 
 require 'db.php';
 
-// 檢查是否需要建立個人資料表
-try {
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS user_profiles (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(100) NOT NULL UNIQUE,
-            gender VARCHAR(10),
-            skin_type VARCHAR(50),
-            skin_tone VARCHAR(50),
-            skin_concerns TEXT,
-            age INT,
-            allergies TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-    ");
-} catch (PDOException $e) {
-    die('資料庫錯誤：' . $e->getMessage());
-}
-
 $message = '';
 $messageType = '';
 

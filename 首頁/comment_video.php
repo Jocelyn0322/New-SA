@@ -9,35 +9,10 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-$action = $_POST['action'] ?? '';
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
 $username = $_SESSION['user'];
 
 try {
-    // 建立評論表
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS video_comments (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            video_id INT NOT NULL,
-            parent_id INT DEFAULT NULL,
-            username VARCHAR(100) NOT NULL,
-            content TEXT NOT NULL,
-            likes INT DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
-            FOREIGN KEY (parent_id) REFERENCES video_comments(id) ON DELETE CASCADE
-        )
-    ");
-    
-    // 建立評論按讚表
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS comment_likes (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            comment_id INT NOT NULL,
-            user_id VARCHAR(100) NOT NULL,
-            FOREIGN KEY (comment_id) REFERENCES video_comments(id) ON DELETE CASCADE
-        )
-    ");
-
     if ($action === 'add') {
         $videoId = (int)($_POST['video_id'] ?? 0);
         $content = trim($_POST['content'] ?? '');
