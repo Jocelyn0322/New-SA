@@ -1,66 +1,30 @@
+<?php if (session_status() === PHP_SESSION_NONE) session_start(); ?>
 <header class="topbar">
     <div class="inner">
 
-        <a href="index.php" class="logo">💄 COSMETIC</a>
+        <a href="/sa/New-SA/產品/index.php" class="logo">💄 COSMETIC</a>
 
         <div class="nav">
-            <a href="index.php">首頁</a>
-            <a href="products.php">產品</a>
-            <a href="compare.php">比較</a>
-            <a href="favorite.php">收藏</a>
-            <a href="skin-match.php">膚色配對</a>
-            <a href="../AI/story1.php">AI皮膚測試</a>
-            <a href="../首頁/video.php">影片討論交流區</a>
+            <a href="/sa/New-SA/產品/index.php">首頁</a>
+            <a href="/sa/New-SA/產品/products.php">產品</a>
+            <a href="/sa/New-SA/AI/index.php">AI檢測</a>
+            <a href="/sa/New-SA/產品/skinmatch.php">膚色配對</a>
+            <a href="/sa/New-SA/產品/compare.php">比較</a>
+            <a href="/sa/New-SA/產品/favorite.php">收藏</a>
+            <a href="/sa/New-SA/首頁/video.php">影片交流</a>
         </div>
 
-        <a href="login2.php" class="login-link">登入</a>
+        <?php if (isset($_SESSION['user'])): ?>
+            <span style="font-size:14px;color:#555;"><?php echo htmlspecialchars($_SESSION['user']); ?></span>
+            <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+                <a href="/sa/New-SA/首頁/admin.php" class="login-link">管理後台</a>
+            <?php else: ?>
+                <a href="/sa/New-SA/首頁/profile.php" class="login-link">個人資料</a>
+            <?php endif; ?>
+            <a href="/sa/New-SA/首頁/logout.php" class="login-link">登出</a>
+        <?php else: ?>
+            <a href="/sa/New-SA/首頁/login.php" class="login-link">登入</a>
+        <?php endif; ?>
 
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            document.body.addEventListener('submit', async function(event) {
-                const form = event.target;
-                if (!(form instanceof HTMLFormElement)) return;
-                const action = form.getAttribute('action') || '';
-                if (!action.includes('add_favorite.php') && !action.includes('remove_favorite.php')) return;
-
-                event.preventDefault();
-                const submitButton = form.querySelector('button[type=submit]');
-                if (submitButton) submitButton.disabled = true;
-
-                try {
-                    const response = await fetch(action, {
-                        method: 'POST',
-                        body: new FormData(form),
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                    const result = await response.json();
-                    if (!result.success) {
-                        console.error('收藏操作失敗', result);
-                        return;
-                    }
-
-                    if (action.includes('add_favorite.php')) {
-                        form.action = action.replace('add_favorite.php', 'remove_favorite.php');
-                        if (submitButton) {
-                            submitButton.innerHTML = submitButton.innerHTML.replace('🤍', '❤️');
-                            submitButton.classList.add('active');
-                        }
-                    } else {
-                        form.action = action.replace('remove_favorite.php', 'add_favorite.php');
-                        if (submitButton) {
-                            submitButton.innerHTML = submitButton.innerHTML.replace('❤️', '🤍');
-                            submitButton.classList.remove('active');
-                        }
-                    }
-                } catch (error) {
-                    console.error('收藏請求錯誤', error);
-                } finally {
-                    if (submitButton) submitButton.disabled = false;
-                }
-            });
-        });
-    </script>
 </header>

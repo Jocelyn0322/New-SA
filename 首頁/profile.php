@@ -410,7 +410,7 @@ $skinConcernsList = [
             <?php if ($messageType === 'success' && $isNewUser): ?>
                 <script>
                     setTimeout(function() {
-                        window.location.href = 'index.php';
+                        window.location.href = '/sa/New-SA/產品/index.php';
                     }, 1500);
                 </script>
             <?php endif; ?>

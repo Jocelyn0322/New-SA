@@ -242,7 +242,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="adm-topbar-logo">🎀 彩妝管理後台</div>
     <div class="adm-topbar-right">
         <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
-        <a href="index.php">← 返回網站</a>
+        <a href="/sa/New-SA/產品/index.php">← 返回網站</a>
         <a href="logout.php" class="logout-btn">登出</a>
     </div>
 </div>

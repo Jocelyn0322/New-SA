@@ -308,6 +308,7 @@ if ($view === 'personal') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>影片交流</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/sa/New-SA/產品/style.css">
     <style>
         * {
             margin: 0;
@@ -1347,7 +1348,7 @@ if ($view === 'personal') {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include '../產品/header.php'; ?>
 
 <main class="video-page">
     <?php if (!$isLoggedIn): ?>

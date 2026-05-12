@@ -815,3 +815,219 @@ body {
 .camera-area { display:flex; gap:12px; align-items:center; margin-top:12px; }
 .controls { margin-top:12px; display:flex; gap:8px; }
 .controls button { background:#efc6cd; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+
+/* AI homepage */
+.ai-homepage {
+    background:
+        radial-gradient(circle at top left, rgba(239, 198, 205, 0.35), transparent 30%),
+        radial-gradient(circle at top right, rgba(231, 237, 187, 0.45), transparent 28%),
+        linear-gradient(180deg, #fffdfd 0%, #fafafa 100%);
+}
+
+.ai-homepage__shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 20px 72px;
+}
+
+.ai-homepage__hero {
+    display: grid;
+    grid-template-columns: 1.4fr 0.9fr;
+    gap: 24px;
+    align-items: stretch;
+}
+
+.ai-homepage__hero-copy,
+.ai-homepage__hero-card,
+.ai-homepage__card {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(8px);
+}
+
+.ai-homepage__hero-copy {
+    padding: 40px;
+}
+
+.ai-homepage__eyebrow {
+    display: inline-block;
+    margin-bottom: 14px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #111;
+    color: #fff;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.ai-homepage__hero-copy h1 {
+    font-size: clamp(2.2rem, 4vw, 4rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: #171717;
+}
+
+.ai-homepage__lede {
+    margin-top: 18px;
+    font-size: 1.02rem;
+    line-height: 1.8;
+    color: #555;
+    max-width: 58ch;
+}
+
+.ai-homepage__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.ai-homepage__primary,
+.ai-homepage__secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 700;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.ai-homepage__primary {
+    background: #111;
+    color: #fff;
+    box-shadow: 0 14px 26px rgba(17, 17, 17, 0.18);
+}
+
+.ai-homepage__secondary {
+    background: #fff;
+    color: #111;
+    border: 1px solid rgba(17, 17, 17, 0.12);
+}
+
+.ai-homepage__primary:hover,
+.ai-homepage__secondary:hover {
+    transform: translateY(-2px);
+}
+
+.ai-homepage__hero-card {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+}
+
+.ai-homepage__metric {
+    padding: 20px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(239, 198, 205, 0.3), rgba(231, 237, 187, 0.35));
+}
+
+.ai-homepage__metric span {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #111;
+}
+
+.ai-homepage__metric p {
+    margin-top: 6px;
+    color: #444;
+    line-height: 1.5;
+}
+
+.ai-homepage__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.ai-homepage__card {
+    padding: 24px;
+}
+
+.ai-homepage__card h2 {
+    font-size: 1.15rem;
+    margin-bottom: 10px;
+    color: #171717;
+}
+
+.ai-homepage__card p {
+    color: #555;
+    line-height: 1.7;
+}
+
+.site-shell-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.site-shell-header__inner,
+.site-shell-footer__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.site-shell-brand {
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    color: #111;
+}
+
+.site-shell-nav {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.site-shell-nav a {
+    text-decoration: none;
+    color: #555;
+    font-weight: 600;
+}
+
+.site-shell-nav a:hover {
+    color: #111;
+}
+
+.site-shell-user {
+    font-size: 14px;
+    color: #666;
+}
+
+.site-shell-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+}
+
+.site-shell-footer__inner {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.site-shell-footer p {
+    color: #666;
+}
+
+@media (max-width: 900px) {
+    .ai-homepage__hero,
+    .ai-homepage__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
