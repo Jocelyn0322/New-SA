@@ -1,6 +1,6 @@
 <?php
 session_start();
 session_destroy();
-header("Location: index.php");
+header("Location: /sa/New-SA/產品/index.php");
 exit();
 ?>
