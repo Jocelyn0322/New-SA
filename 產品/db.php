@@ -1,34 +1,22 @@
 <?php
+$host = "127.0.0.1";
 $user = "root";
 $pass = "";
-$socket = "/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock";
-$dbCandidates = ["sa_db", "makeupmakeup", "project"];
+$db = "project";
+$port = 3307;
 
-// Try socket first (Mac), then TCP port 3307 (friend's PC)
-$connections = [];
-foreach ($dbCandidates as $db) {
-    $connections[] = ['host' => 'localhost', 'port' => 3306, 'socket' => $socket, 'db' => $db];
-}
-foreach ($dbCandidates as $db) {
-    $connections[] = ['host' => '127.0.0.1', 'port' => 3307, 'socket' => '', 'db' => $db];
-}
-
-$conn = null;
-$lastError = '';
-
-foreach ($connections as $c) {
-    $tryConn = $c['socket']
-        ? @new mysqli($c['host'], $user, $pass, $c['db'], $c['port'], $c['socket'])
-        : @new mysqli($c['host'], $user, $pass, $c['db'], $c['port']);
-    if (!$tryConn->connect_error) {
-        $tryConn->set_charset('utf8mb4');
-        $conn = $tryConn;
-        break;
-    }
-    $lastError = $tryConn->connect_error;
+// PDO 連接（用於新代碼如 video2.php）
+try {
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("連線失敗: " . $e->getMessage());
 }
 
-if (!$conn) {
-    die('連線失敗: ' . ($lastError ?: '無法連線到資料庫'));
+// MySQLi 連接（用於兼容舊代碼）
+$conn = new mysqli($host, $user, $pass, $db, $port);
+
+if ($conn->connect_error) {
+    die("連線失敗: " . $conn->connect_error);
 }
 ?>

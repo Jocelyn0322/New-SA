@@ -1,0 +1,309 @@
+/* ================================================================
+   AI Index Page — Morandi Design System   (prefix: ail-)
+   ================================================================ */
+
+/* ── Page background ─────────────────────────────────────────── */
+body.ai-homepage {
+    background: linear-gradient(155deg, #f5f0ea 0%, #ede8f2 100%);
+    min-height: 100vh;
+}
+
+/* ── Shared layout helpers ───────────────────────────────────── */
+.ail-section-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.ail-section-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #47403a;
+    text-align: center;
+    margin: 0 0 36px;
+    letter-spacing: -.01em;
+}
+
+/* ── Hero ────────────────────────────────────────────────────── */
+.ail-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 80px 24px 64px;
+    background: linear-gradient(140deg, #faf5ee 0%, #f5f0f8 55%, #eef4f8 100%);
+    border-bottom: 1px solid #e8e0d8;
+}
+
+/* Soft blob decorations */
+.ail-hero::before,
+.ail-hero::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: .45;
+    pointer-events: none;
+}
+.ail-hero::before {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, #d8c8e0, transparent 70%);
+    top: -180px; right: -120px;
+}
+.ail-hero::after {
+    width: 380px; height: 380px;
+    background: radial-gradient(circle, #c8d8c4, transparent 70%);
+    bottom: -120px; left: -80px;
+}
+
+.ail-hero__inner {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.ail-badge {
+    display: inline-block;
+    padding: 5px 16px;
+    border-radius: 999px;
+    background: #b5a8c0;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+}
+
+.ail-hero__title {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.18;
+    color: #47403a;
+    margin: 0 0 20px;
+    letter-spacing: -.025em;
+}
+
+.ail-hero__sub {
+    font-size: 1.04rem;
+    line-height: 1.85;
+    color: #787068;
+    max-width: 500px;
+    margin: 0 auto 36px;
+}
+
+.ail-hero__actions {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 44px;
+}
+
+/* Buttons */
+.ail-btn-primary {
+    display: inline-block;
+    padding: 13px 32px;
+    border-radius: 999px;
+    background: #b5a8c0;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+    box-shadow: 0 8px 22px rgba(181,168,192,.38);
+    transition: transform .2s, box-shadow .2s;
+}
+.ail-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(181,168,192,.50);
+    background: #c4b8d0;
+}
+
+.ail-btn-secondary {
+    display: inline-block;
+    padding: 12px 28px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1.5px solid #c4a882;
+    color: #8a6840;
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+    transition: background .2s;
+}
+.ail-btn-secondary:hover {
+    background: #faf5ed;
+}
+
+/* Swatch decoration */
+.ail-swatches {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+}
+.ail-swatches span {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 4px 12px rgba(0,0,0,.14);
+    transition: transform .25s;
+    cursor: default;
+}
+.ail-swatches span:hover { transform: scale(1.18) translateY(-3px); }
+
+/* ── Steps ───────────────────────────────────────────────────── */
+.ail-steps {
+    padding: 72px 0;
+}
+
+.ail-steps__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    align-items: stretch;
+}
+
+.ail-step {
+    background: #fdfaf6;
+    border: 1px solid #e8e0d8;
+    border-radius: 22px;
+    padding: 36px 26px 30px;
+    text-align: center;
+    box-shadow: 0 4px 18px rgba(100,80,60,.07);
+    transition: transform .22s, box-shadow .22s;
+    position: relative;
+}
+.ail-step:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(100,80,60,.13);
+}
+/* Connector lines between steps */
+.ail-step--mid::before,
+.ail-step--mid::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 22px;
+    height: 1px;
+    background: #d8cec8;
+}
+.ail-step--mid::before { left: -22px; }
+.ail-step--mid::after  { right: -22px; }
+
+.ail-step__num {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    color: #c4a882;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+}
+.ail-step__icon {
+    font-size: 2.4rem;
+    line-height: 1;
+    margin-bottom: 14px;
+}
+.ail-step h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #47403a;
+    margin: 0 0 10px;
+}
+.ail-step p {
+    font-size: .875rem;
+    color: #787068;
+    line-height: 1.72;
+    margin: 0;
+}
+
+/* ── Feature Cards ───────────────────────────────────────────── */
+.ail-features {
+    padding: 0 0 80px;
+}
+
+.ail-features__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.ail-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 22px;
+    padding: 30px 24px 24px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: transform .22s, box-shadow .22s;
+    position: relative;
+}
+.ail-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 14px 32px rgba(100,80,60,.15);
+}
+
+/* Card colour themes */
+.ail-card--rose     { background: #f9f2f2; border-color: #ead5d8; }
+.ail-card--sage     { background: #f2f7f0; border-color: #cfe2cb; }
+.ail-card--blue     { background: #f0f4f8; border-color: #ccd9e5; }
+.ail-card--lavender { background: #f4f0f8; border-color: #d8d0e8; }
+
+.ail-card__icon {
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 16px;
+}
+.ail-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #47403a;
+    margin: 0 0 8px;
+}
+.ail-card p {
+    font-size: .875rem;
+    color: #787068;
+    line-height: 1.68;
+    margin: 0;
+    flex: 1;
+}
+.ail-card__arrow {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 1.1rem;
+    color: #b5a8c0;
+    font-weight: 700;
+    transition: transform .2s;
+}
+.ail-card:hover .ail-card__arrow { transform: translateX(4px); }
+
+/* ── RWD ─────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .ail-features__grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 680px) {
+    .ail-steps__grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .ail-step--mid::before,
+    .ail-step--mid::after { display: none; }
+    .ail-hero { padding: 60px 20px 48px; }
+    .ail-hero__title { font-size: 2rem; }
+}
+
+@media (max-width: 480px) {
+    .ail-features__grid { grid-template-columns: 1fr; }
+    .ail-hero__sub { font-size: .95rem; }
+}
+
+/* ================================================================
+   ai-overrides.css — legacy classes kept for other AI pages
+   ================================================================ */
+.ai-homepage__shell {
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}

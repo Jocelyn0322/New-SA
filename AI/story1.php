@@ -3,10 +3,221 @@
 <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="../產品/style.css">
+        <link rel="stylesheet" href="ai-overrides.css">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
         <title>AI Skin Tone Detector</title>
+        <style>
+        /* ================================================================
+           Story 1 — Morandi Color Theme
+           Quiet, dusty tones over Tailwind's vivid defaults
+           ================================================================ */
+
+        /* Page background */
+        body { background: linear-gradient(155deg, #f5f0ea 0%, #ece8f2 100%) !important; min-height: 100vh; }
+
+        /* Centered app container */
+        #app { max-width: 780px; margin: 0 auto; padding: 28px 20px 56px; }
+
+        /* ---- Violet → Dusty Lavender ---- */
+        .bg-violet-50\/70    { background-color: rgba(238,234,246,.7) !important; }
+        .bg-violet-50        { background-color: #eeeaf6 !important; }
+        .bg-violet-100       { background-color: #dfd8ee !important; }
+        .bg-violet-500       { background-color: #b0a0c8 !important; }
+        .bg-violet-600       { background-color: #9a86b8 !important; }
+        .border-violet-100   { border-color: #dfd8ee !important; }
+        .border-violet-200   { border-color: #cfc4e2 !important; }
+        .text-violet-700     { color: #7a6898 !important; }
+        .text-violet-800     { color: #6a5888 !important; }
+        .from-violet-50      { --tw-gradient-from: #eeeaf6 var(--tw-gradient-from-position) !important; }
+        .to-fuchsia-50       { --tw-gradient-to: #f4eef8 var(--tw-gradient-to-position) !important; }
+        .hover\:bg-violet-50:hover { background-color: #eeeaf6 !important; }
+
+        /* ---- Amber → Warm Sand ---- */
+        .bg-amber-50               { background-color: #faf5ed !important; }
+        .bg-amber-100              { background-color: #f2e6d4 !important; }
+        .bg-amber-600              { background-color: #c49666 !important; }
+        .hover\:bg-amber-500:hover { background-color: #cfa574 !important; }
+        .hover\:bg-amber-50:hover  { background-color: #faf5ed !important; }
+        .border-amber-100          { border-color: #e8dccb !important; }
+        .border-amber-200          { border-color: #d8c8b0 !important; }
+        .border-amber-300          { border-color: #c4b09c !important; }
+        .text-amber-700            { color: #8a6840 !important; }
+        .text-amber-800            { color: #7a5830 !important; }
+        .text-amber-900            { color: #5a401e !important; }
+        .from-amber-50             { --tw-gradient-from: #faf5ed var(--tw-gradient-from-position) !important; }
+        .to-orange-50              { --tw-gradient-to: #f8eee6 var(--tw-gradient-to-position) !important; }
+
+        /* ---- Indigo → Muted Blue-Gray ---- */
+        .bg-indigo-50               { background-color: #edf0f8 !important; }
+        .bg-indigo-600              { background-color: #7888a8 !important; }
+        .hover\:bg-indigo-500:hover { background-color: #8898b8 !important; }
+        .hover\:bg-indigo-50:hover  { background-color: #edf0f8 !important; }
+        .border-indigo-100          { border-color: #d8dce8 !important; }
+        .border-indigo-200          { border-color: #c4c8d8 !important; }
+        .text-indigo-600            { color: #6474a0 !important; }
+        .text-indigo-700            { color: #546090 !important; }
+        .from-indigo-50             { --tw-gradient-from: #edf0f8 var(--tw-gradient-from-position) !important; }
+        .to-sky-50                  { --tw-gradient-to: #edf4f8 var(--tw-gradient-to-position) !important; }
+
+        /* ---- Purple → Dusty Mauve ---- */
+        .bg-purple-50               { background-color: #f4f0f8 !important; }
+        .bg-purple-600              { background-color: #9880ac !important; }
+        .hover\:bg-purple-500:hover { background-color: #a890bc !important; }
+        .border-purple-100          { border-color: #e0d8ee !important; }
+        .border-purple-200          { border-color: #d0c4e0 !important; }
+        .border-purple-300          { border-color: #c0b0d0 !important; }
+        .text-purple-700            { color: #7a6890 !important; }
+        .text-purple-800            { color: #6a5880 !important; }
+        .focus\:border-purple-400:focus { border-color: #c4b0d8 !important; }
+        .from-purple-50             { --tw-gradient-from: #f4f0f8 var(--tw-gradient-from-position) !important; }
+
+        /* ---- Pink → Dusty Rose ---- */
+        .bg-pink-50               { background-color: #f8f0f0 !important; }
+        .bg-pink-600              { background-color: #b87880 !important; }
+        .hover\:bg-pink-500:hover { background-color: #c48898 !important; }
+        .hover\:bg-pink-50:hover  { background-color: #f8f0f0 !important; }
+        .border-pink-100          { border-color: #e8d5d8 !important; }
+        .border-pink-200          { border-color: #d8c0c5 !important; }
+        .text-pink-600            { color: #a06878 !important; }
+        .text-pink-700            { color: #906070 !important; }
+        .from-pink-50             { --tw-gradient-from: #f8f0f0 var(--tw-gradient-from-position) !important; }
+        .to-rose-50               { --tw-gradient-to: #f8eeed var(--tw-gradient-to-position) !important; }
+
+        /* ---- Emerald → Sage Green ---- */
+        .bg-emerald-50                { background-color: #eff5ec !important; }
+        .bg-emerald-100               { background-color: #d8e8d4 !important; }
+        .bg-emerald-600               { background-color: #789a78 !important; }
+        .hover\:bg-emerald-500:hover  { background-color: #88aa88 !important; }
+        .hover\:bg-emerald-50:hover   { background-color: #eff5ec !important; }
+        .hover\:bg-emerald-100:hover  { background-color: #d8e8d4 !important; }
+        .border-emerald-100           { border-color: #d0e4cc !important; }
+        .border-emerald-200           { border-color: #bcd4b8 !important; }
+        .border-emerald-300           { border-color: #a8c4a4 !important; }
+        .border-emerald-400           { border-color: #90b48c !important; }
+        .text-emerald-600             { color: #689068 !important; }
+        .text-emerald-700             { color: #587850 !important; }
+        .text-emerald-800             { color: #487040 !important; }
+        .text-emerald-900             { color: #3a5838 !important; }
+        .from-emerald-50              { --tw-gradient-from: #eff5ec var(--tw-gradient-from-position) !important; }
+        .to-lime-50                   { --tw-gradient-to: #f3f6ea var(--tw-gradient-to-position) !important; }
+
+        /* ---- Teal → Muted Sage-Blue ---- */
+        .bg-teal-100              { background-color: #d4e8e2 !important; }
+        .from-teal-50             { --tw-gradient-from: #eef5f2 var(--tw-gradient-from-position) !important; }
+        .to-teal-50               { --tw-gradient-to: #eef5f2 var(--tw-gradient-to-position) !important; }
+        .to-cyan-50               { --tw-gradient-to: #edf5f5 var(--tw-gradient-to-position) !important; }
+        .border-teal-200          { border-color: #b8d0cc !important; }
+        .border-teal-400          { border-color: #88b4ae !important; }
+        .text-teal-700            { color: #487870 !important; }
+        .text-teal-900            { color: #2a5850 !important; }
+        .hover\:bg-teal-50:hover  { background-color: #eef5f2 !important; }
+
+        /* ---- Sky → Soft Slate Blue ---- */
+        .bg-sky-50               { background-color: #edf3f8 !important; }
+        .bg-sky-600              { background-color: #688eb0 !important; }
+        .hover\:bg-sky-500:hover { background-color: #789ec0 !important; }
+        .hover\:bg-sky-50:hover  { background-color: #edf3f8 !important; }
+        .border-sky-100          { border-color: #d4e0ec !important; }
+        .border-sky-200          { border-color: #bfcede !important; }
+        .text-sky-700            { color: #486c90 !important; }
+        .from-sky-50             { --tw-gradient-from: #edf3f8 var(--tw-gradient-from-position) !important; }
+        .to-blue-50              { --tw-gradient-to: #edf0f8 var(--tw-gradient-to-position) !important; }
+
+        /* ---- Cyan → Soft Teal ---- */
+        .bg-cyan-50              { background-color: #edf5f5 !important; }
+        .bg-cyan-100             { background-color: #d4e8e8 !important; }
+        .border-cyan-100         { border-color: #cfe8e8 !important; }
+        .border-cyan-200         { border-color: #b8d8d8 !important; }
+        .border-cyan-400         { border-color: #88b8b8 !important; }
+        .text-cyan-700           { color: #487878 !important; }
+        .text-cyan-900           { color: #2a5858 !important; }
+        .from-cyan-50            { --tw-gradient-from: #edf5f5 var(--tw-gradient-from-position) !important; }
+        .hover\:bg-cyan-50:hover { background-color: #edf5f5 !important; }
+
+        /* ---- Rose → Dusty Terracotta ---- */
+        .bg-rose-50              { background-color: #f7eeec !important; }
+        .border-rose-100         { border-color: #e8d8d4 !important; }
+        .border-rose-200         { border-color: #d8c4bf !important; }
+        .border-rose-300         { border-color: #c8aeab !important; }
+        .text-rose-600           { color: #9e7060 !important; }
+        .text-rose-700           { color: #8e6050 !important; }
+        .text-rose-800           { color: #7e5040 !important; }
+        .hover\:bg-rose-50:hover { background-color: #f7eeec !important; }
+        .from-rose-50            { --tw-gradient-from: #f7eeec var(--tw-gradient-from-position) !important; }
+
+        /* ---- Neutral grays → warm brown-gray ---- */
+        .text-gray-900 { color: #47403a !important; }
+        .text-gray-800 { color: #575048 !important; }
+        .text-gray-700 { color: #686058 !important; }
+        .text-gray-600 { color: #787068 !important; }
+        .text-gray-500 { color: #888078 !important; }
+        .text-gray-400 { color: #a89888 !important; }
+
+        .bg-white          { background-color: #fdfaf6 !important; }
+        .bg-white\/80      { background-color: rgba(253,250,246,.80) !important; }
+        .bg-white\/90      { background-color: rgba(253,250,246,.90) !important; }
+        .bg-gray-200       { background-color: #e4ddd6 !important; }
+        .bg-gray-400       { background-color: #a89888 !important; }
+        .hover\:bg-gray-50:hover { background-color: #f5f0eb !important; }
+        .border-gray-200   { border-color: #e0d8d0 !important; }
+        .border-gray-300   { border-color: #d0c8be !important; }
+
+        /* ---- Dark / CTA buttons → warm charcoal ---- */
+        .bg-gray-900              { background-color: #565048 !important; }
+        .hover\:bg-gray-800:hover { background-color: #666058 !important; }
+
+        /* ---- Shadows → warm tint ---- */
+        .shadow-sm  { box-shadow: 0 2px  8px rgba(100,80,60,.09) !important; }
+        .shadow-md  { box-shadow: 0 4px 14px rgba(100,80,60,.10) !important; }
+        .shadow-lg  { box-shadow: 0 8px 24px rgba(100,80,60,.12) !important; }
+
+        /* ---- Selected-state button borders (quiz options) ---- */
+        .border-amber-400  { border-color: #c4a882 !important; }
+        .border-indigo-400 { border-color: #8898b4 !important; }
+        .border-pink-400   { border-color: #c4909a !important; }
+        .bg-indigo-100     { background-color: #d8dde8 !important; }
+        .text-indigo-900   { color: #2e3a54 !important; }
+        .bg-pink-100       { background-color: #edd8d8 !important; }
+        .text-pink-900     { color: #4a2830 !important; }
+        .hover\:bg-indigo-50:hover  { background-color: #edf0f8 !important; }
+        .hover\:bg-pink-50:hover    { background-color: #f8f0f0 !important; }
+
+        /* ---- Custom alert modal ---- */
+        .morandi-modal-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            display: flex; align-items: center; justify-content: center; padding: 20px;
+            background: rgba(70,58,50,.38);
+            backdrop-filter: blur(4px);
+            animation: morandiOverlayIn .18s ease;
+        }
+        .morandi-modal-box {
+            position: relative; z-index: 1;
+            background: #fdfaf6;
+            border-radius: 24px;
+            box-shadow: 0 24px 56px rgba(80,65,50,.22);
+            padding: 30px 28px 22px;
+            max-width: 400px; width: 100%;
+            border: 1px solid #e0d8d0;
+            animation: morandiBoxIn .2s cubic-bezier(.34,1.4,.64,1);
+        }
+        .morandi-modal-msg {
+            color: #575048; font-size: 15px; line-height: 1.75;
+            margin: 0 0 22px; white-space: pre-line;
+        }
+        .morandi-modal-close {
+            display: block; margin-left: auto;
+            background: #b5a8c0; color: #fff;
+            border: none; border-radius: 12px;
+            padding: 9px 26px; font-size: 14px; font-weight: 700;
+            cursor: pointer; letter-spacing: .02em;
+            transition: background .18s;
+        }
+        .morandi-modal-close:hover { background: #c4b8d0; }
+        @keyframes morandiOverlayIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes morandiBoxIn { from { opacity:0; transform:scale(.94) } to { opacity:1; transform:scale(1) } }
+        </style>
 </head>
 <body>
     <?php include 'header.php'; ?>
@@ -489,6 +700,7 @@
                 </div>
             </div>
         </div>
+
     </div>
 
     <?php include 'footer.php'; ?>
@@ -541,6 +753,8 @@
         const faceDetectionBusy = ref(false);
         const showResultModal = ref(false);
         const hasShownNaturalLightReminder = ref(false);
+        const alertVisible = ref(false);
+        const alertMessage = ref('');
         const video = ref(null);
         const canvas = ref(null);
         // Multi-step manual selector states - NEW LOGIC
@@ -560,6 +774,44 @@
         const closeResultModal = () => {
             showResultModal.value = false;
         };
+
+        const showAlert = (msg) => {
+            alertMessage.value = String(msg);
+            alertVisible.value = true;
+
+            // Remove any existing modal first
+            const prev = document.getElementById('morandi-alert-modal');
+            if (prev) prev.remove();
+
+            // Build modal with pure DOM — reliable regardless of Vue mount state
+            const overlay = document.createElement('div');
+            overlay.id = 'morandi-alert-modal';
+            overlay.className = 'morandi-modal-overlay';
+
+            const box = document.createElement('div');
+            box.className = 'morandi-modal-box';
+
+            const p = document.createElement('p');
+            p.className = 'morandi-modal-msg';
+            p.textContent = String(msg);   // textContent is XSS-safe
+
+            const btn = document.createElement('button');
+            btn.className = 'morandi-modal-close';
+            btn.textContent = '關閉';
+
+            const close = () => {
+                overlay.remove();
+                alertVisible.value = false;
+            };
+            btn.addEventListener('click', close);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+            box.appendChild(p);
+            box.appendChild(btn);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+        };
+        window.alert = showAlert;
 
         const setToneQuizAnswer = (questionKey, optionValue) => {
             toneQuizAnswers.value[questionKey] = optionValue;
@@ -2518,6 +2770,8 @@
                 loadFeedbackHistory();
 
                 return {
+                    alertVisible,
+                    alertMessage,
                     dataLoaded,
                     currentStep,
                     skinTonesData,
