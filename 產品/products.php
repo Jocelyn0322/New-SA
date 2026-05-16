@@ -62,7 +62,7 @@ $categories_result = $conn->query($categories_sql);
 <div class="filter-section">
     <div class="filter-bar">
         <a class="filter-btn <?php echo !$category ? 'active' : ''; ?>" href="products.php">全部</a>
-        <?php while($cat = $categories_result->fetch_assoc()){ ?>
+        <?php while($cat = $categories_result->fetch()){ ?>
             <a class="filter-btn <?php echo $category === $cat['category'] ? 'active' : ''; ?>" href="?category=<?php echo htmlspecialchars($cat['category']); ?>">
                 <?php echo htmlspecialchars($cat['category']); ?>
             </a>
@@ -77,7 +77,7 @@ $categories_result = $conn->query($categories_sql);
 
         <?php
         $colors = $conn->query("SELECT DISTINCT color_name FROM product_colors LIMIT 5");
-        while($color = $colors->fetch_assoc()){
+        while($color = $colors->fetch()){
             echo '<a class="filter-btn" href="?color=' . $color['color_name'] . '">' . $color['color_name'] . '</a>';
         }
         ?>
@@ -88,15 +88,15 @@ $categories_result = $conn->query($categories_sql);
     <div class="product-grid">
 
     <?php 
-    if($result->num_rows > 0){
+    if($result->rowCount() > 0){
         $favorites = $_SESSION['favorite'] ?? [];
-        while($row = $result->fetch_assoc()){
+        while($row = $result->fetch()){
             $isFav = in_array($row['p_id'], $favorites);
             
             // 取得這個產品的色號
             $product_colors = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$row['p_id']} LIMIT 4");
             $colors = [];
-            while($c = $product_colors->fetch_assoc()){
+            while($c = $product_colors->fetch()){
                 $colors[] = $c;
             }
     ?>

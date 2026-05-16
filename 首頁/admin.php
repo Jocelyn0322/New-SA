@@ -84,7 +84,7 @@ if ($tab === 'stats') {
     $stats['videos']   = $pdo->query("SELECT COUNT(*) FROM videos WHERE is_active = 1")->fetchColumn();
     $stats['comments'] = $pdo->query("SELECT COUNT(*) FROM video_comments")->fetchColumn();
     $stats['reports']  = $pdo->query("SELECT COUNT(*) FROM video_reports WHERE status = 'pending'")->fetchColumn();
-    $stats['new_users_week'] = $pdo->query("SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
+    $stats['new_users_week'] = $pdo->query("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")->fetchColumn();
 }
 
 if ($tab === 'videos') {
@@ -242,7 +242,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="adm-topbar-logo">🎀 彩妝管理後台</div>
     <div class="adm-topbar-right">
         <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
-        <a href="/sa/New-SA/產品/index.php">← 返回網站</a>
+        <a href="/NewSA/New-SA/產品/index.php">← 返回網站</a>
         <a href="logout.php" class="logout-btn">登出</a>
     </div>
 </div>
