@@ -1,6 +1,7 @@
 <?php
 session_start();
 require 'db.php';
+require 'send_mail.php';
 
 if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header("Location: login.php");
@@ -14,7 +15,38 @@ $msgType   = '';
 
 // ── POST 處理 ──────────────────────────────────────────────
 
-// 強制刪除影片
+// 下架影片（軟刪除 + 寄信通知）
+if (isset($_POST['takedown_video'])) {
+    $vid    = (int)$_POST['video_id'];
+    $reason = trim($_POST['takedown_reason'] ?? '違反社群規範');
+    $row    = $pdo->prepare("SELECT v.*, u.email FROM videos v LEFT JOIN users u ON v.uploaded_by COLLATE utf8mb4_unicode_ci = u.username COLLATE utf8mb4_unicode_ci WHERE v.id = ?");
+    $row->execute([$vid]);
+    $vrow = $row->fetch();
+    if ($vrow) {
+        $pdo->prepare("UPDATE videos SET is_active=0, removed_reason=?, removed_at=NOW(), removed_by=? WHERE id=?")
+            ->execute([$reason, $adminUser, $vid]);
+        // 寄信給上傳者
+        $mailSent = false;
+        if ($vrow['email']) {
+            $appealUrl = "http://{$_SERVER['HTTP_HOST']}/sa/New-SA/首頁/appeal.php?video_id={$vid}";
+            $mailSent = sendVideoRemovedEmail($vrow['email'], $vrow['uploaded_by'], $vrow['title'], $reason, $appealUrl);
+        }
+        $msg = '已下架影片。' . ($mailSent ? '通知信已寄出至 ' . htmlspecialchars($vrow['email']) : '⚠️ 通知信寄送失敗（請確認 Apache 已重啟且 Gmail 設定正確）');
+        $msgType = $mailSent ? 'success' : 'warning';
+    }
+    $tab = isset($_POST['from_reports']) ? 'reports' : 'videos';
+}
+
+// 復原已下架影片
+if (isset($_POST['restore_video'])) {
+    $vid = (int)$_POST['video_id'];
+    $pdo->prepare("UPDATE videos SET is_active=1, removed_reason=NULL, removed_at=NULL, removed_by=NULL WHERE id=?")
+        ->execute([$vid]);
+    $msg = '已復原影片'; $msgType = 'success';
+    $tab = 'videos';
+}
+
+// 永久刪除影片（已下架後才能永久刪除）
 if (isset($_POST['force_delete_video'])) {
     $vid = (int)$_POST['video_id'];
     $row = $pdo->prepare("SELECT file_path FROM videos WHERE id = ?");
@@ -24,9 +56,47 @@ if (isset($_POST['force_delete_video'])) {
         $fp = __DIR__ . '/' . $vrow['file_path'];
         if (file_exists($fp) && is_file($fp)) unlink($fp);
         $pdo->prepare("DELETE FROM videos WHERE id = ?")->execute([$vid]);
-        $msg = '已刪除影片'; $msgType = 'success';
+        $msg = '已永久刪除影片'; $msgType = 'success';
     }
     $tab = isset($_POST['from_reports']) ? 'reports' : 'videos';
+}
+
+// 審核申訴：核准（復原影片）
+if (isset($_POST['approve_appeal'])) {
+    $aid = (int)$_POST['appeal_id'];
+    $note = trim($_POST['admin_note'] ?? '');
+    $appealRow = $pdo->prepare("SELECT * FROM video_appeals WHERE id=?");
+    $appealRow->execute([$aid]);
+    $a = $appealRow->fetch();
+    if ($a) {
+        $pdo->prepare("UPDATE videos SET is_active=1, removed_reason=NULL, removed_at=NULL, removed_by=NULL WHERE id=?")->execute([$a['video_id']]);
+        $pdo->prepare("UPDATE video_appeals SET status='approved', admin_note=?, reviewed_at=NOW() WHERE id=?")->execute([$note, $aid]);
+        $msg = '申訴已核准，影片已復原'; $msgType = 'success';
+    }
+    $tab = 'appeals';
+}
+
+// 審核申訴：拒絕（永久刪除影片）
+if (isset($_POST['reject_appeal'])) {
+    $aid = (int)$_POST['appeal_id'];
+    $note = trim($_POST['admin_note'] ?? '');
+    $appealRow = $pdo->prepare("SELECT * FROM video_appeals WHERE id=?");
+    $appealRow->execute([$aid]);
+    $a = $appealRow->fetch();
+    if ($a) {
+        $pdo->prepare("UPDATE video_appeals SET status='rejected', admin_note=?, reviewed_at=NOW() WHERE id=?")->execute([$note, $aid]);
+        // 永久刪除影片檔案與記錄
+        $vrow = $pdo->prepare("SELECT file_path FROM videos WHERE id=?");
+        $vrow->execute([$a['video_id']]);
+        $v = $vrow->fetch();
+        if ($v) {
+            $fp = __DIR__ . '/' . $v['file_path'];
+            if (file_exists($fp) && is_file($fp)) unlink($fp);
+            $pdo->prepare("DELETE FROM videos WHERE id=?")->execute([$a['video_id']]);
+        }
+        $msg = '申訴已拒絕，影片已永久刪除'; $msgType = 'success';
+    }
+    $tab = 'appeals';
 }
 
 // 切換使用者角色
@@ -90,19 +160,19 @@ if ($tab === 'stats') {
 if ($tab === 'videos') {
     $search = trim($_GET['q'] ?? '');
     $sql = "
-        SELECT v.id, v.title, v.uploaded_by, v.upload_time,
+        SELECT v.id, v.title, v.uploaded_by, v.upload_time, v.is_active,
+               v.removed_reason, v.removed_at, v.removed_by,
                COUNT(DISTINCT r.id) AS report_count,
                COUNT(DISTINCT c.id) AS comment_count
         FROM videos v
         LEFT JOIN video_reports r ON v.id = r.video_id AND r.status = 'pending'
         LEFT JOIN video_comments c ON v.id = c.video_id
-        WHERE v.is_active = 1
     ";
     if ($search !== '') {
-        $s = $pdo->prepare($sql . " AND (v.title LIKE ? OR v.uploaded_by LIKE ?) GROUP BY v.id ORDER BY v.upload_time DESC");
+        $s = $pdo->prepare($sql . " WHERE v.title LIKE ? OR v.uploaded_by LIKE ? GROUP BY v.id ORDER BY v.is_active DESC, v.upload_time DESC");
         $s->execute(["%{$search}%", "%{$search}%"]);
     } else {
-        $s = $pdo->query($sql . " GROUP BY v.id ORDER BY v.upload_time DESC");
+        $s = $pdo->query($sql . " GROUP BY v.id ORDER BY v.is_active DESC, v.upload_time DESC");
     }
     $allVideos = $s->fetchAll();
 }
@@ -155,6 +225,15 @@ if ($tab === 'comments') {
     }
     $allComments = $s->fetchAll();
 }
+
+if ($tab === 'appeals') {
+    $allAppeals = $pdo->query("
+        SELECT a.*, v.title AS video_title, v.is_active
+        FROM video_appeals a
+        LEFT JOIN videos v ON a.video_id = v.id
+        ORDER BY FIELD(a.status,'pending','approved','rejected'), a.created_at DESC
+    ")->fetchAll();
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -187,6 +266,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .adm-msg { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
 .adm-msg.success { background: #d4edda; color: #155724; }
 .adm-msg.error   { background: #f8d7da; color: #721c24; }
+.adm-msg.warning { background: #fff3cd; color: #856404; }
 
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
 .stat-card { background: #fff; border-radius: 12px; padding: 22px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
@@ -252,6 +332,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <a href="?tab=videos"   class="adm-tab <?php echo $tab==='videos'   ? 'active':''; ?>">🎬 影片管理</a>
     <a href="?tab=comments" class="adm-tab <?php echo $tab==='comments' ? 'active':''; ?>">💬 留言管理</a>
     <a href="?tab=reports"  class="adm-tab <?php echo $tab==='reports'  ? 'active':''; ?>">🚨 檢舉管理</a>
+    <a href="?tab=appeals"  class="adm-tab <?php echo $tab==='appeals'  ? 'active':''; ?>">📋 申訴管理</a>
     <a href="?tab=users"    class="adm-tab <?php echo $tab==='users'    ? 'active':''; ?>">👥 會員管理</a>
 </div>
 
@@ -322,9 +403,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             </thead>
             <tbody>
                 <?php foreach ($allVideos as $v): ?>
-                    <tr>
+                    <tr style="<?php echo $v['is_active'] ? '' : 'background:#fff5f5;'; ?>">
                         <td style="color:#aaa;">#<?php echo (int)$v['id']; ?></td>
-                        <td><?php echo htmlspecialchars($v['title']); ?></td>
+                        <td>
+                            <?php echo htmlspecialchars($v['title']); ?>
+                            <?php if (!$v['is_active']): ?>
+                                <br><span style="font-size:11px;color:#e83e5a;font-weight:600;">📥 已下架</span>
+                                <?php if ($v['removed_reason']): ?>
+                                    <span style="font-size:11px;color:#aaa;"> — <?php echo htmlspecialchars(mb_strimwidth($v['removed_reason'], 0, 30, '...')); ?></span>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo htmlspecialchars($v['uploaded_by']); ?></td>
                         <td><?php echo date('Y/m/d H:i', strtotime($v['upload_time'])); ?></td>
                         <td style="text-align:center;">💬 <?php echo (int)$v['comment_count']; ?></td>
@@ -335,11 +424,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                                 <span style="color:#ccc;">—</span>
                             <?php endif; ?>
                         </td>
-                        <td>
-                            <form method="post" onsubmit="return confirm('確定刪除「<?php echo htmlspecialchars(addslashes($v['title'])); ?>」？')">
-                                <input type="hidden" name="video_id" value="<?php echo (int)$v['id']; ?>">
-                                <button type="submit" name="force_delete_video" value="1" class="btn-del">🗑️ 刪除</button>
-                            </form>
+                        <td style="white-space:nowrap;">
+                            <?php if ($v['is_active']): ?>
+                                <button type="button" class="btn-del" onclick="openTakedown(<?php echo (int)$v['id']; ?>,'<?php echo htmlspecialchars(addslashes($v['title'])); ?>')">📥 下架</button>
+                            <?php else: ?>
+                                <form method="post" style="display:inline-block;" onsubmit="return confirm('確定復原此影片？')">
+                                    <input type="hidden" name="video_id" value="<?php echo (int)$v['id']; ?>">
+                                    <button type="submit" name="restore_video" value="1" style="background:#28a745;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">♻️ 復原</button>
+                                </form>
+                                <form method="post" style="display:inline-block;margin-left:4px;" onsubmit="return confirm('確定永久刪除？此操作無法復原。')">
+                                    <input type="hidden" name="video_id" value="<?php echo (int)$v['id']; ?>">
+                                    <button type="submit" name="force_delete_video" value="1" class="btn-del">🗑️ 永刪</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -433,16 +530,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                     </div>
                 </div>
                 <div class="btn-group">
-                    <a href="video.php?video=<?php echo (int)$rv['id']; ?>" target="_blank" style="background:#6c757d;color:#fff;border-radius:6px;padding:7px 12px;font-size:12px;text-decoration:none;">▶ 查看影片</a>
+                    <button type="button" onclick="openRptPreview('<?php echo htmlspecialchars(addslashes($rv['title'])); ?>','<?php echo htmlspecialchars(addslashes($rv['file_path'])); ?>')" style="background:#6c757d;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12px;cursor:pointer;">▶ 查看影片</button>
                     <form method="post" style="display:inline;">
                         <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
                         <button type="submit" name="dismiss_report" value="1" class="btn-ok">✓ 標記已處理</button>
                     </form>
-                    <form method="post" style="display:inline;" onsubmit="return confirm('確定強制刪除這部影片？')">
-                        <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
-                        <input type="hidden" name="from_reports" value="1">
-                        <button type="submit" name="force_delete_video" value="1" class="btn-del">🗑️ 強制刪除</button>
-                    </form>
+                    <button type="button" onclick="openTakedown(<?php echo (int)$rv['id']; ?>,'<?php echo htmlspecialchars(addslashes($rv['title'])); ?>',true)" style="background:#e83e5a;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12px;cursor:pointer;">📥 下架</button>
                 </div>
             </div>
             <?php if (!empty($detailsByVideo[$rv['id']])): ?>
@@ -460,6 +553,63 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             <?php endif; ?>
         </div>
     <?php endforeach; ?>
+<?php endif; ?>
+
+
+<?php elseif ($tab === 'appeals'): ?>
+<!-- ══════════ 申訴管理 ══════════ -->
+<?php if (empty($allAppeals)): ?>
+    <div class="adm-empty"><div class="adm-empty-icon">📋</div>目前沒有申訴記錄</div>
+<?php else: ?>
+    <div class="adm-table-wrap">
+        <table class="adm-table">
+            <thead>
+                <tr>
+                    <th>申訴者</th>
+                    <th>影片</th>
+                    <th>申訴原因</th>
+                    <th>申訴時間</th>
+                    <th style="text-align:center;">狀態</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($allAppeals as $a): ?>
+                    <tr>
+                        <td><strong><?php echo htmlspecialchars($a['username']); ?></strong></td>
+                        <td><?php echo htmlspecialchars($a['video_title'] ?? '（影片已刪除）'); ?></td>
+                        <td style="max-width:300px;"><?php echo nl2br(htmlspecialchars($a['reason'])); ?></td>
+                        <td style="font-size:12px;color:#888;"><?php echo date('Y/m/d H:i', strtotime($a['created_at'])); ?></td>
+                        <td style="text-align:center;">
+                            <?php if ($a['status'] === 'pending'): ?>
+                                <span class="badge badge-warn">待審核</span>
+                            <?php elseif ($a['status'] === 'approved'): ?>
+                                <span class="badge badge-ok">已核准</span>
+                            <?php else: ?>
+                                <span class="badge badge-del">已拒絕</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($a['status'] === 'pending'): ?>
+                                <form method="post" style="display:inline-block;" onsubmit="return confirm('確定核准此申訴並復原影片？')">
+                                    <input type="hidden" name="appeal_id" value="<?php echo (int)$a['id']; ?>">
+                                    <input type="text" name="admin_note" placeholder="備註（選填）" style="width:120px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;">
+                                    <button type="submit" name="approve_appeal" value="1" style="background:#28a745;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">✅ 核准</button>
+                                </form>
+                                <form method="post" style="display:inline-block;margin-left:4px;" onsubmit="return confirm('確定拒絕並永久刪除影片？')">
+                                    <input type="hidden" name="appeal_id" value="<?php echo (int)$a['id']; ?>">
+                                    <input type="hidden" name="admin_note" value="">
+                                    <button type="submit" name="reject_appeal" value="1" class="btn-del">❌ 拒絕</button>
+                                </form>
+                            <?php else: ?>
+                                <span style="color:#aaa;font-size:12px;"><?php echo htmlspecialchars($a['admin_note'] ?? '—'); ?></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 <?php endif; ?>
 
 
@@ -526,5 +676,69 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <?php endif; ?>
 </div>
+
+<!-- 影片預覽 Modal（檢舉管理用）-->
+<div id="rpt-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9998;align-items:center;justify-content:center;">
+    <div style="background:#111;border-radius:12px;padding:20px;max-width:720px;width:90%;position:relative;">
+        <button onclick="closeRptPreview()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;line-height:1;">✕</button>
+        <div id="rpt-preview-title" style="color:#fff;font-size:15px;font-weight:600;margin-bottom:12px;padding-right:30px;"></div>
+        <video id="rpt-preview-video" controls playsinline style="width:100%;border-radius:8px;max-height:70vh;display:block;">
+            <source id="rpt-preview-src" src="" type="video/mp4">
+        </video>
+    </div>
+</div>
+
+<!-- 下架影片 Modal -->
+<div id="takedown-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:28px;width:480px;max-width:90vw;">
+        <h3 style="margin-bottom:16px;">📥 下架影片</h3>
+        <p style="color:#555;margin-bottom:4px;">影片：<strong id="takedown-title"></strong></p>
+        <p style="color:#888;font-size:13px;margin-bottom:16px;">下架後將寄信通知上傳者，並提供 7 天申訴期。</p>
+        <form method="post">
+            <input type="hidden" name="video_id" id="takedown-vid">
+            <input type="hidden" name="from_reports" id="takedown-from-reports" value="">
+            <label style="display:block;font-weight:600;margin-bottom:6px;">下架原因（將顯示在通知信中）</label>
+            <textarea name="takedown_reason" rows="4" required style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;resize:vertical;" placeholder="請說明下架原因..."></textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+                <button type="button" onclick="closeTakedown()" style="padding:8px 20px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;">取消</button>
+                <button type="submit" name="takedown_video" value="1" style="padding:8px 20px;background:#e83e5a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">確認下架並通知</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openTakedown(vid, title, fromReports) {
+    document.getElementById('takedown-vid').value = vid;
+    document.getElementById('takedown-title').textContent = title;
+    document.getElementById('takedown-from-reports').value = fromReports ? '1' : '';
+    document.getElementById('takedown-modal').style.display = 'flex';
+}
+function closeTakedown() {
+    document.getElementById('takedown-modal').style.display = 'none';
+}
+document.getElementById('takedown-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeTakedown();
+});
+
+function openRptPreview(title, filePath) {
+    document.getElementById('rpt-preview-title').textContent = title;
+    const src = document.getElementById('rpt-preview-src');
+    const video = document.getElementById('rpt-preview-video');
+    src.src = filePath;
+    video.load();
+    video.play().catch(() => {});
+    document.getElementById('rpt-preview-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+function closeRptPreview() {
+    document.getElementById('rpt-preview-video').pause();
+    document.getElementById('rpt-preview-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+document.getElementById('rpt-preview-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeRptPreview();
+});
+</script>
 </body>
 </html>

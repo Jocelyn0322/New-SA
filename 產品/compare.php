@@ -1,6 +1,11 @@
 <?php
 session_start();
 include 'db.php';
+if (isset($_GET['clear'])) {
+    unset($_SESSION['compare']);
+    header('Location: compare.php');
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
