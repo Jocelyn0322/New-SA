@@ -58,7 +58,7 @@ $result = $conn->query($sql);
 
     <?php 
     $favorites = $_SESSION['favorite'] ?? [];
-    while($row = $result->fetch_assoc()){ 
+    while($row = $result->fetch()){ 
         $isFav = in_array($row['p_id'], $favorites);
     ?>
 
