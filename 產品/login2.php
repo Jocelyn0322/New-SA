@@ -1,6 +1,5 @@
 <?php
 session_start();
-require_once 'db.php';
 
 if (isset($_SESSION['user'])) {
     header("Location: index.php");
@@ -23,14 +22,27 @@ if (isset($_POST['register'])) {
     } elseif ($password !== $confirmPassword) {
         $error = "兩次密碼不一致";
     } else {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-        $stmt->execute([$username]);
+        $conn = new mysqli("localhost", "root", "", "sa_db");
 
-        if ($stmt->fetch()) {
+        if ($conn->connect_error) {
+            die("資料庫連線失敗：" . $conn->connect_error);
+        }
+
+        // 檢查帳號是否已存在
+        $stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
             $error = "帳號已存在";
         } else {
-            $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'user')");
-            if ($stmt->execute([$username, $password])) {
+            // 插入新用戶
+            $stmt = $conn->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'user')");
+            $stmt->bind_param("ss", $username, $password);
+            
+            if ($stmt->execute()) {
+                // 自動登入並跳轉到個人資料頁面
                 $_SESSION['user'] = $username;
                 $_SESSION['role'] = 'user';
                 header("Location: profile.php?new=1");
@@ -39,6 +51,9 @@ if (isset($_POST['register'])) {
                 $error = "註冊失敗，請稍後再試";
             }
         }
+
+        $stmt->close();
+        $conn->close();
     }
 }
 
@@ -47,28 +62,49 @@ if (isset($_POST['login'])) {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT id, username, password, role FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
+    $conn = new mysqli("localhost", "root", "", "sa_db");
 
-    if ($user) {
+    if ($conn->connect_error) {
+        die("資料庫連線失敗：" . $conn->connect_error);
+    }
+
+    $stmt = $conn->prepare("SELECT id, username, password, role FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($user = $result->fetch_assoc()) {
         if ($password === $user['password']) {
             $_SESSION['user'] = $user['username'];
             $_SESSION['role'] = $user['role'];
 
+            // 管理員直接導向首頁
             if ($user['role'] === 'admin') {
-                echo "<script>alert('登入成功'); window.location.href='index.php';</script>";
+                echo "<script>
+                    alert('登入成功');
+                    window.location.href='index.php';
+                </script>";
                 exit();
             }
 
-            $stmt2 = $pdo->prepare("SELECT id FROM user_profiles WHERE username = ?");
-            $stmt2->execute([$username]);
-            if (!$stmt2->fetch()) {
+            // 一般用戶檢查是否有個人資料
+            $stmt2 = $conn->prepare("SELECT id FROM user_profiles WHERE username = ?");
+            $stmt2->bind_param("s", $username);
+            $stmt2->execute();
+            $result2 = $stmt2->get_result();
+            
+            if ($result2->num_rows === 0) {
+                // 沒有個人資料，跳轉去填寫
                 header("Location: profile.php?new=1");
                 exit();
             }
+            
+            $stmt2->close();
 
-            echo "<script>alert('登入成功'); window.location.href='index.php';</script>";
+            echo "<script>
+                alert('登入成功');
+                window.location.href='index.php';
+            </script>";
             exit();
         } else {
             $error = "密碼錯誤";
@@ -76,6 +112,9 @@ if (isset($_POST['login'])) {
     } else {
         $error = "帳號不存在";
     }
+
+    $stmt->close();
+    $conn->close();
 }
 ?>
 <!DOCTYPE html>

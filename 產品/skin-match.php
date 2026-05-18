@@ -7,7 +7,7 @@ $selected_tone = $_GET['tone'] ?? '';
 // 取所有膚色
 $tones = $conn->query("SELECT * FROM skintones ORDER BY id");
 $all_tones = [];
-while($t = $tones->fetch()) $all_tones[] = $t;
+while($t = $tones->fetch_assoc()) $all_tones[] = $t;
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -52,13 +52,13 @@ while($t = $tones->fetch()) $all_tones[] = $t;
                 <div style="
                     width: 60px;
                     height: 60px;
-                    background: <?php echo $tone['hexvalue']; ?>;
+                    background: <?php echo $tone['HexValue']; ?>;
                     border-radius: 50%;
                     margin: 0 auto 10px;
                     border: 2px solid #ddd;
                 "></div>
-                <div style="font-size: 14px; font-weight: 600;"><?php echo $tone['tonename']; ?></div>
-                <div style="font-size: 12px; color: #999; margin-top: 5px;"><?php echo $tone['tonecategory']; ?></div>
+                <div style="font-size: 14px; font-weight: 600;"><?php echo $tone['ToneName']; ?></div>
+                <div style="font-size: 12px; color: #999; margin-top: 5px;"><?php echo $tone['ToneCategory']; ?></div>
             </a>
         <?php } ?>
         </div>
@@ -67,11 +67,11 @@ while($t = $tones->fetch()) $all_tones[] = $t;
     <?php if($selected_tone){ ?>
         <?php
         // 取得選中的膚色資訊
-        $tone = $conn->query("SELECT * FROM skintones WHERE id='$selected_tone'")->fetch();
+        $tone = $conn->query("SELECT * FROM skintones WHERE id='$selected_tone'")->fetch_assoc();
 
         // 查詢所有粉底產品及其色號
         $products = $conn->query("
-            SELECT p.*, STRING_AGG(pc.color_name, ',') as colors, STRING_AGG(pc.color_hex, ',') as color_hexes
+            SELECT p.*, GROUP_CONCAT(pc.color_name) as colors, GROUP_CONCAT(pc.color_hex) as color_hexes
             FROM products p
             LEFT JOIN product_colors pc ON p.p_id = pc.p_id
             WHERE p.category='底妝'
@@ -83,13 +83,13 @@ while($t = $tones->fetch()) $all_tones[] = $t;
             <h3 style="font-size: 24px; margin-bottom: 10px;">
                 💄 推薦適合
                 <span style="
-                    background: <?php echo $tone['hexvalue']; ?>;
+                    background: <?php echo $tone['HexValue']; ?>;
                     padding: 8px 16px;
                     border-radius: 20px;
                     color: white;
                     display: inline-block;
                     font-weight: 600;
-                "><?php echo $tone['tonename']; ?></span>
+                "><?php echo $tone['ToneName']; ?></span>
                 的粉底
             </h3>
             <p style="color: #666;">系統根據你的膚色推薦最適合的粉底色號</p>
@@ -97,7 +97,7 @@ while($t = $tones->fetch()) $all_tones[] = $t;
 
         <div class="product-grid">
         <?php
-        while($p = $products->fetch()){
+        while($p = $products->fetch_assoc()){
             $isFav = in_array($p['p_id'], $_SESSION['favorite'] ?? []);
             $colors = explode(',', $p['colors']);
             $color_hexes = explode(',', $p['color_hexes']);

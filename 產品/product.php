@@ -33,7 +33,7 @@ if (!$result) {
     exit;
 }
 
-$row = $result->fetch();
+$row = $result->fetch_assoc();
 
 if(!$row){
     echo '<div class="products"><div class="empty-state"><h3>產品不存在</h3><p><a href="products.php">返回產品列表</a></p></div></div>';
@@ -104,11 +104,11 @@ $isFav = in_array($row['p_id'], $favorites);
         exit;
     }
 
-    if($result2->rowCount() > 0){
+    if($result2->num_rows > 0){
     ?>
         <div class="colors-grid">
         <?php
-        while($color = $result2->fetch()){
+        while($color = $result2->fetch_assoc()){
         ?>
             <div class="color-item">
                 <div class="color-circle" style="background: <?php echo htmlspecialchars($color['color_hex']); ?>;"></div>

@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             unset($_SESSION['pending_user'], $_SESSION['pending_email']);
 
-            header("Location: /NewSA/New-SA/產品/index.php");
+            header("Location: /sa/New-SA/產品/index.php");
             exit();
         }
     }

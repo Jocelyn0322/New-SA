@@ -56,7 +56,7 @@ $result = $conn->query($sql);
                 <div class="product-grid">
                 <?php 
                 $favorites = $_SESSION['favorite'] ?? [];
-                while($row = $result->fetch()){
+                while($row = $result->fetch_assoc()){
                     $isFav = in_array($row['p_id'], $favorites);
                 ?>
 
@@ -134,6 +134,32 @@ $result = $conn->query($sql);
 
             showSlide(newIndex);
             resetAutoSlide();
+        }
+
+        function goToSlide(index) {
+            showSlide(index);
+            resetAutoSlide();
+        }
+
+        function startAutoSlide() {
+            autoSlide = setInterval(() => {
+                let newIndex = currentSlide + 1;
+                if (newIndex >= slides.length) {
+                    newIndex = 0;
+                }
+                showSlide(newIndex);
+            }, 3000);
+        }
+
+        function resetAutoSlide() {
+            clearInterval(autoSlide);
+            startAutoSlide();
+        }
+
+        startAutoSlide();
+    </script>
+</body>
+</html>
         }
 
         function goToSlide(index) {

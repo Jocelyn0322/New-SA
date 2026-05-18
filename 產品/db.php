@@ -1,21 +1,33 @@
 <?php
-$host   = 'aws-1-ap-southeast-1.pooler.supabase.com';
-$port   = '5432';
-$dbname = 'postgres';
-$user   = 'postgres.gykwxrymhgywarpyqxcr';
-$pass   = '2hq5hnoEYPU2qp38'; // ← 填入你的 Supabase 密碼
+$host = "127.0.0.1";
+$user = "root";
+$pass = "";
+$db = "sa_db";
 
-$dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=disable";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
+// 自動偵測 MySQL port（3306 或 3307）
+$port = null;
+foreach ([3306, 3307] as $try_port) {
+    $test = @fsockopen($host, $try_port, $errno, $errstr, 1);
+    if ($test) {
+        fclose($test);
+        $port = $try_port;
+        break;
+    }
+}
+if (!$port) die("找不到 MySQL 服務（已試 3306/3307）");
 
+// PDO 連接（用於新代碼如 video2.php）
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-    $conn = $pdo;
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    die('資料庫連線失敗：' . $e->getMessage());
+    die("連線失敗: " . $e->getMessage());
+}
+
+// MySQLi 連接（用於兼容舊代碼）
+$conn = new mysqli($host, $user, $pass, $db, $port);
+
+if ($conn->connect_error) {
+    die("連線失敗: " . $conn->connect_error);
 }
 ?>
