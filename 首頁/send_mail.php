@@ -10,10 +10,13 @@ function sendVerificationEmail($toEmail, $username, $code) {
     // 從環境變數讀取。設定方式：在 XAMPP httpd.conf 加入：
     //   SetEnv GMAIL_USER yourname@gmail.com
     //   SetEnv GMAIL_PASS xxxx xxxx xxxx xxxx（Google App 密碼，16碼）
-    $gmailUser = getenv('GMAIL_USER');
-    $gmailPass = getenv('GMAIL_PASS');
+    if (!defined('GMAIL_USER')) {
+        require_once __DIR__ . '/mail_config.php';
+    }
+    $gmailUser = defined('GMAIL_USER') ? GMAIL_USER : getenv('GMAIL_USER');
+    $gmailPass = defined('GMAIL_PASS') ? GMAIL_PASS : getenv('GMAIL_PASS');
     if (!$gmailUser || !$gmailPass) {
-        error_log('Email 設定遺失：請設定 GMAIL_USER 與 GMAIL_PASS 環境變數');
+        error_log('Email 設定遺失：請設定 mail_config.php 或環境變數');
         return false;
     }
 

@@ -46,7 +46,7 @@ try {
     // 檢查是否重複檢舉
     $stmt = $pdo->prepare("
         SELECT id FROM video_reports
-        WHERE video_id = ? AND reported_by = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        WHERE video_id = ? AND reported_by = ? AND created_at > NOW() - INTERVAL '24 hours'
     ");
     $stmt->execute([$videoId, $_SESSION['user']]);
     
