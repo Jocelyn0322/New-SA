@@ -1,7 +1,9 @@
 <?php
-$dsn  = "mysql:host=localhost;dbname=sa_db;charset=utf8mb4;unix_socket=/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock";
-$user = 'root';
-$pass = '';
+$host   = 'aws-1-ap-southeast-1.pooler.supabase.com';
+$port   = '5432';
+$dbname = 'postgres';
+$user   = 'postgres.gykwxrymhgywarpyqxcr';
+$pass   = '2hq5hnoEYPU2qp38';
 
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -10,7 +12,8 @@ $options = [
 ];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
+    $pdo  = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $pass, $options);
+    $conn = $pdo;
 } catch (PDOException $e) {
     die('資料庫連線失敗：' . $e->getMessage());
 }
