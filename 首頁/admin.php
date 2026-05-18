@@ -148,10 +148,10 @@ if ($tab === 'comments') {
         LEFT JOIN comment_reports cr ON c.id = cr.comment_id AND cr.status = 'pending'
     ";
     if ($search !== '') {
-        $s = $pdo->prepare($baseSql . " WHERE c.username LIKE ? OR c.content LIKE ? GROUP BY c.id ORDER BY report_count DESC, c.created_at DESC");
+        $s = $pdo->prepare($baseSql . " WHERE c.username LIKE ? OR c.content LIKE ? GROUP BY c.id, c.video_id, c.username, c.content, c.created_at, v.title ORDER BY report_count DESC, c.created_at DESC");
         $s->execute(["%{$search}%", "%{$search}%"]);
     } else {
-        $s = $pdo->query($baseSql . " GROUP BY c.id ORDER BY report_count DESC, c.created_at DESC");
+        $s = $pdo->query($baseSql . " GROUP BY c.id, c.video_id, c.username, c.content, c.created_at, v.title ORDER BY report_count DESC, c.created_at DESC");
     }
     $allComments = $s->fetchAll();
 }
@@ -242,7 +242,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="adm-topbar-logo">🎀 彩妝管理後台</div>
     <div class="adm-topbar-right">
         <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
-        <a href="/NewSA/New-SA/產品/index.php">← 返回網站</a>
+        <a href="/SA/New-SA/產品/index.php">← 返回網站</a>
         <a href="logout.php" class="logout-btn">登出</a>
     </div>
 </div>
