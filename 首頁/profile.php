@@ -20,17 +20,6 @@ $stmt = $pdo->prepare("SELECT * FROM user_profiles WHERE username = ?");
 $stmt->execute([$_SESSION['user']]);
 $profile = $stmt->fetch();
 
-// 獲取使用者的影片（含下架狀態與申訴）
-$videoStmt = $pdo->prepare("
-    SELECT v.*, a.id AS appeal_id, a.status AS appeal_status, a.created_at AS appeal_date
-    FROM videos v
-    LEFT JOIN video_appeals a ON v.id = a.video_id AND a.username = ?
-    WHERE v.uploaded_by = ?
-    ORDER BY v.upload_time DESC
-");
-$videoStmt->execute([$_SESSION['user'], $_SESSION['user']]);
-$myVideos = $videoStmt->fetchAll();
-
 // 處理表單提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $gender = $_POST['gender'] ?? '';
@@ -421,7 +410,7 @@ $skinConcernsList = [
             <?php if ($messageType === 'success' && $isNewUser): ?>
                 <script>
                     setTimeout(function() {
-                        window.location.href = '/sa/New-SA/產品/index.php';
+                        window.location.href = '/NewSA/New-SA/產品/index.php';
                     }, 1500);
                 </script>
             <?php endif; ?>
@@ -522,59 +511,6 @@ $skinConcernsList = [
             <button type="submit" name="save_profile" class="save-btn">💾 儲存個人資料</button>
         </form>
     </div>
-
-    <!-- 我的影片 -->
-    <?php if (!empty($myVideos)): ?>
-    <div class="profile-card" style="margin-top:24px;">
-        <div class="profile-header" style="margin-bottom:20px;">
-            <h1>🎬 我的影片</h1>
-        </div>
-        <?php foreach ($myVideos as $v): ?>
-            <div style="border:1px solid <?php echo $v['is_active'] ? '#e0e0e0' : '#ffc0cb'; ?>;border-radius:12px;padding:16px;margin-bottom:12px;background:<?php echo $v['is_active'] ? '#fff' : '#fff5f7'; ?>;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-                    <div style="flex:1;">
-                        <div style="font-weight:700;font-size:16px;margin-bottom:4px;"><?php echo htmlspecialchars($v['title']); ?></div>
-                        <div style="font-size:12px;color:#aaa;"><?php echo date('Y/m/d H:i', strtotime($v['upload_time'])); ?></div>
-                    </div>
-                    <div style="text-align:right;flex-shrink:0;">
-                        <?php if ($v['is_active']): ?>
-                            <span style="background:#d4edda;color:#155724;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;">✅ 上架中</span>
-                        <?php else: ?>
-                            <span style="background:#f8d7da;color:#721c24;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;">📥 已下架</span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <?php if (!$v['is_active']): ?>
-                <div style="margin-top:12px;padding:10px 14px;background:#fff0f0;border-radius:8px;font-size:13px;">
-                    <strong style="color:#c82333;">下架原因：</strong>
-                    <span style="color:#555;"><?php echo nl2br(htmlspecialchars($v['removed_reason'] ?? '未說明')); ?></span>
-                </div>
-
-                <div style="margin-top:10px;">
-                    <?php if (!$v['appeal_id']): ?>
-                        <!-- 尚未申訴 -->
-                        <a href="appeal.php?video_id=<?php echo (int)$v['id']; ?>"
-                           style="display:inline-block;background:#e83e5a;color:#fff;padding:8px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">
-                            📋 提出申訴
-                        </a>
-                    <?php else: ?>
-                        <!-- 已申訴，顯示狀態 -->
-                        <?php
-                            $statusMap = ['pending'=>['⏳ 申訴審核中','#fff3cd','#856404'], 'approved'=>['✅ 申訴已核准，影片將恢復上架','#d4edda','#155724'], 'rejected'=>['❌ 申訴已被拒絕','#f8d7da','#721c24']];
-                            $s = $statusMap[$v['appeal_status']] ?? ['⏳ 審核中','#fff3cd','#856404'];
-                        ?>
-                        <span style="background:<?php echo $s[1]; ?>;color:<?php echo $s[2]; ?>;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;">
-                            <?php echo $s[0]; ?>
-                        </span>
-                        <span style="font-size:12px;color:#aaa;margin-left:8px;">申訴時間：<?php echo date('Y/m/d', strtotime($v['appeal_date'])); ?></span>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
 </main>
 
 <!-- AI 測試模態框 -->

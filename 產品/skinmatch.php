@@ -1,16 +1,28 @@
 <?php
 session_start();
 include 'db.php';
-include 'header.php';
 
 $selected_tone = $_GET['tone'] ?? '';
 
 // 取所有膚色
 $tones = $conn->query("SELECT * FROM skintones");
 $all_tones = [];
-while($t = $tones->fetch_assoc()) $all_tones[] = $t;
+while($t = $tones->fetch()) $all_tones[] = $t;
 ?>
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>膚色配對 - Makeup</title>
+</head>
+<body>
 
+<?php include 'header.php'; ?>
+
+
+<main class="page">
 <div class="products">
     <h2>🎨 選擇你的膚色</h2>
     
@@ -20,7 +32,7 @@ while($t = $tones->fetch_assoc()) $all_tones[] = $t;
            style="
                width: 100%; 
                height: 60px;
-               background: <?php echo $tone['HexValue']; ?>;
+               background: <?php echo $tone['hexvalue']; ?>;
                border-radius: 10px;
                border: <?php echo $selected_tone == $tone['id'] ? '3px solid #efc6cd' : '2px solid #ddd'; ?>;
                display: flex;
@@ -31,9 +43,9 @@ while($t = $tones->fetch_assoc()) $all_tones[] = $t;
                font-weight: 600;
                font-size: 12px;
            "
-           title="<?php echo $tone['ToneName']; ?>"
+           title="<?php echo $tone['tonename']; ?>"
         >
-            <?php echo $tone['ToneName']; ?>
+            <?php echo $tone['tonename']; ?>
         </a>
     <?php } ?>
     </div>
@@ -41,17 +53,17 @@ while($t = $tones->fetch_assoc()) $all_tones[] = $t;
     <?php if($selected_tone){ ?>
         <?php
         // 找出適合這個膚色的粉底色號
-        $tone = $conn->query("SELECT * FROM skintones WHERE id='$selected_tone'")->fetch_assoc();
+        $tone = $conn->query("SELECT * FROM skintones WHERE id='$selected_tone'")->fetch();
         
         // 查出所有粉底色號，計算匹配度
-        $products = $conn->query("SELECT p.*, GROUP_CONCAT(pc.color_name) as colors FROM products p LEFT JOIN product_colors pc ON p.p_id = pc.p_id WHERE p.category='底妝' GROUP BY p.p_id");
+        $products = $conn->query("SELECT p.*, STRING_AGG(pc.color_name, ',') as colors FROM products p LEFT JOIN product_colors pc ON p.p_id = pc.p_id WHERE p.category='底妝' GROUP BY p.p_id");
         ?>
         
-        <h3>💄 推薦適合 <span style="background: <?php echo $tone['HexValue']; ?>; padding: 5px 12px; border-radius: 15px; color: white; display: inline-block;"><?php echo $tone['ToneName']; ?></span> 的粉底</h3>
+        <h3>💄 推薦適合 <span style="background: <?php echo $tone['hexvalue']; ?>; padding: 5px 12px; border-radius: 15px; color: white; display: inline-block;"><?php echo $tone['tonename']; ?></span> 的粉底</h3>
         
         <div class="product-grid">
         <?php 
-        while($p = $products->fetch_assoc()){
+        while($p = $products->fetch()){
             $isFav = in_array($p['p_id'], $_SESSION['favorite'] ?? []);
         ?>
             <div class="product-card">
@@ -85,5 +97,9 @@ while($t = $tones->fetch_assoc()) $all_tones[] = $t;
         </div>
     <?php } ?>
 </div>
+</main>
 
 <?php include 'footer.php'; ?>
+
+</body>
+</html>

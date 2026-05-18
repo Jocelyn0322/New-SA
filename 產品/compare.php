@@ -1,11 +1,6 @@
 <?php
 session_start();
 include 'db.php';
-if (isset($_GET['clear'])) {
-    unset($_SESSION['compare']);
-    header('Location: compare.php');
-    exit;
-}
 ?>
 
 <!DOCTYPE html>
@@ -35,7 +30,7 @@ $sql = "SELECT * FROM products WHERE p_id IN ($id_list)";
 $result = $conn->query($sql);
 
 $products = [];
-while($row = $result->fetch_assoc()){
+while($row = $result->fetch()){
     $products[] = $row;
 }
 ?>
@@ -84,9 +79,9 @@ while($row = $result->fetch_assoc()){
                         <td>
                             <?php
                             $colors = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$p['p_id']} LIMIT 5");
-                            if($colors->num_rows > 0){
+                            if($colors->rowCount() > 0){
                                 echo '<div style="display: flex; gap: 6px; flex-wrap: wrap;">';
-                                while($c = $colors->fetch_assoc()){
+                                while($c = $colors->fetch()){
                                     echo '<div style="width:24px; height:24px; background:'.$c['color_hex'].'; border-radius:50%; border:1px solid #ddd; display: inline-block;" title="'.$c['color_name'].'"></div>';
                                 }
                                 echo '</div>';
@@ -106,21 +101,6 @@ while($row = $result->fetch_assoc()){
         </div>
     </div>
 </div>
-<?php if(!empty($products)){ ?>
-<tr>
-    <td><strong>可用色號</strong></td>
-    <?php foreach($products as $p){ ?>
-        <td>
-            <?php
-            $colors = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$p['p_id']} LIMIT 3");
-            while($c = $colors->fetch_assoc()){
-                echo '<div style="width:24px; height:24px; background:'.$c['color_hex'].'; border-radius:50%; margin:3px; display:inline-block;" title="'.$c['color_name'].'"></div>';
-            }
-            ?>
-        </td>
-    <?php } ?>
-</tr>
-<?php } ?>
 
 <?php include 'footer.php'; ?>
 

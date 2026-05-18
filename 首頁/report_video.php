@@ -43,16 +43,16 @@ try {
         echo json_encode(['success' => false, 'message' => '找不到該影片']);
         exit;
     }
-    // 檢查是否重複檢舉（每部影片只能檢舉一次）
+    // 檢查是否重複檢舉
     $stmt = $pdo->prepare("
         SELECT id FROM video_reports
-        WHERE video_id = ? AND reported_by = ?
+        WHERE video_id = ? AND reported_by = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
     ");
     $stmt->execute([$videoId, $_SESSION['user']]);
-
+    
     if ($stmt->fetch()) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => '您已檢舉過此影片']);
+        echo json_encode(['success' => false, 'message' => '您已在24小時內檢舉過此影片']);
         exit;
     }
 

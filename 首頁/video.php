@@ -308,7 +308,7 @@ if ($view === 'personal') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>影片交流</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="/sa/New-SA/產品/style.css">
+    <link rel="stylesheet" href="/NewSA/New-SA/產品/style.css">
     <style>
         * {
             margin: 0;
@@ -2017,48 +2017,9 @@ if ($view === 'personal') {
             .catch(error => console.error('載入評論失敗:', error));
     }
 
-    // 隱藏留言相關（存 localStorage，僅對自己生效）
-    const _commentData = {};
-    function _getHiddenComments() {
-        try { return new Set(JSON.parse(localStorage.getItem('vc_hidden_comments') || '[]').map(String)); }
-        catch(e) { return new Set(); }
-    }
-    function _getHiddenUsers() {
-        try { return new Set(JSON.parse(localStorage.getItem('vc_hidden_users') || '[]')); }
-        catch(e) { return new Set(); }
-    }
-    function hideComment(commentId) {
-        const s = _getHiddenComments(); s.add(String(commentId));
-        localStorage.setItem('vc_hidden_comments', JSON.stringify([...s]));
-        loadComments();
-    }
-    function hideUserFromComment(commentId) {
-        const u = _commentData[commentId]?.username;
-        if (!u) return;
-        const s = _getHiddenUsers(); s.add(u);
-        localStorage.setItem('vc_hidden_users', JSON.stringify([...s]));
-        loadComments();
-    }
-    function unhideComment(commentId) {
-        const s = _getHiddenComments(); s.delete(String(commentId));
-        localStorage.setItem('vc_hidden_comments', JSON.stringify([...s]));
-        loadComments();
-    }
-    function unhideUser(username) {
-        const s = _getHiddenUsers(); s.delete(username);
-        localStorage.setItem('vc_hidden_users', JSON.stringify([...s]));
-        loadComments();
-    }
-    function toggleHideMenu(commentId) {
-        const m = document.getElementById(`commentHideMenu-${commentId}`);
-        if (m) m.style.display = m.style.display === 'none' ? 'block' : 'none';
-    }
-
     function displayComments(comments, replies) {
         const commentsList = document.getElementById('commentsList');
-        const hiddenComments = _getHiddenComments();
-        const hiddenUsers    = _getHiddenUsers();
-
+        
         if (comments.length === 0) {
             commentsList.innerHTML = '<div class="empty-comments">尚無評論</div>';
             return;
@@ -2066,34 +2027,6 @@ if ($view === 'personal') {
 
         let html = '';
         comments.forEach(comment => {
-            _commentData[comment.id] = { username: comment.username };
-            const isHiddenC = hiddenComments.has(String(comment.id));
-            const isHiddenU = hiddenUsers.has(comment.username);
-            const isHidden  = isHiddenC || isHiddenU;
-
-            // 被自己隱藏：白色卡片 + 明顯復原按鈕
-            if (isHidden) {
-                const restoreFn = isHiddenU
-                    ? `unhideUser(${JSON.stringify(comment.username)})`
-                    : `unhideComment(${comment.id})`;
-                const hintLabel = isHiddenU
-                    ? `已隱藏 ${escapeHtml(comment.username)} 的所有留言`
-                    : `已隱藏此留言`;
-                html += `
-                <div class="comment-item" style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:10px 12px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <div style="flex:1;min-width:0;">
-                            <span style="color:#999;font-size:12px;font-weight:600;">${escapeHtml(comment.username)}</span>
-                            <span style="color:#bbb;font-size:11px;margin-left:6px;">⊘ ${hintLabel}</span>
-                            <div style="color:#ccc;font-size:12px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(comment.content)}</div>
-                        </div>
-                        <button onclick="${restoreFn}" style="flex-shrink:0;background:#e83e5a;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">恢復顯示</button>
-                    </div>
-                </div>`;
-                return;
-            }
-
-            // 正常顯示
             const replyList = replies[comment.id] || [];
             const time = new Date(comment.created_at).toLocaleString('zh-Hant', {
                 month: 'short',
@@ -2115,18 +2048,8 @@ if ($view === 'personal') {
                         </button>
                         <button class="comment-reply-btn" onclick="toggleReplyForm(${comment.id})">回覆</button>
                         ${comment.username !== currentUser && currentUser ? `<button class="comment-report-btn" onclick="toggleCommentReportForm(${comment.id})">🚩 檢舉</button>` : ''}
-                        ${comment.username !== currentUser && currentUser ? `<button onclick="toggleHideMenu(${comment.id})" style="background:none;border:none;color:rgba(255,255,255,0.35);cursor:pointer;font-size:11px;padding:2px 4px;transition:color 0.2s;" onmouseover="this.style.color='rgba(255,255,255,0.65)'" onmouseout="this.style.color='rgba(255,255,255,0.35)'">⊘ 隱藏</button>` : ''}
                         ${comment.username === currentUser || currentRole === 'admin' ? `<button class="comment-delete-btn" onclick="deleteComment(${comment.id})">刪除</button>` : ''}
                     </div>
-                    ${comment.username !== currentUser && currentUser ? `
-                    <div id="commentHideMenu-${comment.id}" style="display:none;margin-top:6px;padding:8px 10px;background:rgba(30,30,30,0.95);border:1px solid rgba(255,255,255,0.12);border-radius:8px;">
-                        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;">選擇隱藏方式（僅自己可見變化）：</div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                            <button onclick="hideComment(${comment.id})" style="background:rgba(108,117,125,0.7);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;">隱藏此留言</button>
-                            <button onclick="hideUserFromComment(${comment.id})" style="background:rgba(220,53,69,0.7);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;">隱藏 ${escapeHtml(comment.username)} 的全部留言</button>
-                            <button onclick="toggleHideMenu(${comment.id})" style="background:rgba(255,255,255,0.08);color:#aaa;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;">取消</button>
-                        </div>
-                    </div>` : ''}
                     <div class="comment-report-form" id="commentReportForm-${comment.id}">
                         <select id="commentReportReason-${comment.id}">
                             <option value="">選擇檢舉原因</option>
