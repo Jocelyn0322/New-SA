@@ -1,6 +1,7 @@
 <?php
 session_start();
 require 'db.php';
+require_once 'send_mail.php';
 
 if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header("Location: login.php");
@@ -68,6 +69,48 @@ if (isset($_POST['dismiss_comment_report'])) {
     $tab = 'comments';
 }
 
+// 審核使用者商品申請
+if (isset($_POST['review_submission'])) {
+    $subId      = (int)$_POST['submission_id'];
+    $decision   = $_POST['decision']   ?? '';   // approved / rejected
+    $adminNote  = trim($_POST['admin_note'] ?? '');
+
+    if ($subId && in_array($decision, ['approved', 'rejected'])) {
+        // 更新申請狀態
+        $pdo->prepare("UPDATE product_submissions SET status = ?, admin_note = ? WHERE id = ?")
+            ->execute([$decision, $adminNote, $subId]);
+
+        // 取得申請者資訊以寄送通知
+        $sub = $pdo->prepare("SELECT ps.product_name, ps.username, u.email
+                               FROM product_submissions ps
+                               LEFT JOIN users u ON u.username = ps.username
+                               WHERE ps.id = ?");
+        $sub->execute([$subId]);
+        $subRow = $sub->fetch();
+
+        $emailSent = false;
+        if ($subRow && !empty($subRow['email'])) {
+            try {
+                $emailSent = sendProductReviewEmail(
+                    $subRow['email'],
+                    $subRow['username'],
+                    $subRow['product_name'],
+                    $decision,
+                    $adminNote
+                );
+            } catch (Throwable $e) {
+                error_log('商品審核 Email 失敗：' . $e->getMessage());
+            }
+        }
+
+        $label    = $decision === 'approved' ? '✅ 已核准' : '❌ 已拒絕';
+        $mailNote = $emailSent ? '（通知信已寄出）' : ($subRow && !empty($subRow['email']) ? '（Email 設定未完成，未寄信）' : '（使用者無 Email，未寄信）');
+        $msg      = "{$label}「" . ($subRow['product_name'] ?? '該商品') . "」{$mailNote}";
+        $msgType = 'success';
+    }
+    $tab = 'products';
+}
+
 // 標記檢舉為已處理
 if (isset($_POST['dismiss_report'])) {
     $vid = (int)$_POST['video_id'];
@@ -79,12 +122,40 @@ if (isset($_POST['dismiss_report'])) {
 
 // ── 資料查詢 ───────────────────────────────────────────────
 
+if ($tab === 'products') {
+    $filterStatus = $_GET['status'] ?? 'pending';
+    $allowedStatus = ['pending', 'approved', 'rejected', 'all'];
+    if (!in_array($filterStatus, $allowedStatus)) $filterStatus = 'pending';
+
+    if ($filterStatus === 'all') {
+        $submissions = $pdo->query("
+            SELECT ps.*, u.email
+            FROM product_submissions ps
+            LEFT JOIN users u ON u.username = ps.username
+            ORDER BY ps.created_at DESC
+        ")->fetchAll();
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT ps.*, u.email
+            FROM product_submissions ps
+            LEFT JOIN users u ON u.username = ps.username
+            WHERE ps.status = ?
+            ORDER BY ps.created_at DESC
+        ");
+        $stmt->execute([$filterStatus]);
+        $submissions = $stmt->fetchAll();
+    }
+
+    $pendingCount = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status = 'pending'")->fetchColumn();
+}
+
 if ($tab === 'stats') {
     $stats['users']    = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
     $stats['videos']   = $pdo->query("SELECT COUNT(*) FROM videos WHERE is_active = 1")->fetchColumn();
     $stats['comments'] = $pdo->query("SELECT COUNT(*) FROM video_comments")->fetchColumn();
     $stats['reports']  = $pdo->query("SELECT COUNT(*) FROM video_reports WHERE status = 'pending'")->fetchColumn();
-    $stats['new_users_week'] = $pdo->query("SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
+    $stats['new_users_week']   = $pdo->query("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")->fetchColumn();
+    $stats['pending_products'] = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status = 'pending'")->fetchColumn();
 }
 
 if ($tab === 'videos') {
@@ -148,10 +219,10 @@ if ($tab === 'comments') {
         LEFT JOIN comment_reports cr ON c.id = cr.comment_id AND cr.status = 'pending'
     ";
     if ($search !== '') {
-        $s = $pdo->prepare($baseSql . " WHERE c.username LIKE ? OR c.content LIKE ? GROUP BY c.id ORDER BY report_count DESC, c.created_at DESC");
+        $s = $pdo->prepare($baseSql . " WHERE c.username LIKE ? OR c.content LIKE ? GROUP BY c.id, c.video_id, c.username, c.content, c.created_at, v.title ORDER BY report_count DESC, c.created_at DESC");
         $s->execute(["%{$search}%", "%{$search}%"]);
     } else {
-        $s = $pdo->query($baseSql . " GROUP BY c.id ORDER BY report_count DESC, c.created_at DESC");
+        $s = $pdo->query($baseSql . " GROUP BY c.id, c.video_id, c.username, c.content, c.created_at, v.title ORDER BY report_count DESC, c.created_at DESC");
     }
     $allComments = $s->fetchAll();
 }
@@ -242,7 +313,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="adm-topbar-logo">🎀 彩妝管理後台</div>
     <div class="adm-topbar-right">
         <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
-        <a href="/sa/New-SA/產品/index.php">← 返回網站</a>
+        <a href="/SA/New-SA/產品/index.php">← 返回網站</a>
         <a href="logout.php" class="logout-btn">登出</a>
     </div>
 </div>
@@ -253,6 +324,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <a href="?tab=comments" class="adm-tab <?php echo $tab==='comments' ? 'active':''; ?>">💬 留言管理</a>
     <a href="?tab=reports"  class="adm-tab <?php echo $tab==='reports'  ? 'active':''; ?>">🚨 檢舉管理</a>
     <a href="?tab=users"    class="adm-tab <?php echo $tab==='users'    ? 'active':''; ?>">👥 會員管理</a>
+    <a href="?tab=products" class="adm-tab <?php echo $tab==='products' ? 'active':''; ?>" style="position:relative;">
+        🛍️ 商品審核
+        <?php
+        $badgeCount = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status='pending'")->fetchColumn();
+        if ($badgeCount > 0): ?>
+            <span style="position:absolute;top:8px;right:4px;background:#e83e5a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;"><?php echo (int)$badgeCount; ?></span>
+        <?php endif; ?>
+    </a>
 </div>
 
 <div class="adm-content">
@@ -286,12 +365,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="stat-label">待處理檢舉</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-num" style="color:<?php echo $stats['pending_products'] > 0 ? '#e67e22' : '#28a745'; ?>">
+            <?php echo $stats['pending_products']; ?>
+        </div>
+        <div class="stat-label">待審核商品</div>
+    </div>
 </div>
 
 <?php if ($stats['reports'] > 0): ?>
-<div style="background:#fff3cd;color:#856404;border-radius:10px;padding:14px 20px;margin-bottom:24px;font-size:14px;">
+<div style="background:#fff3cd;color:#856404;border-radius:10px;padding:14px 20px;margin-bottom:12px;font-size:14px;">
     ⚠️ 目前有 <strong><?php echo $stats['reports']; ?></strong> 件待處理的影片檢舉，
     <a href="?tab=reports" style="color:#c82333;font-weight:600;">前往處理 →</a>
+</div>
+<?php endif; ?>
+
+<?php if ($stats['pending_products'] > 0): ?>
+<div style="background:#fff8f0;color:#b7600a;border-radius:10px;padding:14px 20px;margin-bottom:24px;font-size:14px;">
+    🛍️ 目前有 <strong><?php echo $stats['pending_products']; ?></strong> 件商品申請待審核，
+    <a href="?tab=products" style="color:#e67e22;font-weight:600;">前往審核 →</a>
 </div>
 <?php endif; ?>
 
@@ -460,6 +552,92 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             <?php endif; ?>
         </div>
     <?php endforeach; ?>
+<?php endif; ?>
+
+
+<?php elseif ($tab === 'products'): ?>
+<!-- ══════════ 商品審核 ══════════ -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+    <div class="section-title" style="margin:0;">🛍️ 商品申請審核</div>
+    <div style="display:flex;gap:6px;margin-left:auto;">
+        <?php foreach(['pending'=>'待審核','approved'=>'已通過','rejected'=>'已拒絕','all'=>'全部'] as $s=>$label): ?>
+            <a href="?tab=products&status=<?php echo $s; ?>"
+               style="padding:5px 14px;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none;
+                      <?php echo ($filterStatus===$s) ? 'background:#e83e5a;color:#fff;' : 'background:#f0f0f0;color:#555;'; ?>">
+                <?php echo $label; ?>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<?php if (empty($submissions)): ?>
+    <div class="adm-empty"><div class="adm-empty-icon">🛍️</div>目前沒有<?php echo $filterStatus==='pending'?'待審核的':($filterStatus==='all'?'':($filterStatus==='approved'?'已通過的':'已拒絕的')); ?>商品申請</div>
+<?php else: ?>
+    <?php foreach ($submissions as $sub): ?>
+        <?php
+            $statusBadge = match($sub['status']) {
+                'pending'  => '<span class="badge badge-warn">⏳ 待審核</span>',
+                'approved' => '<span class="badge badge-ok">✅ 已通過</span>',
+                'rejected' => '<span class="badge badge-no">❌ 已拒絕</span>',
+                default    => ''
+            };
+        ?>
+        <div class="adm-table-wrap" style="margin-bottom:16px;">
+            <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:240px;">
+                    <div style="font-size:16px;font-weight:700;color:#222;margin-bottom:4px;">
+                        <?php echo htmlspecialchars($sub['product_name']); ?>
+                        <?php echo $statusBadge; ?>
+                    </div>
+                    <div style="font-size:13px;color:#888;line-height:1.8;">
+                        <?php if ($sub['brand']): ?>品牌：<?php echo htmlspecialchars($sub['brand']); ?> &nbsp;·&nbsp; <?php endif; ?>
+                        <?php if ($sub['category']): ?>分類：<?php echo htmlspecialchars($sub['category']); ?> &nbsp;·&nbsp; <?php endif; ?>
+                        <?php if ($sub['price']): ?>售價：<?php echo htmlspecialchars($sub['price']); ?> &nbsp;·&nbsp; <?php endif; ?>
+                        申請者：<strong><?php echo htmlspecialchars($sub['username']); ?></strong>
+                        （<?php echo $sub['email'] ? htmlspecialchars($sub['email']) : '無 Email'; ?>）<br>
+                        申請時間：<?php echo date('Y/m/d H:i', strtotime($sub['created_at'])); ?>
+                    </div>
+                    <?php if ($sub['description']): ?>
+                        <div style="margin-top:8px;font-size:13px;color:#555;background:#f8f8f8;border-radius:6px;padding:10px 12px;">
+                            <?php echo nl2br(htmlspecialchars($sub['description'])); ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($sub['purchase_link']): ?>
+                        <div style="margin-top:6px;font-size:12px;">
+                            <a href="<?php echo htmlspecialchars($sub['purchase_link']); ?>" target="_blank" rel="noopener"
+                               style="color:#0069d9;">🔗 查看購買連結</a>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($sub['admin_note'] && $sub['status'] !== 'pending'): ?>
+                        <div style="margin-top:8px;font-size:12px;color:#777;border-left:3px solid #ddd;padding-left:10px;">
+                            管理員備註：<?php echo htmlspecialchars($sub['admin_note']); ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($sub['status'] === 'pending'): ?>
+                <div style="min-width:260px;">
+                    <form method="post">
+                        <input type="hidden" name="submission_id" value="<?php echo (int)$sub['id']; ?>">
+                        <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">管理員備註（寄信時顯示）</label>
+                        <textarea name="admin_note" rows="3" placeholder="可填入核准原因、建議修改內容等..."
+                            style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;"></textarea>
+                        <div class="btn-group">
+                            <button type="submit" name="review_submission" value="1"
+                                onclick="this.form.querySelector('[name=decision]').value='approved';return confirm('確定核准「<?php echo htmlspecialchars(addslashes($sub['product_name'])); ?>」？');"
+                                class="btn-ok" style="flex:1;padding:8px 0;">✅ 核准</button>
+                            <input type="hidden" name="decision" value="">
+                            <button type="submit" name="review_submission" value="1"
+                                onclick="this.form.querySelector('[name=decision]').value='rejected';return confirm('確定拒絕「<?php echo htmlspecialchars(addslashes($sub['product_name'])); ?>」？');"
+                                class="btn-del" style="flex:1;padding:8px 0;">❌ 拒絕</button>
+                        </div>
+                    </form>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endforeach; ?>
+    <p style="color:#aaa;font-size:13px;margin-top:4px;">共 <?php echo count($submissions); ?> 筆</p>
 <?php endif; ?>
 
 

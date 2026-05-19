@@ -5,39 +5,42 @@ require_once __DIR__ . '/db.php';
 
 function fetchTableNames(PDO $pdo, string $pattern): array
 {
-    $quotedPattern = $pdo->quote($pattern);
-    $stmt = $pdo->query("SHOW TABLES LIKE {$quotedPattern}");
-    return $stmt ? array_map('current', $stmt->fetchAll(PDO::FETCH_NUM)) : [];
+    $stmt = $pdo->prepare("
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name ILIKE ?
+        ORDER BY table_name
+    ");
+    $stmt->execute([$pattern]);
+    return array_map('current', $stmt->fetchAll(PDO::FETCH_NUM));
 }
 
 function findSkinToneTable(PDO $pdo): ?string
 {
-    // First try tables with 'tone' in name
     $toneTables = fetchTableNames($pdo, '%tone%');
-    if (!empty($toneTables)) {
-        return $toneTables[0];
-    }
+    if (!empty($toneTables)) return $toneTables[0];
 
-    // Then try tables with 'skin' in name
     $skinTables = fetchTableNames($pdo, '%skin%');
-    if (!empty($skinTables)) {
-        // Filter out tables that are not skin tone tables
-        foreach ($skinTables as $table) {
-            if (stripos($table, 'type') === false) { // Avoid SkinTypes
-                return $table;
-            }
-        }
+    foreach ($skinTables as $table) {
+        if (stripos($table, 'type') === false) return $table;
     }
 
-    // Fallback to first table
-    $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_NUM);
-    return $tables[0][0] ?? null;
+    $stmt = $pdo->query("
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public' ORDER BY table_name LIMIT 1
+    ");
+    $row = $stmt->fetch(PDO::FETCH_NUM);
+    return $row[0] ?? null;
 }
 
 function getColumnNames(PDO $pdo, string $table): array
 {
-    $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}`");
-    return array_map(fn($row) => $row['Field'], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    $stmt = $pdo->prepare("
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = ?
+        ORDER BY ordinal_position
+    ");
+    $stmt->execute([$table]);
+    return array_map('current', $stmt->fetchAll(PDO::FETCH_NUM));
 }
 
 function parseJsonValue($value)
@@ -60,47 +63,52 @@ try {
 
     $columns = getColumnNames($pdo, $table);
 
+    // PostgreSQL 欄位名全部小寫，做 case-insensitive 比對
+    $columnsLower = array_map('strtolower', $columns);
+
     $fields = [];
     $toneField = null;
-    foreach (['toneName', 'tone_name', 'name', 'tone', 'ToneName'] as $candidate) {
-        if (in_array($candidate, $columns, true)) {
-            $toneField = $candidate;
+    foreach (['tonename', 'tone_name', 'name', 'tone'] as $candidate) {
+        if (in_array($candidate, $columnsLower, true)) {
+            $toneField = $columns[array_search($candidate, $columnsLower)];
             break;
         }
     }
     if (!$toneField) {
         throw new RuntimeException('資料表缺少膚色名稱欄位');
     }
-    $fields[] = "`{$toneField}` AS `toneName`";
+    $fields[] = "{$toneField} AS \"toneName\"";
 
-    if (in_array('hex', $columns, true) || in_array('HexValue', $columns, true)) {
-        $fields[] = in_array('hex', $columns, true) ? '`hex`' : '`HexValue` AS `hex`';
+    if (in_array('hexvalue', $columnsLower, true)) {
+        $col = $columns[array_search('hexvalue', $columnsLower)];
+        $fields[] = "{$col} AS hex";
+    } elseif (in_array('hex', $columnsLower, true)) {
+        $fields[] = 'hex';
     }
-    if (in_array('category', $columns, true) || in_array('ToneCategory', $columns, true)) {
-        $fields[] = in_array('category', $columns, true) ? '`category`' : '`ToneCategory` AS `category`';
+    if (in_array('tonecategory', $columnsLower, true)) {
+        $col = $columns[array_search('tonecategory', $columnsLower)];
+        $fields[] = "{$col} AS category";
+    } elseif (in_array('category', $columnsLower, true)) {
+        $fields[] = 'category';
     }
-    if (in_array('rgb', $columns, true)) {
-        $fields[] = '`rgb`';
+    foreach (['rgb', 'lab'] as $f) {
+        if (in_array($f, $columnsLower, true)) $fields[] = $f;
     }
-    if (in_array('lab', $columns, true)) {
-        $fields[] = '`lab`';
+    foreach (['lab_l', 'lab_a', 'lab_b'] as $f) {
+        if (in_array($f, $columnsLower, true)) {
+            $col = $columns[array_search($f, $columnsLower)];
+            $fields[] = $col;
+        }
     }
-    if (in_array('LAB_L', $columns, true) && in_array('LAB_a', $columns, true) && in_array('LAB_b', $columns, true)) {
-        $fields[] = '`LAB_L`';
-        $fields[] = '`LAB_a`';
-        $fields[] = '`LAB_b`';
-    }
-    if (in_array('r', $columns, true) && in_array('g', $columns, true) && in_array('b', $columns, true)) {
-        $fields[] = '`r`';
-        $fields[] = '`g`';
-        $fields[] = '`b`';
+    if (in_array('r', $columnsLower) && in_array('g', $columnsLower) && in_array('b', $columnsLower)) {
+        $fields[] = 'r'; $fields[] = 'g'; $fields[] = 'b';
     }
 
     if (count($fields) === 1) {
         throw new RuntimeException('資料表沒有可讀取的膚色資料欄位');
     }
 
-    $sql = sprintf('SELECT %s FROM `%s` ORDER BY `%s`', implode(', ', $fields), $table, $toneField);
+    $sql = sprintf('SELECT %s FROM %s ORDER BY %s', implode(', ', $fields), $table, $toneField);
     $stmt = $pdo->query($sql);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -110,7 +118,13 @@ try {
         ];
 
         if (isset($row['hex'])) {
-            $tone['hex'] = $row['hex'];
+            $val = $row['hex'];
+            // 若 DB 改為十進位整數儲存，自動轉成 #RRGGBB；現為 hex 字串則直接使用
+            if (is_numeric($val) && !str_starts_with((string)$val, '#')) {
+                $tone['hex'] = '#' . strtoupper(str_pad(dechex((int)$val), 6, '0', STR_PAD_LEFT));
+            } else {
+                $tone['hex'] = $val;
+            }
         }
         if (isset($row['category'])) {
             $tone['category'] = $row['category'];

@@ -55,24 +55,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $profile = $stmt->fetch();
 }
 
+// 舊標籤 → 新標籤對應（相容歷史資料）
+$skinTypeLegacyMap = [
+    '乾燥肌' => '乾性皮',
+    '油性肌' => '油性皮',
+    '混合肌' => '混油皮',
+    '混合偏乾' => '混乾皮',
+    '中性肌' => '中性皮',
+    '敏感性肌' => '敏感肌',
+];
+$profileSkinType = $profile['skin_type'] ?? '';
+if (isset($skinTypeLegacyMap[$profileSkinType])) {
+    $profileSkinType = $skinTypeLegacyMap[$profileSkinType];
+}
+
 // 膚質選項
 $skinTypes = [
-    '乾燥肌' => '乾燥肌',
-    '油性肌' => '油性肌',
-    '混合肌' => '混合肌',
-    '中性肌' => '中性肌',
-    '敏感肌' => '敏感肌'
+    '乾性皮' => '乾性皮',
+    '混乾皮' => '混乾皮',
+    '中性皮' => '中性皮',
+    '混油皮' => '混油皮',
+    '油性皮' => '油性皮',
+    '敏感肌' => '敏感肌',
 ];
 
-// 膚色選項
+// 舊膚色標籤對應
+$skinToneLegacyMap = [
+    '中等淺' => '中一白',
+    '偏白'   => '中二白',
+    '偏深'   => '黃三白',
+    '中等'   => '黃一白',
+];
+$profileSkinTone = $profile['skin_tone'] ?? '';
+if (isset($skinToneLegacyMap[$profileSkinTone])) {
+    $profileSkinTone = $skinToneLegacyMap[$profileSkinTone];
+}
+
+// 膚色選項（來自資料庫）
 $skinTones = [
-    '非常淺' => '非常淺',
-    '淺色' => '淺色',
-    '中等淺' => '中等淺',
-    '中等' => '中等',
-    '中等深' => '中等深',
-    '深色' => '深色',
-    '非常深' => '非常深'
+    '中一白'   => '中一白',
+    '中二白'   => '中二白',
+    '中三白'   => '中三白',
+    '中性冷一白' => '中性冷一白',
+    '中性冷二白' => '中性冷二白',
+    '中性暖一白' => '中性暖一白',
+    '中性暖二白' => '中性暖二白',
+    '偏紅冷一白' => '偏紅冷一白',
+    '偏紅冷二白' => '偏紅冷二白',
+    '偏紅暖一白' => '偏紅暖一白',
+    '偏紅暖二白' => '偏紅暖二白',
+    '偏綠冷一白' => '偏綠冷一白',
+    '偏綠冷二白' => '偏綠冷二白',
+    '偏綠暖一白' => '偏綠暖一白',
+    '偏綠暖二白' => '偏綠暖二白',
+    '橄欖一白'  => '橄欖一白',
+    '橄欖二白'  => '橄欖二白',
+    '橄欖三白'  => '橄欖三白',
+    '粉一白'   => '粉一白',
+    '粉二白'   => '粉二白',
+    '粉三白'   => '粉三白',
+    '黃一白'   => '黃一白',
+    '黃二白'   => '黃二白',
+    '黃三白'   => '黃三白',
 ];
 
 // 肌膚問題選項
@@ -410,7 +454,7 @@ $skinConcernsList = [
             <?php if ($messageType === 'success' && $isNewUser): ?>
                 <script>
                     setTimeout(function() {
-                        window.location.href = '/sa/New-SA/產品/index.php';
+                        window.location.href = '/SA/New-SA/產品/index.php';
                     }, 1500);
                 </script>
             <?php endif; ?>
@@ -469,7 +513,7 @@ $skinConcernsList = [
                         <select id="skin_type" name="skin_type">
                             <option value="">請選擇膚質</option>
                             <?php foreach ($skinTypes as $key => $value): ?>
-                                <option value="<?php echo $key; ?>" <?php echo ($profile['skin_type'] ?? '') === $key ? 'selected' : ''; ?>>
+                                <option value="<?php echo $key; ?>" <?php echo $profileSkinType === $key ? 'selected' : ''; ?>>
                                     <?php echo $value; ?>
                                 </option>
                             <?php endforeach; ?>
@@ -481,7 +525,7 @@ $skinConcernsList = [
                         <select id="skin_tone" name="skin_tone">
                             <option value="">請選擇膚色</option>
                             <?php foreach ($skinTones as $key => $value): ?>
-                                <option value="<?php echo $key; ?>" <?php echo ($profile['skin_tone'] ?? '') === $key ? 'selected' : ''; ?>>
+                                <option value="<?php echo $key; ?>" <?php echo $profileSkinTone === $key ? 'selected' : ''; ?>>
                                     <?php echo $value; ?>
                                 </option>
                             <?php endforeach; ?>

@@ -56,7 +56,7 @@ $result = $conn->query($sql);
                 <div class="product-grid">
                 <?php 
                 $favorites = $_SESSION['favorite'] ?? [];
-                while($row = $result->fetch_assoc()){
+                while($row = $result->fetch()){
                     $isFav = in_array($row['p_id'], $favorites);
                 ?>
 

@@ -17,6 +17,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <a href="../產品/skin-match.php">膚色配對</a>
             <a href="../產品/compare.php">比較</a>
             <a href="../產品/favorite.php">收藏</a>
+            <a href="/SA/New-SA/首頁/video.php">影片交流</a>
         </div>
 
         <?php if (isset($_SESSION['user']) && trim((string)$_SESSION['user']) !== ''): ?>
