@@ -60,41 +60,71 @@
 
     <!-- 確認結果 -->
     <div class="p-5 md:p-6 border border-amber-100 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-            <h4 class="font-extrabold text-gray-900 text-lg">確認你的分析結果</h4>
-            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-amber-700 border border-amber-200">Confirm Step</span>
+        <div class="flex items-center justify-between mb-1">
+            <h4 class="font-extrabold text-gray-900 text-lg">✅ 確認你的分析結果</h4>
         </div>
-        <div class="grid md:grid-cols-2 gap-3">
+        <p class="text-sm text-gray-500 mb-4">請分別點擊下方兩個按鈕確認膚色與膚質，確認後才能進行下一步。</p>
+
+        <div class="grid md:grid-cols-2 gap-3 mb-4">
+            <!-- 確認膚色 -->
             <button type="button" @click="confirmSkinTone"
-                class="rounded-2xl border p-4 text-left transition-all duration-200"
-                :class="confirmedSkinTone ? 'border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-amber-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50'">
-                <p class="font-bold text-base">確認膚色</p>
-                <p class="text-sm mt-1">{{ confirmedSkinTone ? '已確認目前膚色結果' : '點我確認目前的膚色判定' }}</p>
+                class="rounded-2xl border p-4 text-left transition-all duration-200 relative"
+                :class="confirmedSkinTone
+                    ? 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm cursor-default'
+                    : 'border-amber-300 bg-white text-gray-700 hover:border-amber-400 hover:bg-amber-50 hover:shadow-md active:scale-[0.99]'">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-lg">{{ confirmedSkinTone ? '✅' : '⬜' }}</span>
+                    <p class="font-bold text-base">確認膚色</p>
+                </div>
+                <p class="text-sm text-gray-500 pl-7">
+                    {{ confirmedSkinTone ? '已確認 — 膚色判定完成' : '點此按鈕確認目前的膚色判定' }}
+                </p>
             </button>
+
+            <!-- 確認膚質 -->
             <button type="button" @click="confirmSkinType"
-                class="rounded-2xl border p-4 text-left transition-all duration-200"
-                :class="confirmedSkinType ? 'border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-amber-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50'">
-                <p class="font-bold text-base">確認膚質</p>
-                <p class="text-sm mt-1">{{ confirmedSkinType ? '已確認目前膚質結果' : '點我確認目前的膚質判定' }}</p>
+                class="rounded-2xl border p-4 text-left transition-all duration-200 relative"
+                :class="confirmedSkinType
+                    ? 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm cursor-default'
+                    : 'border-amber-300 bg-white text-gray-700 hover:border-amber-400 hover:bg-amber-50 hover:shadow-md active:scale-[0.99]'">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-lg">{{ confirmedSkinType ? '✅' : '⬜' }}</span>
+                    <p class="font-bold text-base">確認膚質</p>
+                </div>
+                <p class="text-sm text-gray-500 pl-7">
+                    {{ confirmedSkinType ? '已確認 — 膚質判定完成' : '點此按鈕確認目前的膚質判定' }}
+                </p>
             </button>
         </div>
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/90 border border-amber-100 p-4">
-            <div class="text-sm text-gray-600">
-                狀態：
-                <span class="font-semibold" :class="confirmedSkinTone ? 'text-emerald-600' : 'text-gray-400'">膚色已確認</span>
-                ／
-                <span class="font-semibold" :class="confirmedSkinType ? 'text-emerald-600' : 'text-gray-400'">膚質已確認</span>
-            </div>
+
+        <!-- 提示未確認 -->
+        <div v-if="!canChooseMakeupPreference" class="mb-3 px-4 py-2.5 rounded-xl bg-amber-100 border border-amber-200 text-sm text-amber-800">
+            ⚠️ 請先點擊上方兩個按鈕完成確認，再繼續下一步。
+        </div>
+
+        <!-- 操作列 -->
+        <div class="flex flex-wrap gap-2 justify-between items-center">
+            <button type="button" @click="backToToneAndSkinPage"
+                class="rounded-xl px-4 py-2.5 text-sm font-bold bg-white text-amber-700 border border-amber-200 hover:bg-amber-50 transition-all duration-200">
+                ← 重新拍照
+            </button>
             <div class="flex flex-wrap gap-2">
-                <button type="button" @click="backToToneAndSkinPage"
-                    class="rounded-xl px-4 py-2.5 text-sm font-bold bg-white text-amber-700 border border-amber-200 hover:bg-amber-50 transition-all duration-200">
-                    返回前一頁（測膚色與膚質）
+                <button type="button" @click="finishAndSave"
+                    class="rounded-xl px-4 py-2.5 text-sm font-bold border transition-all duration-200"
+                    :class="canChooseMakeupPreference
+                        ? 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                        : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'"
+                    :disabled="!canChooseMakeupPreference"
+                    title="跳過妝感偏好，直接儲存並查看推薦">
+                    直接查看產品推薦 →
                 </button>
                 <button type="button" @click="goToMakeupStep"
                     :disabled="!canChooseMakeupPreference"
                     class="rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200"
-                    :class="canChooseMakeupPreference ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
-                    前往妝感偏好頁
+                    :class="canChooseMakeupPreference
+                        ? 'bg-gray-900 text-white hover:bg-gray-800'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+                    選妝感偏好 →
                 </button>
             </div>
         </div>
