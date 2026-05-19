@@ -307,8 +307,8 @@ if ($view === 'personal') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>影片交流</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="/SA/New-SA/產品/style.css">
+    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="/SA/New-SA/產品/style.css?v=2">
     <style>
         * {
             margin: 0;

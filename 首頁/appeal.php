@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$appeal) {
 <title>影片申訴</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: '標楷體', 'BiauKai', 'DFKai-SB', 'KaiTi', serif; background: #f5f5f5; color: #333; }
+body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif; background: #f5f5f5; color: #333; }
 .container { max-width: 600px; margin: 60px auto; padding: 0 20px; }
 .card { background: #fff; border-radius: 16px; padding: 36px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
 h1 { font-size: 22px; margin-bottom: 6px; }

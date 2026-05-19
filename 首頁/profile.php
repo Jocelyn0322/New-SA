@@ -142,7 +142,7 @@ $skinConcernsList = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>個人資料</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <style>
         * {
             margin: 0;
@@ -151,7 +151,7 @@ $skinConcernsList = [
         }
 
         body {
-            font-family: '標楷體', 'BiauKai', 'DFKai-SB', 'KaiTi', serif;
+            font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
         }
