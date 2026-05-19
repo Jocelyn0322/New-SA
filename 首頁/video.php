@@ -297,7 +297,7 @@ if ($view === 'personal') {
         WHERE v.is_active = 1
         ORDER BY v.upload_time DESC
     ");
-    $stmt->execute([$_SESSION['user']]);
+    $stmt->execute([$_SESSION['user'] ?? null]);
     $videos = $stmt->fetchAll();
 }
 ?>

@@ -107,21 +107,6 @@ while($row = $result->fetch_assoc()){
         </div>
     </div>
 </div>
-<?php if(!empty($products)){ ?>
-<tr>
-    <td><strong>可用色號</strong></td>
-    <?php foreach($products as $p){ ?>
-        <td>
-            <?php
-            $colors = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$p['p_id']} LIMIT 3");
-            while($c = $colors->fetch_assoc()){
-                echo '<div style="width:24px; height:24px; background:'.$c['color_hex'].'; border-radius:50%; margin:3px; display:inline-block;" title="'.$c['color_name'].'"></div>';
-            }
-            ?>
-        </td>
-    <?php } ?>
-</tr>
-<?php } ?>
 
 <?php include 'footer.php'; ?>
 

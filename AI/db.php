@@ -1,33 +1,42 @@
 <?php
-// 資料庫設定資訊
-$host = 'localhost';          // 主機名稱，本機開發通常是 localhost
-$db   = 'makeupmakeup';       // 這是你剛剛在 phpMyAdmin 建立的名稱
-$user = 'root';               // 預設帳號通常是 root
-$pass = '';                   // XAMPP 預設密碼是空的；MAMP 可能是 'root'
-$charset = 'utf8mb4';         // 務必與 SQL 檔案中的編碼一致
+$host    = '127.0.0.1';
+$db      = 'sa_db';
+$user    = 'root';
+$pass    = '';
+$charset = 'utf8mb4';
 
-// 設定 DSN (Data Source Name)
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+// 實際試 MySQL 連線偵測 port（3307 先試，再 3306）
+$port = null;
+foreach ([3307, 3306] as $try_port) {
+    try {
+        $test = new PDO(
+            "mysql:host=$host;port=$try_port;charset=$charset",
+            $user, $pass,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        $port = $try_port;
+        $test = null;
+        break;
+    } catch (PDOException $e) {
+        continue;
+    }
+}
+if (!$port) die("找不到可用的 MySQL 服務（已試 3307/3306）");
 
-// 連線選項
 $options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // 開啟錯誤報告
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // 設定讀取資料為關聯陣列
-    PDO::ATTR_EMULATE_PREPARES   => false,                  // 關閉模擬預編譯，增加安全性
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
 ];
 
 try {
-    // PDO：給新 API 與預備語句使用
-    $pdo = new PDO($dsn, $user, $pass, $options);
-
-    // mysqli：相容既有頁面（例如 index.php 使用 $conn->query）
-    $conn = new mysqli($host, $user, $pass, $db);
+    $pdo  = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=$charset", $user, $pass, $options);
+    $conn = new mysqli($host, $user, $pass, $db, $port);
     if ($conn->connect_error) {
         throw new RuntimeException('mysqli 連線失敗：' . $conn->connect_error);
     }
     $conn->set_charset($charset);
 } catch (\PDOException $e) {
-    // 如果連線失敗，顯示錯誤訊息
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 } catch (\RuntimeException $e) {
     throw $e;

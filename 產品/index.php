@@ -160,29 +160,3 @@ $result = $conn->query($sql);
     </script>
 </body>
 </html>
-        }
-
-        function goToSlide(index) {
-            showSlide(index);
-            resetAutoSlide();
-        }
-
-        function startAutoSlide() {
-            autoSlide = setInterval(() => {
-                let newIndex = currentSlide + 1;
-                if (newIndex >= slides.length) {
-                    newIndex = 0;
-                }
-                showSlide(newIndex);
-            }, 3000);
-        }
-
-        function resetAutoSlide() {
-            clearInterval(autoSlide);
-            startAutoSlide();
-        }
-
-        startAutoSlide();
-    </script>
-</body>
-</html>
