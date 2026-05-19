@@ -278,9 +278,10 @@ if ($tab === 'comments') {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>管理後台</title>
+@import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-tc-webfont@latest/style.css');
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: '標楷體', 'BiauKai', 'DFKai-SB', 'KaiTi', serif; background: #f5f0f0; color: #3a2a2a; font-size: 15px; }
+body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif; background: #f5f0f0; color: #3a2a2a; font-size: 15px; }
 
 /* ── Topbar ── */
 .adm-topbar {

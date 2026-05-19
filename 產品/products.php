@@ -42,7 +42,7 @@ $categories_result = $conn->query($categories_sql);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <title>產品列表</title>
 </head>
 

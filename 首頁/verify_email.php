@@ -69,7 +69,7 @@ $userRow = $stmt->fetch();
 <head>
     <meta charset="UTF-8">
     <title>Email 驗證</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <style>
         .verify-container {
             max-width: 500px;
