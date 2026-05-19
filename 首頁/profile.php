@@ -55,6 +55,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $profile = $stmt->fetch();
 }
 
+// 舊標籤 → 新標籤對應（相容歷史資料）
+$skinTypeLegacyMap = [
+    '乾燥肌' => '乾性皮',
+    '油性肌' => '油性皮',
+    '混合肌' => '混油皮',
+    '混合偏乾' => '混乾皮',
+    '中性肌' => '中性皮',
+    '敏感性肌' => '敏感肌',
+];
+$profileSkinType = $profile['skin_type'] ?? '';
+if (isset($skinTypeLegacyMap[$profileSkinType])) {
+    $profileSkinType = $skinTypeLegacyMap[$profileSkinType];
+}
+
 // 膚質選項
 $skinTypes = [
     '乾性皮' => '乾性皮',
@@ -64,6 +78,18 @@ $skinTypes = [
     '油性皮' => '油性皮',
     '敏感肌' => '敏感肌',
 ];
+
+// 舊膚色標籤對應
+$skinToneLegacyMap = [
+    '中等淺' => '中一白',
+    '偏白'   => '中二白',
+    '偏深'   => '黃三白',
+    '中等'   => '黃一白',
+];
+$profileSkinTone = $profile['skin_tone'] ?? '';
+if (isset($skinToneLegacyMap[$profileSkinTone])) {
+    $profileSkinTone = $skinToneLegacyMap[$profileSkinTone];
+}
 
 // 膚色選項（來自資料庫）
 $skinTones = [
@@ -125,7 +151,7 @@ $skinConcernsList = [
         }
 
         body {
-            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            font-family: '標楷體', 'BiauKai', 'DFKai-SB', 'KaiTi', serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
         }
@@ -488,7 +514,7 @@ $skinConcernsList = [
                         <select id="skin_type" name="skin_type">
                             <option value="">請選擇膚質</option>
                             <?php foreach ($skinTypes as $key => $value): ?>
-                                <option value="<?php echo $key; ?>" <?php echo ($profile['skin_type'] ?? '') === $key ? 'selected' : ''; ?>>
+                                <option value="<?php echo $key; ?>" <?php echo $profileSkinType === $key ? 'selected' : ''; ?>>
                                     <?php echo $value; ?>
                                 </option>
                             <?php endforeach; ?>
@@ -500,7 +526,7 @@ $skinConcernsList = [
                         <select id="skin_tone" name="skin_tone">
                             <option value="">請選擇膚色</option>
                             <?php foreach ($skinTones as $key => $value): ?>
-                                <option value="<?php echo $key; ?>" <?php echo ($profile['skin_tone'] ?? '') === $key ? 'selected' : ''; ?>>
+                                <option value="<?php echo $key; ?>" <?php echo $profileSkinTone === $key ? 'selected' : ''; ?>>
                                     <?php echo $value; ?>
                                 </option>
                             <?php endforeach; ?>
