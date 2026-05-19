@@ -252,6 +252,7 @@ const analyzeWithGroq = async () => {
 
         await loadFeedbackHistory();
         currentStep.value = 4;
+        await saveProfileSilent();
     } catch (error) {
         console.error('Groq analysis failed:', error);
         alert(`AI 膚質分析失敗：${error.message}`);
@@ -333,11 +334,70 @@ const finishAndSave = async () => {
     }
 };
 
+// ── Auto-save profile (silent, logged-in users only) ─────────────
+const showSaveToast = (msg, isError = false) => {
+    const prev = document.getElementById('skin-save-toast');
+    if (prev) prev.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'skin-save-toast';
+    toast.textContent = msg;
+    toast.style.cssText = [
+        'position:fixed', 'bottom:28px', 'left:50%', 'transform:translateX(-50%)',
+        'background:' + (isError ? '#c0927a' : '#9a86b8'),
+        'color:#fff', 'padding:10px 22px', 'border-radius:20px',
+        'font-size:14px', 'font-weight:600', 'z-index:9999',
+        'box-shadow:0 4px 16px rgba(0,0,0,.15)', 'opacity:1',
+        'transition:opacity .4s ease'
+    ].join(';');
+    document.body.appendChild(toast);
+
+    setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+    setTimeout(() => { toast.remove(); }, 2700);
+};
+
+const saveProfileSilent = async () => {
+    const skinTypeVal = manualSkinType.value
+        || (typeof skinTypeResult.value === 'object' ? skinTypeResult.value?.profile?.displayName : skinTypeResult.value)
+        || '';
+    const skinToneVal = skinCoordinate.value?.type || '';
+    const concerns = [];
+    if (manualSensitiveSkin.value || skinTypeSecondary.value === '敏感肌') concerns.push('敏感肌');
+
+    try {
+        const resp = await fetch('./saveAnalysisResult.php', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ skinType: skinTypeVal, skinTone: skinToneVal, skinConcerns: concerns.join(', ') })
+        });
+        const result = await resp.json().catch(() => ({}));
+        console.log('[saveProfileSilent]', result, { skinTypeVal, skinToneVal });
+        if (result.loggedIn && result.success) {
+            showSaveToast('✓ 膚質已自動儲存到您的個人資料');
+        } else if (result.loggedIn === false) {
+            // 未登入，不顯示提示
+        } else {
+            showSaveToast('⚠ 儲存失敗：' + (result.error || JSON.stringify(result)), true);
+        }
+    } catch (err) {
+        console.error('[saveProfileSilent] fetch error:', err);
+        showSaveToast('⚠ 儲存失敗（網路錯誤）', true);
+    }
+};
+
 // ── Manual analysis (no camera) ──────────────────────────────────
 const analyzeManual = async () => {
-    if (!skinTone.value)       { alert('請選擇膚色類型'); return; }
     if (!manualSkinType.value) { alert('請選擇膚質（手動輸入）'); return; }
+    // 若問卷流程沒有膚色，用問卷推測值填入
+    if (!skinTone.value && toneGuess.value) {
+        const keywordMap = { '偏冷調': ['冷'], '偏暖調': ['暖', '黃'], '中性調': ['中性', '中'] };
+        const keywords = keywordMap[toneGuess.value] || [];
+        const matched = skinTonesData.value.find(t => keywords.some(k => String(t.toneName || '').includes(k)));
+        if (matched?.toneName) skinTone.value = matched.toneName;
+    }
+    if (!skinTone.value) { alert('請選擇膚色類型'); return; }
     await analyzeSkinTone();
+    await saveProfileSilent();
 };
 
 const analyzeSkinTone = async () => {
