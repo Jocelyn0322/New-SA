@@ -61,6 +61,16 @@ if(!$row){
 
 $favorites = $_SESSION['favorite'] ?? [];
 $isFav = in_array($row['p_id'], $favorites);
+
+// 累加觀看數（同一 session 同一產品只算一次）
+$viewedKey = 'viewed_product_' . $id;
+if (empty($_SESSION[$viewedKey])) {
+    $_SESSION[$viewedKey] = true;
+    try {
+        $pdo->prepare("UPDATE products SET view_count = view_count + 1 WHERE p_id = ?")
+            ->execute([$id]);
+    } catch (Exception $e) { /* view_count 欄位尚未建立時跳過 */ }
+}
 ?>
 
 <div class="product-detail">

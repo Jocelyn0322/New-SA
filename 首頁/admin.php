@@ -111,6 +111,34 @@ if (isset($_POST['review_submission'])) {
     $tab = 'products';
 }
 
+// 存入本月排名快照
+if (isset($_POST['save_monthly_ranking'])) {
+    $month = date('Y-m');
+    try {
+        // 刪除同月舊快照
+        $pdo->prepare("DELETE FROM monthly_rankings WHERE month = ?")->execute([$month]);
+
+        $types = [
+            'product_views' => "SELECT p_id AS item_id, name AS item_name, view_count AS score FROM products ORDER BY view_count DESC LIMIT 10",
+            'product_favs'  => "SELECT p.p_id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM products p LEFT JOIN product_favorites f ON f.product_id = p.p_id GROUP BY p.p_id, p.name ORDER BY score DESC LIMIT 10",
+            'video_views'   => "SELECT id AS item_id, title AS item_name, view_count AS score FROM videos WHERE is_active = 1 ORDER BY view_count DESC LIMIT 10",
+            'video_likes'   => "SELECT v.id AS item_id, v.title AS item_name, COUNT(l.id) AS score FROM videos v LEFT JOIN likes l ON l.video_id = v.id WHERE v.is_active = 1 GROUP BY v.id, v.title ORDER BY score DESC LIMIT 10",
+        ];
+
+        $ins = $pdo->prepare("INSERT INTO monthly_rankings (month, rank_type, rank_no, item_id, item_name, score) VALUES (?,?,?,?,?,?)");
+        foreach ($types as $type => $sql) {
+            $rows = $pdo->query($sql)->fetchAll();
+            foreach ($rows as $i => $r) {
+                $ins->execute([$month, $type, $i + 1, $r['item_id'], $r['item_name'], $r['score']]);
+            }
+        }
+        $msg = "✅ 已儲存 {$month} 的排名快照"; $msgType = 'success';
+    } catch (Throwable $e) {
+        $msg = '❌ 儲存失敗：' . $e->getMessage(); $msgType = 'error';
+    }
+    $tab = 'stats';
+}
+
 // 標記檢舉為已處理
 if (isset($_POST['dismiss_report'])) {
     $vid = (int)$_POST['video_id'];
@@ -156,6 +184,23 @@ if ($tab === 'stats') {
     $stats['reports']  = $pdo->query("SELECT COUNT(*) FROM video_reports WHERE status = 'pending'")->fetchColumn();
     $stats['new_users_week']   = $pdo->query("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")->fetchColumn();
     $stats['pending_products'] = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status = 'pending'")->fetchColumn();
+
+    // 排名資料
+    try {
+        $rankData['product_views'] = $pdo->query("SELECT p_id AS item_id, name AS item_name, view_count AS score FROM products ORDER BY view_count DESC LIMIT 10")->fetchAll();
+        $rankData['product_favs']  = $pdo->query("SELECT p.p_id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM products p LEFT JOIN product_favorites f ON f.product_id = p.p_id GROUP BY p.p_id, p.name ORDER BY score DESC LIMIT 10")->fetchAll();
+        $rankData['video_views']   = $pdo->query("SELECT id AS item_id, title AS item_name, view_count AS score FROM videos WHERE is_active = 1 ORDER BY view_count DESC LIMIT 10")->fetchAll();
+        $rankData['video_likes']   = $pdo->query("SELECT v.id AS item_id, v.title AS item_name, COUNT(l.id) AS score FROM videos v LEFT JOIN likes l ON l.video_id = v.id WHERE v.is_active = 1 GROUP BY v.id, v.title ORDER BY score DESC LIMIT 10")->fetchAll();
+        $lastMonth = date('Y-m', strtotime('first day of last month'));
+        $lastMonthRows = $pdo->prepare("SELECT * FROM monthly_rankings WHERE month = ? ORDER BY rank_type, rank_no");
+        $lastMonthRows->execute([$lastMonth]);
+        $lastMonthData = [];
+        foreach ($lastMonthRows->fetchAll() as $r) {
+            $lastMonthData[$r['rank_type']][] = $r;
+        }
+    } catch (Throwable $e) {
+        $rankData = []; $lastMonthData = [];
+    }
 }
 
 if ($tab === 'videos') {
@@ -235,73 +280,90 @@ if ($tab === 'comments') {
 <title>管理後台</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
+body { font-family: '標楷體', 'BiauKai', 'DFKai-SB', 'KaiTi', serif; background: #f5f0f0; color: #3a2a2a; font-size: 15px; }
 
+/* ── Topbar ── */
 .adm-topbar {
-    background: #1a1a2e; color: #fff;
-    padding: 0 28px; height: 56px;
+    background: #fff;
+    border-bottom: 1px solid #f0e8e8;
+    padding: 0 32px; height: 60px;
     display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 1px 6px rgba(180,100,110,0.07);
 }
-.adm-topbar-logo { font-size: 18px; font-weight: 700; letter-spacing: 1px; }
-.adm-topbar-right { display: flex; align-items: center; gap: 16px; font-size: 13px; }
-.adm-topbar-right a { color: #ccc; text-decoration: none; padding: 6px 12px; border-radius: 6px; transition: background 0.2s; }
-.adm-topbar-right a:hover { background: rgba(255,255,255,0.12); color: #fff; }
-.logout-btn { background: rgba(220,53,69,0.2) !important; color: #ff8a96 !important; }
-.logout-btn:hover { background: rgba(220,53,69,0.4) !important; color: #fff !important; }
+.adm-topbar-logo { font-size: 17px; font-weight: 700; color: #c47a8a; letter-spacing: .5px; }
+.adm-topbar-right { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9a8080; }
+.adm-topbar-right a { color: #7a6060; text-decoration: none; padding: 7px 14px; border-radius: 8px; transition: background 0.2s; font-weight: 500; }
+.adm-topbar-right a:hover { background: #f5eeee; color: #c47a8a; }
+.logout-btn { color: #c47a8a !important; border: 1px solid #ecd8da !important; }
+.logout-btn:hover { background: #fdf0f1 !important; }
 
-.adm-tabs { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 28px; display: flex; gap: 4px; }
-.adm-tab { display: inline-block; padding: 14px 20px; text-decoration: none; color: #666; font-size: 14px; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.2s; }
-.adm-tab:hover { color: #e83e5a; }
-.adm-tab.active { color: #e83e5a; border-bottom-color: #e83e5a; }
+/* ── Tabs ── */
+.adm-tabs { background: #fff; border-bottom: 1px solid #f0e8e8; padding: 0 32px; display: flex; gap: 2px; }
+.adm-tab { display: inline-block; padding: 15px 18px; text-decoration: none; color: #9a8080; font-size: 13px; font-weight: 600; border-bottom: 2.5px solid transparent; transition: all 0.2s; letter-spacing: .2px; }
+.adm-tab:hover { color: #c47a8a; }
+.adm-tab.active { color: #c47a8a; border-bottom-color: #c47a8a; }
 
-.adm-content { max-width: 1200px; margin: 28px auto; padding: 0 20px; }
-.adm-msg { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
-.adm-msg.success { background: #d4edda; color: #155724; }
-.adm-msg.error   { background: #f8d7da; color: #721c24; }
+/* ── Content ── */
+.adm-content { max-width: 1160px; margin: 28px auto; padding: 0 24px; }
+.adm-msg { padding: 13px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; font-weight: 500; }
+.adm-msg.success { background: #eef7f1; color: #4a8a62; border-left: 3px solid #7aba96; }
+.adm-msg.error   { background: #fdf0f0; color: #a05050; border-left: 3px solid #d08888; }
 
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
-.stat-card { background: #fff; border-radius: 12px; padding: 22px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
-.stat-num { font-size: 36px; font-weight: 800; color: #e83e5a; line-height: 1; margin-bottom: 6px; }
-.stat-label { font-size: 13px; color: #888; }
+/* ── Stat cards ── */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+@media(max-width:800px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
+.stat-card { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 2px 10px rgba(180,100,110,0.07); display: flex; align-items: center; gap: 16px; border: 1px solid #f5eeee; }
+.stat-icon { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.stat-body { min-width: 0; }
+.stat-num { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.stat-label { font-size: 12px; color: #b09090; font-weight: 500; letter-spacing: .2px; white-space: nowrap; }
 
-.section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #222; }
+/* ── Section title ── */
+.section-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #3a2a2a; letter-spacing: .3px; }
 
-.adm-table-wrap { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; }
-.adm-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.adm-table th { background: #f8f8f8; padding: 12px 16px; text-align: left; font-weight: 600; color: #555; border-bottom: 1px solid #eee; }
-.adm-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+/* ── Table ── */
+.adm-table-wrap { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(180,100,110,0.06); overflow: hidden; border: 1px solid #f5eeee; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adm-table th { background: #fdf8f8; padding: 12px 16px; text-align: left; font-weight: 600; color: #9a7878; border-bottom: 1px solid #f0e8e8; font-size: 12px; letter-spacing: .3px; }
+.adm-table td { padding: 12px 16px; border-bottom: 1px solid #f8f0f0; vertical-align: middle; color: #4a3535; }
 .adm-table tbody tr:last-child td { border-bottom: none; }
-.adm-table tbody tr:hover { background: #fafafa; }
+.adm-table tbody tr:hover { background: #fdf8f8; }
 
-.btn-del  { background: #dc3545; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
-.btn-del:hover { background: #c82333; }
-.btn-role { background: #6c757d; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
-.btn-role:hover { background: #545b62; }
-.btn-role.is-admin { background: #0069d9; }
-.btn-role.is-admin:hover { background: #0056b3; }
-.btn-ok { background: #28a745; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
-.btn-ok:hover { background: #218838; }
+/* ── Buttons ── */
+.btn-del  { background: #f0e0e0; color: #a05050; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+.btn-del:hover { background: #c47878; color: #fff; }
+.btn-role { background: #ece8f0; color: #6a5a80; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+.btn-role:hover { background: #8a78a8; color: #fff; }
+.btn-role.is-admin { background: #dceaf8; color: #3a6a9a; }
+.btn-role.is-admin:hover { background: #5a8ab8; color: #fff; }
+.btn-ok { background: #e0f0e8; color: #4a8060; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+.btn-ok:hover { background: #6aaa84; color: #fff; }
 
+/* ── Search ── */
 .search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
-.search-bar input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-.search-bar button { padding: 10px 20px; background: #e83e5a; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.search-bar input { flex: 1; padding: 10px 14px; border: 1.5px solid #f0e4e4; border-radius: 10px; font-size: 13px; font-family: inherit; color: #4a3535; outline: none; transition: border .2s; background: #fff; }
+.search-bar input:focus { border-color: #d4a0a8; }
+.search-bar button { padding: 10px 22px; background: #c47a8a; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: background .2s; }
+.search-bar button:hover { background: #a85e70; }
 
-.badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-.badge-admin { background: #cce5ff; color: #004085; }
-.badge-user  { background: #e2e3e5; color: #383d41; }
-.badge-ok    { background: #d4edda; color: #155724; }
-.badge-no    { background: #f8d7da; color: #721c24; }
-.badge-warn  { background: #fff3cd; color: #856404; }
+/* ── Badges ── */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .2px; }
+.badge-admin { background: #dceaf8; color: #3a6090; }
+.badge-user  { background: #f0ecec; color: #7a6060; }
+.badge-ok    { background: #e0f0e8; color: #4a8060; }
+.badge-no    { background: #f8e8e8; color: #a05050; }
+.badge-warn  { background: #fdf3e0; color: #9a7030; }
 
-.adm-empty { text-align: center; padding: 50px 20px; color: #bbb; }
-.adm-empty-icon { font-size: 40px; margin-bottom: 12px; }
+/* ── Empty state ── */
+.adm-empty { text-align: center; padding: 50px 20px; color: #c8b0b0; }
+.adm-empty-icon { font-size: 38px; margin-bottom: 12px; }
 
-/* 檢舉展開區塊 */
-.report-detail { background: #fafafa; padding: 14px 16px; margin-top: 8px; border-radius: 8px; border: 1px solid #eee; font-size: 13px; }
-.report-detail-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+/* ── Report detail ── */
+.report-detail { background: #fdf8f8; padding: 14px 16px; margin-top: 8px; border-radius: 10px; border: 1px solid #f0e4e4; font-size: 13px; }
+.report-detail-item { padding: 8px 0; border-bottom: 1px solid #f5eaea; }
 .report-detail-item:last-child { border-bottom: none; }
 
-/* 留言內容截斷 */
+/* ── Comment ── */
 .comment-content { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -310,7 +372,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <body>
 
 <div class="adm-topbar">
-    <div class="adm-topbar-logo">🎀 彩妝管理後台</div>
+    <div class="adm-topbar-logo">Cosmetic後台</div>
     <div class="adm-topbar-right">
         <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
         <a href="/SA/New-SA/產品/index.php">← 返回網站</a>
@@ -319,13 +381,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <div class="adm-tabs">
-    <a href="?tab=stats"    class="adm-tab <?php echo $tab==='stats'    ? 'active':''; ?>">📊 數據總覽</a>
-    <a href="?tab=videos"   class="adm-tab <?php echo $tab==='videos'   ? 'active':''; ?>">🎬 影片管理</a>
-    <a href="?tab=comments" class="adm-tab <?php echo $tab==='comments' ? 'active':''; ?>">💬 留言管理</a>
-    <a href="?tab=reports"  class="adm-tab <?php echo $tab==='reports'  ? 'active':''; ?>">🚨 檢舉管理</a>
-    <a href="?tab=users"    class="adm-tab <?php echo $tab==='users'    ? 'active':''; ?>">👥 會員管理</a>
+    <a href="?tab=stats"    class="adm-tab <?php echo $tab==='stats'    ? 'active':''; ?>"> 數據總覽</a>
+    <a href="?tab=videos"   class="adm-tab <?php echo $tab==='videos'   ? 'active':''; ?>"> 影片管理</a>
+    <a href="?tab=comments" class="adm-tab <?php echo $tab==='comments' ? 'active':''; ?>"> 留言管理</a>
+    <a href="?tab=reports"  class="adm-tab <?php echo $tab==='reports'  ? 'active':''; ?>"> 檢舉管理</a>
+    <a href="?tab=users"    class="adm-tab <?php echo $tab==='users'    ? 'active':''; ?>"> 會員管理</a>
     <a href="?tab=products" class="adm-tab <?php echo $tab==='products' ? 'active':''; ?>" style="position:relative;">
-        🛍️ 商品審核
+        商品審核
         <?php
         $badgeCount = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status='pending'")->fetchColumn();
         if ($badgeCount > 0): ?>
@@ -344,47 +406,172 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- ══════════ 數據總覽 ══════════ -->
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-num"><?php echo $stats['users']; ?></div>
-        <div class="stat-label">總使用者</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-num" style="color:#0069d9;"><?php echo $stats['new_users_week']; ?></div>
-        <div class="stat-label">本週新增會員</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-num"><?php echo $stats['videos']; ?></div>
-        <div class="stat-label">影片總數</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-num" style="color:#6f42c1;"><?php echo $stats['comments']; ?></div>
-        <div class="stat-label">總留言數</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-num" style="color:<?php echo $stats['reports'] > 0 ? '#c82333' : '#28a745'; ?>">
-            <?php echo $stats['reports']; ?>
+        <div class="stat-icon" style="background:#fdeaed;">👥</div>
+        <div class="stat-body">
+            <div class="stat-num" style="color:#c47a8a;"><?php echo $stats['users']; ?></div>
+            <div class="stat-label">總使用者</div>
         </div>
-        <div class="stat-label">待處理檢舉</div>
     </div>
     <div class="stat-card">
-        <div class="stat-num" style="color:<?php echo $stats['pending_products'] > 0 ? '#e67e22' : '#28a745'; ?>">
-            <?php echo $stats['pending_products']; ?>
+        <div class="stat-icon" style="background:#e8f0fa;">✨</div>
+        <div class="stat-body">
+            <div class="stat-num" style="color:#6a90c4;"><?php echo $stats['new_users_week']; ?></div>
+            <div class="stat-label">本週新增會員</div>
         </div>
-        <div class="stat-label">待審核商品</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#f0ebfa;">🎬</div>
+        <div class="stat-body">
+            <div class="stat-num" style="color:#9a78c4;"><?php echo $stats['videos']; ?></div>
+            <div class="stat-label">影片總數</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#eaf5ee;">💬</div>
+        <div class="stat-body">
+            <div class="stat-num" style="color:#6aaa84;"><?php echo $stats['comments']; ?></div>
+            <div class="stat-label">總留言數</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:<?php echo $stats['reports']>0?'#fde8e8':'#eaf5ee'; ?>;">🚨</div>
+        <div class="stat-body">
+            <div class="stat-num" style="color:<?php echo $stats['reports']>0?'#c47878':'#6aaa84'; ?>;"><?php echo $stats['reports']; ?></div>
+            <div class="stat-label">待處理檢舉
+                <?php if($stats['reports']>0): ?><a href="?tab=reports" style="color:#c47878;font-size:11px;margin-left:4px;">→ 處理</a><?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:<?php echo $stats['pending_products']>0?'#fdf0e8':'#eaf5ee'; ?>;">🛍️</div>
+        <div class="stat-body">
+            <div class="stat-num" style="color:<?php echo $stats['pending_products']>0?'#c4946a':'#6aaa84'; ?>;"><?php echo $stats['pending_products']; ?></div>
+            <div class="stat-label">待審核商品
+                <?php if($stats['pending_products']>0): ?><a href="?tab=products" style="color:#c4946a;font-size:11px;margin-left:4px;">→ 審核</a><?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
 
-<?php if ($stats['reports'] > 0): ?>
-<div style="background:#fff3cd;color:#856404;border-radius:10px;padding:14px 20px;margin-bottom:12px;font-size:14px;">
-    ⚠️ 目前有 <strong><?php echo $stats['reports']; ?></strong> 件待處理的影片檢舉，
-    <a href="?tab=reports" style="color:#c82333;font-weight:600;">前往處理 →</a>
-</div>
-<?php endif; ?>
+<!-- ══════════ 排名統計 ══════════ -->
+<style>
+.rank-section-header { display:flex; align-items:center; justify-content:space-between; margin:36px 0 16px; flex-wrap:wrap; gap:12px; }
+.rank-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:8px; }
+@media(max-width:700px){ .rank-grid { grid-template-columns:1fr; } }
+.rank-block { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(180,100,110,0.07); overflow:hidden; border:1px solid #f5eeee; }
+.rank-block-title { padding:13px 18px; font-weight:700; font-size:11px; display:flex; align-items:center; gap:8px; border-bottom:1px solid #faf0f0; letter-spacing:.5px; text-transform:uppercase; }
+.rank-block-title .title-icon { font-size:14px; }
+.rank-block-title .title-text { flex:1; }
+.rank-block-title .title-count { font-size:10px; font-weight:500; opacity:.45; background:rgba(0,0,0,0.04); border-radius:4px; padding:1px 6px; }
+.rank-row { display:flex; align-items:center; gap:12px; padding:10px 18px; border-bottom:1px solid #faf4f4; font-size:13px; text-decoration:none; color:inherit; transition:background .12s; }
+.rank-row:last-child { border-bottom:none; }
+.rank-row:hover { background:#fdf8f8; }
+.rank-medal { min-width:20px; text-align:center; font-size:15px; line-height:1; }
+.rank-no { min-width:20px; text-align:center; font-size:12px; color:#d0b8b8; font-weight:700; }
+.rank-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#5a3a3a; font-size:13px; }
+.rank-score { font-size:11px; font-weight:700; white-space:nowrap; padding:3px 10px; border-radius:20px; letter-spacing:.2px; }
+.rank-empty { padding:22px 18px; color:#d0b8b8; font-size:12px; text-align:center; }
+.rank-more { display:none; }
+.rank-toggle { width:100%; background:none; border:none; border-top:1px solid #faf0f0; padding:9px; font-size:11px; color:#c8aaaa; cursor:pointer; text-align:center; transition:color .15s; font-family:inherit; font-weight:600; letter-spacing:.3px; }
+.rank-toggle:hover { color:#c47a8a; background:#fdf8f8; }
+.snap-btn { background:#fff; color:#c47a8a; border:1.5px solid #ecd8da; border-radius:10px; padding:9px 18px; cursor:pointer; font-size:12px; font-weight:700; font-family:inherit; transition:all .2s; letter-spacing:.3px; }
+.snap-btn:hover { background:#fdf0f1; border-color:#d4a0a8; }
+.rank-last-header { display:flex; align-items:center; gap:10px; margin:32px 0 14px; }
+.rank-last-header h3 { font-size:15px; font-weight:700; color:#3a2a2a; margin:0; }
+.rank-last-header span { font-size:11px; color:#b09090; background:#f5eeee; border-radius:6px; padding:2px 10px; font-weight:500; }
+</style>
 
-<?php if ($stats['pending_products'] > 0): ?>
-<div style="background:#fff8f0;color:#b7600a;border-radius:10px;padding:14px 20px;margin-bottom:24px;font-size:14px;">
-    🛍️ 目前有 <strong><?php echo $stats['pending_products']; ?></strong> 件商品申請待審核，
-    <a href="?tab=products" style="color:#e67e22;font-weight:600;">前往審核 →</a>
+<?php
+$rankLabels = [
+    'product_views' => ['label'=>'產品・觀看數', 'icon'=>'👁️', 'hdr_bg'=>'#fff5f5', 'hdr_color'=>'#c47a7a', 'score_bg'=>'#fdeaea', 'score_color'=>'#c47a7a', 'unit'=>'次', 'link'=>'../產品/product.php?id='],
+    'product_favs'  => ['label'=>'產品・收藏數', 'icon'=>'🤍', 'hdr_bg'=>'#fff8f0', 'hdr_color'=>'#c4986a', 'score_bg'=>'#fdeedd', 'score_color'=>'#c4986a', 'unit'=>'人', 'link'=>'../產品/product.php?id='],
+    'video_views'   => ['label'=>'影片・觀看數', 'icon'=>'▶️', 'hdr_bg'=>'#f0f6fc', 'hdr_color'=>'#5a90b8', 'score_bg'=>'#deedf8', 'score_color'=>'#5a90b8', 'unit'=>'次', 'link'=>'video.php?video='],
+    'video_likes'   => ['label'=>'影片・按讚數', 'icon'=>'💜', 'hdr_bg'=>'#f6f3fc', 'hdr_color'=>'#8a72b8', 'score_bg'=>'#ebe5f8', 'score_color'=>'#8a72b8', 'unit'=>'讚', 'link'=>'video.php?video='],
+];
+$medals = ['🥇','🥈','🥉'];
+?>
+
+<div class="rank-section-header">
+    <div class="section-title" style="margin:0;">🏆 排名統計</div>
+    <form method="post" onsubmit="return confirm('存入 <?php echo date('Y-m'); ?> 的排名快照？');">
+        <button type="submit" name="save_monthly_ranking" value="1" class="snap-btn">📸 存入本月快照</button>
+    </form>
 </div>
+
+<div class="rank-grid">
+<?php foreach ($rankLabels as $type => $info): ?>
+<div class="rank-block">
+    <div class="rank-block-title" style="background:<?php echo $info['hdr_bg']; ?>; color:<?php echo $info['hdr_color']; ?>;">
+        <span class="title-icon"><?php echo $info['icon']; ?></span>
+        <span class="title-text"><?php echo $info['label']; ?></span>
+        <span class="title-count">TOP 10</span>
+    </div>
+    <?php if (empty($rankData[$type])): ?>
+        <div class="rank-empty">尚無資料</div>
+    <?php else: ?>
+        <?php $hasMore = count($rankData[$type]) > 3; $uid = $type . '_now'; ?>
+        <?php foreach ($rankData[$type] as $i => $r): ?>
+        <a class="rank-row <?php echo $i >= 3 ? 'rank-more' : ''; ?>" data-group="<?php echo $uid; ?>"
+           href="<?php echo $info['link'] . (int)$r['item_id']; ?>" target="_blank">
+            <?php if ($i < 3): ?>
+                <span class="rank-medal"><?php echo $medals[$i]; ?></span>
+            <?php else: ?>
+                <span class="rank-no"><?php echo $i + 1; ?></span>
+            <?php endif; ?>
+            <span class="rank-name" title="<?php echo htmlspecialchars($r['item_name']); ?>"><?php echo htmlspecialchars($r['item_name']); ?></span>
+            <span class="rank-score" style="background:<?php echo $info['score_bg']; ?>;color:<?php echo $info['score_color']; ?>;"><?php echo (int)$r['score']; ?> <?php echo $info['unit']; ?></span>
+        </a>
+        <?php endforeach; ?>
+        <?php if ($hasMore): ?>
+        <button class="rank-toggle" onclick="toggleRank('<?php echo $uid; ?>', this)">▾ 查看更多</button>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>
+<?php endforeach; ?>
+</div>
+
+<!-- 上個月快照 -->
+<?php $lastMonth = date('Y-m', strtotime('first day of last month')); ?>
+<div class="rank-last-header">
+    <h3>上個月排名</h3>
+    <span><?php echo $lastMonth; ?></span>
+</div>
+<?php if (empty($lastMonthData)): ?>
+    <div style="background:#fff;border-radius:14px;padding:28px;text-align:center;color:#ccc;font-size:13px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+        尚無快照紀錄。點「存入本月快照」，下個月即可在此查閱歷史排名。
+    </div>
+<?php else: ?>
+    <div class="rank-grid">
+    <?php foreach ($rankLabels as $type => $info): ?>
+    <div class="rank-block">
+        <div class="rank-block-title" style="background:<?php echo $info['hdr_bg']; ?>; color:<?php echo $info['hdr_color']; ?>;">
+            <span class="title-icon"><?php echo $info['icon']; ?></span>
+            <span class="title-text"><?php echo $info['label']; ?></span>
+        </div>
+        <?php if (empty($lastMonthData[$type])): ?>
+            <div class="rank-empty">無紀錄</div>
+        <?php else: ?>
+            <?php $hasMoreL = count($lastMonthData[$type]) > 3; $uidL = $type . '_last'; ?>
+            <?php foreach ($lastMonthData[$type] as $idx => $r): ?>
+            <a class="rank-row <?php echo $idx >= 3 ? 'rank-more' : ''; ?>" data-group="<?php echo $uidL; ?>"
+               href="<?php echo $info['link'] . (int)$r['item_id']; ?>" target="_blank">
+                <?php $n = (int)$r['rank_no']; ?>
+                <?php if ($n <= 3): ?>
+                    <span class="rank-medal"><?php echo $medals[$n-1]; ?></span>
+                <?php else: ?>
+                    <span class="rank-no"><?php echo $n; ?></span>
+                <?php endif; ?>
+                <span class="rank-name" title="<?php echo htmlspecialchars($r['item_name']); ?>"><?php echo htmlspecialchars($r['item_name']); ?></span>
+                <span class="rank-score" style="background:<?php echo $info['score_bg']; ?>;color:<?php echo $info['score_color']; ?>;"><?php echo (int)$r['score']; ?> <?php echo $info['unit']; ?></span>
+            </a>
+            <?php endforeach; ?>
+            <?php if ($hasMoreL): ?>
+            <button class="rank-toggle" onclick="toggleRank('<?php echo $uidL; ?>', this)">▾ 查看更多</button>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+    </div>
 <?php endif; ?>
 
 
@@ -704,5 +891,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <?php endif; ?>
 </div>
+<script>
+function toggleRank(group, btn) {
+    var rows = document.querySelectorAll('[data-group="' + group + '"].rank-more');
+    var expanded = btn.dataset.expanded === '1';
+    rows.forEach(function(r) { r.style.display = expanded ? 'none' : 'flex'; });
+    btn.dataset.expanded = expanded ? '0' : '1';
+    btn.textContent = expanded ? '▾ 查看更多' : '▴ 收起';
+}
+</script>
 </body>
 </html>
