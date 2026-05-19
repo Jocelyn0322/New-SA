@@ -273,6 +273,66 @@ const recommendProducts = async (skinType, sensitive = false) => {
     }
 };
 
+// ── Save result & redirect ───────────────────────────────────────
+const showLoginPromptModal = () => {
+    const overlay = document.createElement('div');
+    overlay.className = 'morandi-modal-overlay';
+
+    const box = document.createElement('div');
+    box.className = 'morandi-modal-box';
+
+    const msg = document.createElement('p');
+    msg.className = 'morandi-modal-msg';
+    msg.textContent = '您尚未登入，分析結果無法儲存。現在要登入嗎？';
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;margin-top:16px;';
+
+    const btnLogin = document.createElement('button');
+    btnLogin.className = 'morandi-modal-close';
+    btnLogin.textContent = '前往登入';
+    btnLogin.style.cssText = 'background:#b5a8c0;color:#fff;';
+    btnLogin.addEventListener('click', () => { window.location.href = '../首頁/login.php'; });
+
+    const btnHome = document.createElement('button');
+    btnHome.className = 'morandi-modal-close';
+    btnHome.textContent = '返回首頁';
+    btnHome.addEventListener('click', () => { window.location.href = '../產品/index.php'; });
+
+    btnRow.appendChild(btnLogin);
+    btnRow.appendChild(btnHome);
+    box.appendChild(msg);
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+};
+
+const finishAndSave = async () => {
+    const skinType = manualSkinType.value
+        || (typeof skinTypeResult.value === 'object' ? skinTypeResult.value?.profile?.displayName : skinTypeResult.value)
+        || '';
+    const skinTone = skinCoordinate.value?.type || '';
+    const concerns = [];
+    if (manualSensitiveSkin.value || skinTypeSecondary.value === '敏感肌') concerns.push('敏感肌');
+
+    try {
+        const resp = await fetch('./saveAnalysisResult.php', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ skinType, skinTone, skinConcerns: concerns.join(', ') })
+        });
+        const result = await resp.json().catch(() => ({}));
+
+        if (!result.loggedIn) {
+            showLoginPromptModal();
+        } else {
+            window.location.href = '../產品/index.php';
+        }
+    } catch (_) {
+        window.location.href = '../產品/index.php';
+    }
+};
+
 // ── Manual analysis (no camera) ──────────────────────────────────
 const analyzeManual = async () => {
     if (!skinTone.value)       { alert('請選擇膚色類型'); return; }

@@ -38,13 +38,13 @@ try {
     $sensitiveBoostKeywords = ['無香料', '無酒精', '溫和', '舒敏', '低刺激', '敏感肌', '保濕', '養膚', '修護'];
 
     $stmt = $pdo->query(
-        'SELECT p.*, GROUP_CONCAT(pc.color_name ORDER BY pc.color_id SEPARATOR ",") AS color_names,
-                GROUP_CONCAT(pc.color_hex ORDER BY pc.color_id SEPARATOR ",") AS color_hexes
-         FROM products p
-         LEFT JOIN product_colors pc ON p.p_id = pc.p_id
-         WHERE p.category = "底妝"
-         GROUP BY p.p_id
-         ORDER BY p.created_at DESC'
+        "SELECT d.*, STRING_AGG(pc.color_name, ',' ORDER BY pc.color_id) AS color_names,
+                STRING_AGG(pc.color_hex, ',' ORDER BY pc.color_id) AS color_hexes
+         FROM data d
+         LEFT JOIN product_colors pc ON d.id = pc.p_id
+         WHERE d.category = '底妝'
+         GROUP BY d.id
+         ORDER BY d.created_at DESC"
     );
 
     $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
@@ -84,7 +84,7 @@ try {
         $colorHexes = array_values(array_filter(array_map('trim', explode(',', (string)($row['color_hexes'] ?? '')))));
 
         $ranked[] = [
-            'id' => (int)$row['p_id'],
+            'id' => (int)$row['id'],
             'brand' => $row['brand'] ?? '通用',
             'productName' => $row['name'] ?? '推薦產品',
             'name' => trim(($row['brand'] ?? '通用') . '｜' . ($row['name'] ?? '推薦產品')),

@@ -96,8 +96,8 @@ const setQuizAnswer = (questionKey, optionValue) => {
 const quizOptionClass = (questionKey, optionValue) => {
     const selected = quizAnswers.value[questionKey] === optionValue;
     return selected
-        ? 'w-full text-left p-2.5 rounded-xl border border-indigo-400 bg-indigo-100 text-indigo-900 font-semibold shadow-sm transition'
-        : 'w-full text-left p-2.5 rounded-xl border border-indigo-200 bg-white text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 transition';
+        ? 'w-full text-left p-2.5 rounded-xl border border-rose-400 bg-rose-100 text-rose-900 font-semibold shadow-sm transition'
+        : 'w-full text-left p-2.5 rounded-xl border border-rose-200 bg-white text-gray-700 hover:border-rose-300 hover:bg-rose-50 transition';
 };
 
 const makeupOptionClass = (currentValue, optionValue) => {

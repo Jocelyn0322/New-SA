@@ -91,6 +91,8 @@ const app = createApp({
             feedbackTypeText,
             submitProductFeedback,
             analyzeManual,
+            analyzeWithGroq,
+            finishAndSave,
         };
     }
 });

@@ -134,7 +134,7 @@
         </div>
         <div class="mt-4 grid gap-2 sm:grid-cols-2">
             <button @click="showMakeupPreference = false" class="bg-white text-pink-600 py-2.5 rounded-xl font-bold border border-pink-200 hover:bg-pink-50 transition duration-200">返回：確認結果</button>
-            <button @click="analyzeWithGroq" class="bg-pink-600 text-white py-2.5 rounded-xl font-bold hover:bg-pink-500 transition duration-200">送出偏好並完成分析</button>
+            <button @click="finishAndSave" class="bg-pink-600 text-white py-2.5 rounded-xl font-bold hover:bg-pink-500 transition duration-200">送出偏好並完成分析</button>
         </div>
     </div>
 

@@ -1,7 +1,7 @@
-<div v-if="currentStep === 2" class="p-5 md:p-6 border border-indigo-100 rounded-2xl bg-gradient-to-br from-indigo-50 to-sky-50 shadow-sm">
+<div v-if="currentStep === 2" class="p-5 md:p-6 border border-rose-100 rounded-2xl bg-gradient-to-br from-rose-50 to-red-50 shadow-sm">
     <div class="flex items-center justify-between mb-3">
         <h3 class="font-extrabold text-gray-900 text-lg">📝 第 2 頁：膚質問答</h3>
-        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-indigo-700 border border-indigo-200">User Quiz</span>
+        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-rose-700 border border-rose-200">User Quiz</span>
     </div>
     <p class="text-sm text-gray-600 mb-3">回答完後再拍照，系統能更精準判定你的膚質。</p>
     <div class="space-y-3 text-sm">
@@ -44,10 +44,10 @@
         </div>
     </div>
     <div class="mt-4 grid gap-2 sm:grid-cols-2">
-        <button @click="currentStep = 1" class="bg-white text-indigo-600 py-2.5 rounded-xl font-bold border border-indigo-200 hover:bg-indigo-50 transition duration-200">
+        <button @click="currentStep = 1" class="bg-white text-rose-600 py-2.5 rounded-xl font-bold border border-rose-200 hover:bg-rose-50 transition duration-200">
             返回：膚色問答
         </button>
-        <button @click="goToCameraStep" class="bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-500 transition duration-200">
+        <button @click="goToCameraStep" class="bg-rose-600 text-white py-2.5 rounded-xl font-bold hover:bg-rose-500 transition duration-200">
             下一步：相機分析
         </button>
     </div>
