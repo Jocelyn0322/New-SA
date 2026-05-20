@@ -26,7 +26,7 @@ if (empty($ids)) {
 }
 
 $id_list = implode(",", array_map('intval', $ids));
-$sql = "SELECT * FROM products WHERE p_id IN ($id_list)";
+$sql = "SELECT *, id AS p_id FROM data WHERE id IN ($id_list)";
 $result = $conn->query($sql);
 
 $products = [];
