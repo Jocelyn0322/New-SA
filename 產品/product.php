@@ -80,7 +80,16 @@ if (empty($_SESSION[$viewedKey])) {
 
     <div class="product-detail-grid">
         <div>
-            <img src="images/<?php echo $row['p_id']; ?>.jpg" alt="<?php echo htmlspecialchars($row['name']); ?>" style="width: 100%; border-radius: 15px;">
+            <?php
+            $imgSrc = !empty($row['image_url']) ? htmlspecialchars($row['image_url']) : 'images/' . $row['p_id'] . '.jpg';
+            ?>
+            <img id="mainProductImg"
+                 src="<?php echo $imgSrc; ?>"
+                 data-default="<?php echo $imgSrc; ?>"
+                 alt="<?php echo htmlspecialchars($row['name']); ?>"
+                 style="width:100%; border-radius:15px; transition:opacity .2s;"
+                 onerror="this.style.background='#f5f0f0';this.style.minHeight='300px';this.removeAttribute('src');">
+            <p id="activeColorName" style="text-align:center;font-size:13px;color:#c97b8a;margin-top:8px;min-height:18px;"></p>
         </div>
 
         <div class="product-info">
@@ -98,6 +107,18 @@ if (empty($_SESSION[$viewedKey])) {
 
             <h3>注意事項</h3>
             <p><?php echo htmlspecialchars($row['precautions']); ?></p>
+
+            <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+            <!-- 管理員上傳照片區 -->
+            <div style="margin-bottom:16px; padding:14px; background:#fff8f9; border-radius:12px; border:1px dashed #efc6cd;">
+                <p style="font-size:13px; color:#999; margin-bottom:8px;">📷 更換產品照片（上傳後自動存入 Supabase）</p>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="file" id="imgUpload" accept="image/*" style="font-size:13px; flex:1;">
+                    <button onclick="uploadImage(<?php echo $row['p_id']; ?>)" class="btn btn-outline" style="white-space:nowrap;">上傳</button>
+                </div>
+                <p id="uploadMsg" style="font-size:12px; margin-top:6px; color:#27ae60;"></p>
+            </div>
+            <?php endif; ?>
 
             <div class="action-buttons">
                 <?php if($isFav){ ?>
@@ -120,32 +141,128 @@ if (empty($_SESSION[$viewedKey])) {
         </div>
     </div>
 
-    <h3 style="margin-top: 40px; margin-bottom: 20px;">色號列表</h3>
+    <h3 style="margin-top:40px; margin-bottom:20px;">色號列表</h3>
 
     <?php
-    $sql2 = "SELECT * FROM product_colors WHERE p_id=$id";
+    $sql2    = "SELECT * FROM product_colors WHERE p_id=$id ORDER BY color_id";
     $result2 = $conn->query($sql2);
+    $isAdmin = ($_SESSION['role'] ?? '') === 'admin';
 
     if (!$result2) {
-        echo '<p style="color: #999;">色號資料查詢失敗，請確認 product_colors 資料表已匯入</p>';
-        include 'footer.php';
-        exit;
-    }
-
-    if($result2->rowCount() > 0){
+        echo '<p style="color:#999;">色號資料查詢失敗</p>';
+    } elseif ($result2->rowCount() > 0) {
+        $colors = $result2->fetchAll();
     ?>
-        <div class="colors-grid">
-        <?php
-        while($color = $result2->fetch()){
-        ?>
-            <div class="color-item">
-                <div class="color-circle" style="background: <?php echo htmlspecialchars($color['color_hex']); ?>;"></div>
-                <div class="color-name"><?php echo htmlspecialchars($color['color_name']); ?></div>
-            </div>
-        <?php } ?>
+    <style>
+    .color-swatch {
+        display:flex; flex-direction:column; align-items:center; gap:6px;
+        cursor:pointer; padding:8px; border-radius:12px;
+        border:2px solid transparent; transition:all .2s; position:relative;
+    }
+    .color-swatch:hover { background:#fff0f3; border-color:#efc6cd; }
+    .color-swatch.active { border-color:#c97b8a; background:#fff0f3; }
+    .color-circle-lg {
+        width:40px; height:40px; border-radius:50%;
+        border:2px solid rgba(0,0,0,.1); flex-shrink:0;
+    }
+    .color-label { font-size:11px; color:#888; text-align:center; max-width:60px; line-height:1.3; }
+    .color-has-img::after {
+        content:'📷'; position:absolute; top:2px; right:2px; font-size:9px;
+    }
+    .colors-flex { display:flex; flex-wrap:wrap; gap:8px; }
+
+    /* 管理員上傳色號照片的浮窗 */
+    .color-upload-panel {
+        display:none; position:fixed; bottom:24px; right:24px; z-index:999;
+        background:#fff; border-radius:16px; padding:20px;
+        box-shadow:0 8px 32px rgba(0,0,0,.18); width:280px;
+        border:1px solid #f0d5dc;
+    }
+    .color-upload-panel.show { display:block; }
+    </style>
+
+    <div class="colors-flex">
+    <?php foreach ($colors as $color): ?>
+        <?php $hasImg = !empty($color['color_img']); ?>
+        <div class="color-swatch <?php echo $hasImg ? 'color-has-img' : ''; ?>"
+             data-color-id="<?php echo (int)$color['color_id']; ?>"
+             data-color-name="<?php echo htmlspecialchars($color['color_name']); ?>"
+             data-color-img="<?php echo htmlspecialchars($color['color_img'] ?? ''); ?>"
+             onclick="switchColor(this)">
+            <div class="color-circle-lg" style="background:<?php echo htmlspecialchars($color['color_hex']); ?>;"></div>
+            <div class="color-label"><?php echo htmlspecialchars($color['color_name']); ?></div>
         </div>
-    <?php }else{ ?>
-        <p style="color: #999;">暫無色號資訊</p>
+    <?php endforeach; ?>
+    </div>
+
+    <?php if ($isAdmin): ?>
+    <!-- 管理員：新增色號按鈕 -->
+    <div style="margin-top:14px;">
+        <button onclick="openAddColor()" class="btn btn-outline" style="font-size:13px;padding:6px 16px;">＋ 新增色號</button>
+    </div>
+
+    <!-- 管理員：色號照片上傳浮窗 -->
+    <div id="colorUploadPanel" class="color-upload-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <strong style="font-size:14px;">色號操作</strong>
+            <button onclick="closeColorUpload()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
+        </div>
+        <p id="colorUploadName" style="font-size:13px;color:#c97b8a;margin-bottom:10px;"></p>
+        <p style="font-size:12px;color:#888;margin-bottom:6px;">更換照片</p>
+        <input type="file" id="colorImgInput" accept="image/*" style="font-size:13px;width:100%;margin-bottom:8px;">
+        <button onclick="uploadColorImg()" class="btn btn-primary" style="width:100%;margin-bottom:10px;">上傳到 Supabase</button>
+        <hr style="border:none;border-top:1px solid #f0d5dc;margin-bottom:10px;">
+        <button onclick="deleteColor()" style="width:100%;padding:8px;background:#fff0f0;border:1px solid #f5c0c0;border-radius:8px;color:#c0392b;font-size:13px;cursor:pointer;">刪除此色號</button>
+        <p id="colorUploadMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
+    </div>
+
+    <!-- 管理員：新增色號浮窗 -->
+    <div id="addColorPanel" class="color-upload-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <strong style="font-size:14px;">新增色號</strong>
+            <button onclick="closeAddColor()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
+        </div>
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色號名稱</label>
+        <input type="text" id="newColorName" placeholder="例：VANILLA" style="width:100%;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色票顏色</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+            <input type="color" id="newColorHex" value="#E0AC7A" style="width:48px;height:38px;border:1px solid #f0d5dc;border-radius:8px;cursor:pointer;padding:2px;" oninput="document.getElementById('newColorHexText').value=this.value;">
+            <input type="text" id="newColorHexText" value="#E0AC7A" placeholder="#RRGGBB" maxlength="7"
+                   style="flex:1;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;"
+                   oninput="syncHexText(this.value)">
+        </div>
+        <button onclick="addColor()" class="btn btn-primary" style="width:100%;">新增</button>
+        <p id="addColorMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
+    </div>
+
+    <p style="font-size:12px;color:#aaa;margin-top:8px;">📷 管理員：點色號可上傳照片或刪除</p>
+    <?php endif; ?>
+
+    <?php } else { ?>
+        <p style="color:#999;">暫無色號資訊</p>
+        <?php if ($isAdmin): ?>
+        <div style="margin-top:10px;">
+            <button onclick="openAddColor()" class="btn btn-outline" style="font-size:13px;padding:6px 16px;">＋ 新增色號</button>
+        </div>
+        <!-- 管理員：新增色號浮窗（無色號時也顯示） -->
+        <div id="addColorPanel" class="color-upload-panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <strong style="font-size:14px;">新增色號</strong>
+                <button onclick="closeAddColor()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
+            </div>
+            <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色號名稱</label>
+            <input type="text" id="newColorName" placeholder="例：VANILLA" style="width:100%;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+            <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色票顏色</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                <input type="color" id="newColorHex" value="#E0AC7A" style="width:48px;height:38px;border:1px solid #f0d5dc;border-radius:8px;cursor:pointer;padding:2px;" oninput="document.getElementById('newColorHexText').value=this.value;">
+                <input type="text" id="newColorHexText" value="#E0AC7A" placeholder="#RRGGBB" maxlength="7"
+                       style="flex:1;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;"
+                       oninput="syncHexText(this.value)">
+                </div>
+                <button onclick="addColor()" class="btn btn-primary" style="width:100%;">新增</button>
+                <p id="addColorMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
+            </div>
+        <?php endif; ?>
     <?php } ?>
 
 <?php
@@ -239,7 +356,7 @@ if (isset($_SESSION['user']) && !empty($attributes)) {
         <!-- 使用者自評 -->
         <div class="rating-block">
             <h4>您的評價</h4>
-            <?php if (isset($_SESSION['user'])): ?>
+            <?php if (isset($_SESSION['user']) && ($_SESSION['role'] ?? '') !== 'admin'): ?>
             <?php foreach ($attributes as $attr): ?>
             <?php $myScore = $myRatings[$attr] ?? 0; ?>
             <div class="rating-row">
@@ -252,6 +369,8 @@ if (isset($_SESSION['user']) && !empty($attributes)) {
                 <span class="rating-saved-msg" data-saved-attr="<?php echo htmlspecialchars($attr); ?>">已儲存</span>
             </div>
             <?php endforeach; ?>
+            <?php elseif (($_SESSION['role'] ?? '') === 'admin'): ?>
+            <p class="rating-login-note" style="color:#bbb;">管理員不開放評分</p>
             <?php else: ?>
             <p class="rating-login-note"><a href="../首頁/login.php" style="color:#efc6cd;">登入</a> 後即可評分</p>
             <?php endif; ?>
@@ -261,6 +380,168 @@ if (isset($_SESSION['user']) && !empty($attributes)) {
 </div>
 
 <script>
+// ── 色號切換主圖 ──────────────────────────────────────
+var mainImg      = document.getElementById('mainProductImg');
+var colorNameEl  = document.getElementById('activeColorName');
+var activeSwatch = null;
+var selectedColorId = null;
+
+function switchColor(el) {
+    var img  = el.dataset.colorImg;
+    var name = el.dataset.colorName;
+    selectedColorId = el.dataset.colorId;
+
+    // 更新 active 樣式
+    if (activeSwatch) activeSwatch.classList.remove('active');
+    el.classList.add('active');
+    activeSwatch = el;
+
+    // 切換主圖
+    if (img) {
+        mainImg.style.opacity = '0';
+        setTimeout(function() {
+            mainImg.src = img;
+            mainImg.style.opacity = '1';
+        }, 150);
+    }
+    colorNameEl.textContent = name;
+
+    // 管理員：開啟上傳浮窗
+    var panel = document.getElementById('colorUploadPanel');
+    if (panel) {
+        document.getElementById('colorUploadName').textContent = '色號：' + name;
+        document.getElementById('colorUploadMsg').textContent = '';
+        document.getElementById('colorImgInput').value = '';
+        panel.classList.add('show');
+    }
+}
+
+function closeColorUpload() {
+    var panel = document.getElementById('colorUploadPanel');
+    if (panel) panel.classList.remove('show');
+    if (activeSwatch) activeSwatch.classList.remove('active');
+    activeSwatch = null;
+    mainImg.src = mainImg.dataset.default;
+    colorNameEl.textContent = '';
+}
+
+function openAddColor() {
+    closeColorUpload();
+    var panel = document.getElementById('addColorPanel');
+    if (panel) {
+        document.getElementById('addColorMsg').textContent = '';
+        document.getElementById('newColorName').value = '';
+        panel.classList.add('show');
+    }
+}
+
+function closeAddColor() {
+    var panel = document.getElementById('addColorPanel');
+    if (panel) panel.classList.remove('show');
+}
+
+function syncHexText(val) {
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        document.getElementById('newColorHex').value = val;
+    }
+}
+
+async function addColor() {
+    var name = (document.getElementById('newColorName').value || '').trim();
+    var hex  = document.getElementById('newColorHexText').value.trim() || document.getElementById('newColorHex').value;
+    var msg  = document.getElementById('addColorMsg');
+    if (!name) { msg.style.color='#e05'; msg.textContent='請輸入色號名稱'; return; }
+    if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) { msg.style.color='#e05'; msg.textContent='顏色格式不正確'; return; }
+
+    msg.style.color='#999'; msg.textContent='新增中…';
+    var form = new FormData();
+    form.append('p_id', <?php echo $id; ?>);
+    form.append('color_name', name);
+    form.append('color_hex', hex);
+
+    try {
+        var res  = await fetch('add_color.php', { method:'POST', body: form });
+        var data = await res.json();
+        if (data.success) {
+            msg.style.color='#27ae60'; msg.textContent='✓ 已新增';
+            // 插入新色票到畫面
+            var wrap = document.querySelector('.colors-flex');
+            if (!wrap) { location.reload(); return; }
+            var el = document.createElement('div');
+            el.className = 'color-swatch';
+            el.dataset.colorId   = data.color_id;
+            el.dataset.colorName = name;
+            el.dataset.colorImg  = '';
+            el.setAttribute('onclick', 'switchColor(this)');
+            el.innerHTML = '<div class="color-circle-lg" style="background:'+hex+';"></div>'
+                         + '<div class="color-label">'+name+'</div>';
+            wrap.appendChild(el);
+            closeAddColor();
+        } else {
+            msg.style.color='#e05'; msg.textContent='失敗：' + data.message;
+        }
+    } catch(e) {
+        msg.style.color='#e05'; msg.textContent='網路錯誤';
+    }
+}
+
+async function deleteColor() {
+    if (!selectedColorId) return;
+    var msg = document.getElementById('colorUploadMsg');
+    if (!confirm('確定要刪除此色號？')) return;
+
+    msg.style.color='#999'; msg.textContent='刪除中…';
+    var form = new FormData();
+    form.append('color_id', selectedColorId);
+
+    try {
+        var res  = await fetch('delete_color.php', { method:'POST', body: form });
+        var data = await res.json();
+        if (data.success) {
+            // 移除色票 DOM
+            if (activeSwatch) activeSwatch.remove();
+            closeColorUpload();
+        } else {
+            msg.style.color='#e05'; msg.textContent='失敗：' + data.message;
+        }
+    } catch(e) {
+        msg.style.color='#e05'; msg.textContent='網路錯誤';
+    }
+}
+
+async function uploadColorImg() {
+    var file = document.getElementById('colorImgInput').files[0];
+    var msg  = document.getElementById('colorUploadMsg');
+    if (!file) { msg.style.color='#e05'; msg.textContent='請選擇照片'; return; }
+    if (!selectedColorId) return;
+
+    msg.style.color='#999'; msg.textContent='上傳中…';
+    var form = new FormData();
+    form.append('color_id', selectedColorId);
+    form.append('image', file);
+
+    try {
+        var res  = await fetch('upload_color_image.php', { method:'POST', body: form });
+        var data = await res.json();
+        if (data.success) {
+            msg.style.color = '#27ae60';
+            msg.textContent = '✓ 上傳成功';
+            // 即時更新這個色號的 data-color-img 和主圖
+            if (activeSwatch) {
+                activeSwatch.dataset.colorImg = data.url;
+                activeSwatch.classList.add('color-has-img');
+                mainImg.src = data.url;
+            }
+        } else {
+            msg.style.color = '#e05';
+            msg.textContent = '失敗：' + data.message;
+        }
+    } catch(e) {
+        msg.style.color='#e05'; msg.textContent='網路錯誤';
+    }
+}
+
+// ── 星星評分 ──────────────────────────────────────────
 document.querySelectorAll('.stars-interactive').forEach(function(container) {
     var stars = container.querySelectorAll('span');
     var attr  = container.dataset.attr;
@@ -304,6 +585,34 @@ document.querySelectorAll('.stars-interactive').forEach(function(container) {
 </script>
 
 </div>
+
+<script>
+async function uploadImage(productId) {
+    const file = document.getElementById('imgUpload').files[0];
+    const msg  = document.getElementById('uploadMsg');
+    if (!file) { msg.style.color='#e05'; msg.textContent='請先選擇照片'; return; }
+
+    msg.style.color='#999'; msg.textContent='上傳中…';
+
+    const form = new FormData();
+    form.append('product_id', productId);
+    form.append('image', file);
+
+    try {
+        const res  = await fetch('upload_product_image.php', { method:'POST', body: form });
+        const data = await res.json();
+        if (data.success) {
+            msg.style.color = '#27ae60';
+            msg.textContent = '✓ 上傳成功，重新整理頁面即可看到新照片';
+        } else {
+            msg.style.color = '#e05';
+            msg.textContent = '失敗：' + data.message;
+        }
+    } catch(e) {
+        msg.style.color='#e05'; msg.textContent='網路錯誤';
+    }
+}
+</script>
 
 <?php include 'footer.php'; ?>
 

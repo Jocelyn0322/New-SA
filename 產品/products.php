@@ -6,7 +6,7 @@ $keyword = $_GET['keyword'] ?? '';
 $category = $_GET['category'] ?? '';
 $color_filter = $_GET['color'] ?? '';
 
-$sql = "SELECT DISTINCT p.*, p.id AS p_id FROM data p";
+$sql = "SELECT DISTINCT p.*, p.id AS p_id, p.image_url FROM data p";
 
 $joins = "";
 $wheres = [];
@@ -117,7 +117,9 @@ $categories_result = $conn->query($categories_sql);
                 <?php } ?>
             </div>
 
-            <img src="images/<?php echo $row['p_id']; ?>.jpg" alt="<?php echo htmlspecialchars($row['name']); ?>">
+            <?php $imgSrc = !empty($row['image_url']) ? htmlspecialchars($row['image_url']) : 'images/' . $row['p_id'] . '.jpg'; ?>
+            <img src="<?php echo $imgSrc; ?>" alt="<?php echo htmlspecialchars($row['name']); ?>"
+                 onerror="this.style.background='#f5f0f0';this.removeAttribute('src')">
 
             <div class="product-card-inner">
                 <h3><?php echo htmlspecialchars($row['name']); ?></h3>

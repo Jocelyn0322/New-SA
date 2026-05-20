@@ -43,12 +43,24 @@ if (isset($_POST['toggle_role'])) {
     $tab = 'users';
 }
 
-// 刪除使用者
-if (isset($_POST['delete_user'])) {
+// 停用使用者
+if (isset($_POST['suspend_user'])) {
     $targetUser = trim($_POST['target_user'] ?? '');
     if ($targetUser && $targetUser !== $adminUser) {
-        $pdo->prepare("DELETE FROM users WHERE username = ?")->execute([$targetUser]);
-        $msg = "已刪除使用者「{$targetUser}」"; $msgType = 'success';
+        $pdo->prepare("UPDATE users SET status = 'suspended', suspended_at = NOW() WHERE username = ?")
+            ->execute([$targetUser]);
+        $msg = "已停用使用者「{$targetUser}」"; $msgType = 'success';
+    }
+    $tab = 'users';
+}
+
+// 恢復使用者
+if (isset($_POST['restore_user'])) {
+    $targetUser = trim($_POST['target_user'] ?? '');
+    if ($targetUser && $targetUser !== $adminUser) {
+        $pdo->prepare("UPDATE users SET status = 'active', suspended_at = NULL WHERE username = ?")
+            ->execute([$targetUser]);
+        $msg = "已恢復使用者「{$targetUser}」帳號"; $msgType = 'success';
     }
     $tab = 'users';
 }
@@ -224,9 +236,37 @@ if ($tab === 'videos') {
 }
 
 if ($tab === 'users') {
+    // 自動停用：過去30天內被管理員標記的違規留言 >= 5 次
+    try {
+        $pdo->query("
+            UPDATE users SET status = 'suspended', suspended_at = NOW()
+            WHERE username IN (
+                SELECT vc.username
+                FROM video_comments vc
+                JOIN comment_reports cr ON cr.comment_id = vc.id
+                WHERE cr.status = 'resolved'
+                  AND cr.created_at >= NOW() - INTERVAL '30 days'
+                GROUP BY vc.username
+                HAVING COUNT(cr.id) >= 5
+            ) AND status = 'active' AND role != 'admin'
+        ");
+    } catch (Throwable $e) { /* ignore */ }
+
+    // 查詢會員清單，含本月違規次數
     $allUsers = $pdo->query("
-        SELECT username, email, role, email_verified, created_at
-        FROM users ORDER BY role DESC, created_at DESC
+        SELECT u.username, u.email, u.role, u.email_verified, u.created_at,
+               COALESCE(u.status, 'active') AS status,
+               u.suspended_at,
+               COUNT(cr.id) AS monthly_violations
+        FROM users u
+        LEFT JOIN video_comments vc ON vc.username = u.username
+        LEFT JOIN comment_reports cr
+               ON cr.comment_id = vc.id
+              AND cr.status = 'resolved'
+              AND cr.created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY u.username, u.email, u.role, u.email_verified,
+                 u.created_at, u.status, u.suspended_at
+        ORDER BY u.role DESC, monthly_violations DESC, u.created_at DESC
     ")->fetchAll();
 }
 
@@ -831,6 +871,40 @@ $medals = ['🥇','🥈','🥉'];
 
 <?php elseif ($tab === 'users'): ?>
 <!-- ══════════ 會員管理 ══════════ -->
+<style>
+.badge-suspended { background:#f0e0e0; color:#a05050; }
+.vio-bar { display:inline-flex; gap:3px; vertical-align:middle; }
+.vio-dot { width:10px; height:10px; border-radius:50%; }
+.vio-dot.filled { background:#e05050; }
+.vio-dot.empty  { background:#f0e0e0; }
+.tr-suspended td { background:#fff8f8 !important; opacity:.85; }
+</style>
+
+<?php
+$suspendedCount = count(array_filter($allUsers, fn($u) => ($u['status'] ?? 'active') === 'suspended'));
+$warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violations'] ?? 0) >= 3 && ($u['status'] ?? 'active') !== 'suspended'));
+?>
+
+<!-- 狀態摘要 -->
+<div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+    <div style="background:#fff;border-radius:10px;padding:12px 20px;border:1px solid #f0e8e8;font-size:13px;">
+        👥 總會員 <strong><?php echo count($allUsers); ?></strong>
+    </div>
+    <?php if ($warningCount > 0): ?>
+    <div style="background:#fff8e8;border-radius:10px;padding:12px 20px;border:1px solid #f0d890;font-size:13px;color:#8a6020;">
+        ⚠️ 違規警告中 <strong><?php echo $warningCount; ?></strong> 人（3次以上）
+    </div>
+    <?php endif; ?>
+    <?php if ($suspendedCount > 0): ?>
+    <div style="background:#fff0f0;border-radius:10px;padding:12px 20px;border:1px solid #f0c0c0;font-size:13px;color:#a05050;">
+        🚫 已停用 <strong><?php echo $suspendedCount; ?></strong> 人
+    </div>
+    <?php endif; ?>
+    <div style="background:#f0fff8;border-radius:10px;padding:12px 20px;border:1px solid #a0d8b0;font-size:13px;color:#406050;">
+        ℹ️ 違規定義：30天內留言被管理員標記「已處理」達 <strong>5</strong> 次即自動停用
+    </div>
+</div>
+
 <?php if (empty($allUsers)): ?>
     <div class="adm-empty"><div class="adm-empty-icon">👥</div>沒有使用者資料</div>
 <?php else: ?>
@@ -842,15 +916,28 @@ $medals = ['🥇','🥈','🥉'];
                     <th>Email</th>
                     <th>身份</th>
                     <th>信箱驗證</th>
+                    <th style="text-align:center;">本月違規</th>
+                    <th>狀態</th>
                     <th>加入時間</th>
                     <th>操作</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($allUsers as $u): ?>
-                    <tr>
-                        <td><strong><?php echo htmlspecialchars($u['username']); ?></strong></td>
-                        <td style="color:#888;"><?php echo htmlspecialchars($u['email'] ?: '—'); ?></td>
+                <?php foreach ($allUsers as $u):
+                    $isSuspended = ($u['status'] ?? 'active') === 'suspended';
+                    $violations  = (int)($u['monthly_violations'] ?? 0);
+                    $isWarning   = $violations >= 3 && !$isSuspended;
+                ?>
+                    <tr class="<?php echo $isSuspended ? 'tr-suspended' : ''; ?>">
+                        <td>
+                            <strong><?php echo htmlspecialchars($u['username']); ?></strong>
+                            <?php if ($isSuspended): ?>
+                                <div style="font-size:11px;color:#c05050;margin-top:2px;">
+                                    停用於 <?php echo $u['suspended_at'] ? date('m/d H:i', strtotime($u['suspended_at'])) : '—'; ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                        <td style="color:#888;font-size:12px;"><?php echo htmlspecialchars($u['email'] ?: '—'); ?></td>
                         <td>
                             <span class="badge <?php echo $u['role']==='admin' ? 'badge-admin' : 'badge-user'; ?>">
                                 <?php echo $u['role']==='admin' ? '管理員' : '一般'; ?>
@@ -861,22 +948,63 @@ $medals = ['🥇','🥈','🥉'];
                                 <?php echo $u['email_verified'] ? '已驗證' : '未驗證'; ?>
                             </span>
                         </td>
+                        <td style="text-align:center;">
+                            <?php if ($u['role'] === 'admin'): ?>
+                                <span style="color:#ccc;font-size:12px;">—</span>
+                            <?php else: ?>
+                                <!-- 5格圓點視覺化 -->
+                                <div class="vio-bar" title="本月違規 <?php echo $violations; ?>/5 次">
+                                    <?php for ($vi = 1; $vi <= 5; $vi++): ?>
+                                        <div class="vio-dot <?php echo $vi <= $violations ? 'filled' : 'empty'; ?>"></div>
+                                    <?php endfor; ?>
+                                </div>
+                                <span style="font-size:11px;color:<?php echo $violations>=5?'#c05050':($isWarning?'#c08020':'#aaa'); ?>;margin-left:4px;">
+                                    <?php echo $violations; ?>/5
+                                    <?php if ($violations >= 5): ?> 已達上限<?php elseif ($isWarning): ?> ⚠️<?php endif; ?>
+                                </span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($isSuspended): ?>
+                                <span class="badge badge-suspended">🚫 已停用</span>
+                            <?php elseif ($isWarning): ?>
+                                <span class="badge badge-warn">⚠️ 警告</span>
+                            <?php else: ?>
+                                <span class="badge badge-ok">正常</span>
+                            <?php endif; ?>
+                        </td>
                         <td style="color:#aaa;font-size:12px;"><?php echo $u['created_at'] ? date('Y/m/d', strtotime($u['created_at'])) : '—'; ?></td>
                         <td>
                             <?php if ($u['username'] !== $adminUser): ?>
                                 <div class="btn-group">
-                                    <form method="post" onsubmit="return confirm('確定變更「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的身份？')">
-                                        <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
-                                        <input type="hidden" name="current_role" value="<?php echo htmlspecialchars($u['role']); ?>">
-                                        <button type="submit" name="toggle_role" value="1"
-                                            class="btn-role <?php echo $u['role']==='admin' ? 'is-admin' : ''; ?>">
-                                            <?php echo $u['role']==='admin' ? '降為一般' : '升為管理員'; ?>
-                                        </button>
-                                    </form>
-                                    <form method="post" onsubmit="return confirm('確定刪除「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」帳號？此操作不可回復！')">
-                                        <input type="hidden" name="target_user" value="<?php echo htmlspecialchars($u['username']); ?>">
-                                        <button type="submit" name="delete_user" value="1" class="btn-del">🗑️ 刪除</button>
-                                    </form>
+                                    <?php if ($u['role'] !== 'admin'): ?>
+                                        <!-- 身份切換 -->
+                                        <form method="post" onsubmit="return confirm('確定變更「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的身份？')">
+                                            <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
+                                            <input type="hidden" name="current_role" value="<?php echo htmlspecialchars($u['role']); ?>">
+                                            <button type="submit" name="toggle_role" value="1" class="btn-role">升為管理員</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <form method="post" onsubmit="return confirm('確定降級「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」？')">
+                                            <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
+                                            <input type="hidden" name="current_role" value="admin">
+                                            <button type="submit" name="toggle_role" value="1" class="btn-role is-admin">降為一般</button>
+                                        </form>
+                                    <?php endif; ?>
+
+                                    <?php if ($isSuspended): ?>
+                                        <!-- 恢復帳號 -->
+                                        <form method="post" onsubmit="return confirm('確定恢復「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的帳號？')">
+                                            <input type="hidden" name="target_user" value="<?php echo htmlspecialchars($u['username']); ?>">
+                                            <button type="submit" name="restore_user" value="1" class="btn-ok">✓ 恢復</button>
+                                        </form>
+                                    <?php elseif ($u['role'] !== 'admin'): ?>
+                                        <!-- 停用帳號 -->
+                                        <form method="post" onsubmit="return confirm('確定停用「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」帳號？')">
+                                            <input type="hidden" name="target_user" value="<?php echo htmlspecialchars($u['username']); ?>">
+                                            <button type="submit" name="suspend_user" value="1" class="btn-del">🚫 停用</button>
+                                        </form>
+                                    <?php endif; ?>
                                 </div>
                             <?php else: ?>
                                 <span style="color:#aaa;font-size:12px;">（目前帳號）</span>

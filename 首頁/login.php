@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($username === '' || $password === '') {
             $error = "請輸入帳號與密碼";
         } else {
-            $stmt = $pdo->prepare("SELECT username, password, role FROM users WHERE username = ?");
+            $stmt = $pdo->prepare("SELECT username, password, role, COALESCE(status,'active') AS status FROM users WHERE username = ?");
             $stmt->execute([$username]);
             $user = $stmt->fetch();
 
@@ -33,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "帳號不存在";
             } elseif ($password !== $user['password']) {
                 $error = "密碼錯誤";
+            } elseif ($user['status'] === 'suspended') {
+                $error = "此帳號已被停用，請聯絡管理員";
             } else {
                 $_SESSION['user'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
