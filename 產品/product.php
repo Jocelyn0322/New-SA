@@ -87,7 +87,7 @@ if (empty($_SESSION[$viewedKey])) {
                  src="<?php echo $imgSrc; ?>"
                  data-default="<?php echo $imgSrc; ?>"
                  alt="<?php echo htmlspecialchars($row['name']); ?>"
-                 style="width:100%; border-radius:15px; transition:opacity .2s;"
+                 style="width:100%; max-height:420px; object-fit:contain; border-radius:15px; transition:opacity .2s; background:#f5f5f5; padding:8px;"
                  onerror="this.style.background='#f5f0f0';this.style.minHeight='300px';this.removeAttribute('src');">
             <p id="activeColorName" style="text-align:center;font-size:13px;color:#c97b8a;margin-top:8px;min-height:18px;"></p>
         </div>
@@ -115,7 +115,7 @@ if (empty($_SESSION[$viewedKey])) {
                 <button onclick="openEditProduct()" class="btn btn-outline" style="font-size:13px;padding:7px 16px;">✏️ 編輯產品資料</button>
                 <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;">
                     <input type="file" id="imgUpload" accept="image/*" style="display:none;" onchange="uploadImage(<?php echo $row['p_id']; ?>)">
-                    <span class="btn btn-outline" style="font-size:13px;padding:7px 16px;" onclick="document.getElementById('imgUpload').click()">📷 更換照片</span>
+                    <span class="btn btn-outline" style="font-size:13px;padding:7px 16px;">📷 更換照片</span>
                 </label>
                 <p id="uploadMsg" style="font-size:12px;color:#27ae60;margin:0;width:100%;display:none;"></p>
             </div>
