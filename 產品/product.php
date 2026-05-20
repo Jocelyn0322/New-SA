@@ -157,7 +157,7 @@ if (empty($_SESSION[$viewedKey])) {
             <div>
                 <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">分類</label>
                 <select id="ep_category" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;">
-                    <?php foreach(['底妝','眼影','腮紅','口紅','唇彩','唇釉','唇油','唇膏','唇泥','睫毛膏','眼線','打亮','修容','帶亮','遮瑕','護膚','防曬'] as $cat): ?>
+                    <?php foreach(['底妝','遮瑕','防曬','唇膏','唇彩','唇油','唇泥','眼影','眼線','睫毛膏','腮紅','修容','打亮','護膚'] as $cat): ?>
                     <option value="<?php echo $cat; ?>" <?php echo ($row['category']??'')===$cat?'selected':''; ?>><?php echo $cat; ?></option>
                     <?php endforeach; ?>
                 </select>
