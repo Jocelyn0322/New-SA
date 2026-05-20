@@ -75,8 +75,8 @@ const goToCameraStep = () => {
     currentStep.value = 3;
 };
 
-const confirmSkinTone = () => { confirmedSkinTone.value = true; };
-const confirmSkinType = () => { confirmedSkinType.value = true; };
+const confirmSkinTone = () => { confirmedSkinTone.value = !confirmedSkinTone.value; };
+const confirmSkinType = () => { confirmedSkinType.value = !confirmedSkinType.value; };
 
 const backToToneAndSkinPage = () => { currentStep.value = 3; };
 

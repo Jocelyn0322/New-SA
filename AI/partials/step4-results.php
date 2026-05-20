@@ -61,7 +61,7 @@
     <!-- 確認結果 -->
     <div class="p-5 md:p-6 border border-amber-100 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">
         <div class="flex items-center justify-between mb-1">
-            <h4 class="font-extrabold text-gray-900 text-lg">✅ 確認你的分析結果</h4>
+            <h4 class="font-extrabold text-gray-900 text-lg">確認你的分析結果</h4>
         </div>
         <p class="text-sm text-gray-500 mb-4">請分別點擊下方兩個按鈕確認膚色與膚質，確認後才能進行下一步。</p>
 
@@ -70,14 +70,18 @@
             <button type="button" @click="confirmSkinTone"
                 class="rounded-2xl border p-4 text-left transition-all duration-200 relative"
                 :class="confirmedSkinTone
-                    ? 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm cursor-default'
-                    : 'border-amber-300 bg-white text-gray-700 hover:border-amber-400 hover:bg-amber-50 hover:shadow-md active:scale-[0.99]'">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-lg">{{ confirmedSkinTone ? '✅' : '⬜' }}</span>
-                    <p class="font-bold text-base">確認膚色</p>
+                    ? 'border-emerald-400 bg-emerald-50 shadow-sm'
+                    : 'border-amber-300 bg-white hover:border-amber-400 hover:bg-amber-50 hover:shadow-md active:scale-[0.99]'">
+                <!-- 右上角圓形勾 -->
+                <div class="absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
+                     :class="confirmedSkinTone ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300'">
+                    <svg v-if="confirmedSkinTone" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
                 </div>
-                <p class="text-sm text-gray-500 pl-7">
-                    {{ confirmedSkinTone ? '已確認 — 膚色判定完成' : '點此按鈕確認目前的膚色判定' }}
+                <p class="font-bold text-base pr-8" :class="confirmedSkinTone ? 'text-emerald-800' : 'text-gray-700'">確認膚色</p>
+                <p class="text-sm mt-1" :class="confirmedSkinTone ? 'text-emerald-600' : 'text-gray-500'">
+                    {{ confirmedSkinTone ? '膚色判定完成，再次點擊可取消' : '點此確認目前的膚色判定' }}
                 </p>
             </button>
 
@@ -85,14 +89,18 @@
             <button type="button" @click="confirmSkinType"
                 class="rounded-2xl border p-4 text-left transition-all duration-200 relative"
                 :class="confirmedSkinType
-                    ? 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm cursor-default'
-                    : 'border-amber-300 bg-white text-gray-700 hover:border-amber-400 hover:bg-amber-50 hover:shadow-md active:scale-[0.99]'">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-lg">{{ confirmedSkinType ? '✅' : '⬜' }}</span>
-                    <p class="font-bold text-base">確認膚質</p>
+                    ? 'border-emerald-400 bg-emerald-50 shadow-sm'
+                    : 'border-amber-300 bg-white hover:border-amber-400 hover:bg-amber-50 hover:shadow-md active:scale-[0.99]'">
+                <!-- 右上角圓形勾 -->
+                <div class="absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
+                     :class="confirmedSkinType ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300'">
+                    <svg v-if="confirmedSkinType" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
                 </div>
-                <p class="text-sm text-gray-500 pl-7">
-                    {{ confirmedSkinType ? '已確認 — 膚質判定完成' : '點此按鈕確認目前的膚質判定' }}
+                <p class="font-bold text-base pr-8" :class="confirmedSkinType ? 'text-emerald-800' : 'text-gray-700'">確認膚質</p>
+                <p class="text-sm mt-1" :class="confirmedSkinType ? 'text-emerald-600' : 'text-gray-500'">
+                    {{ confirmedSkinType ? '膚質判定完成，再次點擊可取消' : '點此確認目前的膚質判定' }}
                 </p>
             </button>
         </div>
@@ -165,29 +173,6 @@
         <div class="mt-4 grid gap-2 sm:grid-cols-2">
             <button @click="showMakeupPreference = false" class="bg-white text-pink-600 py-2.5 rounded-xl font-bold border border-pink-200 hover:bg-pink-50 transition duration-200">返回：確認結果</button>
             <button @click="finishAndSave" class="bg-pink-600 text-white py-2.5 rounded-xl font-bold hover:bg-pink-500 transition duration-200">送出偏好並完成分析</button>
-        </div>
-    </div>
-
-    <!-- 推薦產品 -->
-    <div v-if="recommendations.length > 0" class="p-5 border border-emerald-100 rounded-2xl bg-gradient-to-br from-emerald-50 to-lime-50 shadow-sm">
-        <h3 class="font-extrabold mb-3 text-gray-900">💄 推薦產品</h3>
-        <div class="grid gap-3">
-            <div v-for="product in recommendations" :key="product.id" class="p-3.5 bg-white/90 border border-emerald-100 rounded-xl hover:shadow-md transition duration-200">
-                <p class="font-bold text-gray-900">{{ product.brand || '通用' }}｜{{ product.productName || product.name || '推薦產品' }}</p>
-                <p class="text-sm text-gray-600 mt-1">{{ product.description }}</p>
-                <p v-if="product.matchScore !== null" class="text-xs text-emerald-700 mt-2">AI 匹配度：{{ product.matchScore }}</p>
-                <p v-if="product.recommendedShade" class="text-xs text-indigo-700 mt-1">建議色號：{{ product.recommendedShade }}</p>
-                <div class="mt-3">
-                    <p class="text-xs text-gray-500 mb-2">如果你用過這項產品，請標記實際妝效：</p>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        <button type="button" @click="submitProductFeedback(product, 'just_right')" class="text-xs py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">色號剛好</button>
-                        <button type="button" @click="submitProductFeedback(product, 'too_yellow')" class="text-xs py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition">偏黃</button>
-                        <button type="button" @click="submitProductFeedback(product, 'too_dark')" class="text-xs py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition">偏暗</button>
-                        <button type="button" @click="submitProductFeedback(product, 'too_dry')" class="text-xs py-2 rounded-lg border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition">太乾</button>
-                        <button type="button" @click="submitProductFeedback(product, 'too_oily')" class="text-xs py-2 rounded-lg border border-lime-200 bg-lime-50 text-lime-700 hover:bg-lime-100 transition">太油</button>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
