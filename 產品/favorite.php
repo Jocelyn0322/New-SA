@@ -5,7 +5,6 @@ include 'db.php';
 $ids = $_SESSION['favorite'] ?? [];
 
 if(empty($ids)){
-    include 'header.php';
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -16,6 +15,7 @@ if(empty($ids)){
     <title>我的收藏</title>
 </head>
 <body>
+<?php include 'header.php'; ?>
     <div class="products">
         <div class="empty-state">
             <h3>❤️ 目前沒有收藏</h3>
