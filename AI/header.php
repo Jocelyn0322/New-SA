@@ -1,33 +1,29 @@
-<?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-?>
-
+<?php if (session_status() === PHP_SESSION_NONE) session_start(); ?>
 <header class="topbar">
     <div class="inner">
 
-        <a href="index.php" class="logo">AI Skin Lab</a>
+        <a href="/SA/New-SA/產品/index.php" class="logo">💄 COSMETIC</a>
 
         <div class="nav">
-            <a href="index.php">首頁</a>
-            <a href="story1.php">開始測試</a>
-            <a href="../產品/index.php">產品首頁</a>
-            <a href="../產品/products.php">產品</a>
-            <a href="../產品/skin-match.php">膚色配對</a>
-            <a href="../產品/compare.php">比較</a>
-            <a href="../產品/favorite.php">收藏</a>
+            <a href="/SA/New-SA/產品/index.php">首頁</a>
+            <a href="/SA/New-SA/產品/products.php">產品</a>
+            <a href="/SA/New-SA/AI/index.php">AI檢測</a>
+            <a href="/SA/New-SA/產品/skinmatch.php">產品推薦</a>
+            <a href="/SA/New-SA/產品/compare.php">比較</a>
+            <a href="/SA/New-SA/產品/favorite.php">收藏</a>
             <a href="/SA/New-SA/首頁/video.php">影片交流</a>
         </div>
 
-        <?php if (isset($_SESSION['user']) && trim((string)$_SESSION['user']) !== ''): ?>
-            <span style="font-size:14px;color:#666;">
-                <a href="../首頁/profile.php" style="text-decoration:none;color:#666;margin-right:8px;"><?php echo htmlspecialchars((string)$_SESSION['user']); ?></a>
-                |
-                <a href="../首頁/logout.php" style="text-decoration:none;color:#666;margin-left:8px;">登出</a>
-            </span>
+        <?php if (isset($_SESSION['user'])): ?>
+            <span style="font-size:14px;color:#555;"><?php echo htmlspecialchars($_SESSION['user']); ?></span>
+            <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+                <a href="/SA/New-SA/首頁/admin.php" class="login-link">管理後台</a>
+            <?php else: ?>
+                <a href="/SA/New-SA/首頁/profile.php" class="login-link">個人資料</a>
+            <?php endif; ?>
+            <a href="/SA/New-SA/首頁/logout.php" class="login-link">登出</a>
         <?php else: ?>
-            <a href="../首頁/login.php" class="login-link">登入</a>
+            <a href="/SA/New-SA/首頁/login.php" class="login-link">登入</a>
         <?php endif; ?>
 
     </div>
