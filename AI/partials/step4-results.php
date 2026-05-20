@@ -41,9 +41,8 @@
                 <input v-model="manualSensitiveSkin" type="checkbox" class="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-400" />
                 同時標記為敏感肌
             </label>
-            <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
-                <span>目前使用：{{ manualSkinType || '尚未選擇' }}{{ manualSensitiveSkin ? ' + 敏感肌' : '' }}</span>
-                <button type="button" @click="analyzeManual" class="rounded-xl bg-purple-600 px-3 py-2 font-bold text-white transition hover:bg-purple-500">套用這個膚質</button>
+            <div class="text-xs text-gray-500">
+                目前使用：{{ manualSkinType || '尚未選擇' }}{{ manualSensitiveSkin ? ' + 敏感肌' : '' }}
             </div>
         </div>
         <div v-if="toneMismatchWarning" class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{{ toneMismatchWarning }}</div>
