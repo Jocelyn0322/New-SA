@@ -79,6 +79,8 @@ const confirmSkinTone = () => { confirmedSkinTone.value = !confirmedSkinTone.val
 const confirmSkinType = () => { confirmedSkinType.value = !confirmedSkinType.value; };
 
 const backToToneAndSkinPage = () => { currentStep.value = 3; };
+const backToResultsPage     = () => { currentStep.value = 4; };
+const goToConfirmStep       = () => { currentStep.value = 5; };
 
 const goToMakeupStep = () => {
     if (!canChooseMakeupPreference.value) {
@@ -86,7 +88,7 @@ const goToMakeupStep = () => {
         return;
     }
     showMakeupPreference.value = true;
-    currentStep.value = 4;
+    currentStep.value = 5;
 };
 
 const setQuizAnswer = (questionKey, optionValue) => {

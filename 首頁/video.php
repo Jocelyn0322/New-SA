@@ -1824,7 +1824,7 @@ if ($view === 'personal') {
                            value="<?php echo $activeTag ? '#'.htmlspecialchars($activeTag) : ''; ?>"
                            style="flex:1;border:1.5px solid #ffd6de;border-radius:20px;padding:7px 14px;font-size:13px;outline:none;color:#333;"
                            onfocus="this.style.borderColor='#e83e5a'" onblur="this.style.borderColor='#ffd6de'">
-                    <button type="submit" style="background:#e83e5a;color:white;border:none;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">搜尋</button>
+                    <button type="submit" style="background:#e83e5a;color:white;border:none;border-radius:20px;padding:7px 24px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">搜尋</button>
                 </form>
                 <a href="?view=personal" style="display:inline-flex;align-items:center;gap:6px;background:#e83e5a;color:#fff;padding:9px 18px;border-radius:20px;text-decoration:none;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(232,62,90,0.3);">
                     + 上傳影片
