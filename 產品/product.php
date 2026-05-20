@@ -43,7 +43,7 @@ if ($id <= 0) {
     exit;
 }
 
-$sql = "SELECT * FROM products WHERE p_id=$id";
+$sql = "SELECT *, id AS p_id FROM data WHERE id=$id";
 $result = $conn->query($sql);
 if (!$result) {
     echo '<div class="products"><div class="empty-state"><h3>查詢失敗</h3><p>產品資料表可能尚未匯入，或資料庫連線名稱不正確。</p><p><a href="products.php">返回產品列表</a></p></div></div>';
@@ -67,7 +67,7 @@ $viewedKey = 'viewed_product_' . $id;
 if (empty($_SESSION[$viewedKey])) {
     $_SESSION[$viewedKey] = true;
     try {
-        $pdo->prepare("UPDATE products SET view_count = view_count + 1 WHERE p_id = ?")
+        $pdo->prepare("UPDATE data SET view_count = view_count + 1 WHERE id = ?")
             ->execute([$id]);
     } catch (Exception $e) { /* view_count 欄位尚未建立時跳過 */ }
 }

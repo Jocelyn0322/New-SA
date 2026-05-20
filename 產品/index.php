@@ -9,7 +9,7 @@ $slides = [
 ];
 
 // 取最新的6個產品作為推薦
-$sql = "SELECT * FROM products ORDER BY created_at DESC LIMIT 6";
+$sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 6";
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
