@@ -320,17 +320,23 @@ const finishAndSave = async () => {
         const resp = await fetch('./saveAnalysisResult.php', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ skinType, skinTone, skinConcerns: concerns.join(', ') })
+            body:    JSON.stringify({
+                skinType,
+                skinTone,
+                skinConcerns:  concerns.join(', '),
+                makeupFinish:  makeupFinish.value  || '',
+                makeupStyle:   makeupStyle.value   || '',
+            })
         });
         const result = await resp.json().catch(() => ({}));
 
         if (!result.loggedIn) {
             showLoginPromptModal();
         } else {
-            window.location.href = '../產品/index.php';
+            window.location.href = '../產品/skinmatch.php';
         }
     } catch (_) {
-        window.location.href = '../產品/index.php';
+        window.location.href = '../產品/skinmatch.php';
     }
 };
 

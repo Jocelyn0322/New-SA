@@ -121,18 +121,19 @@ $skinTones = [
 
 // 肌膚問題選項
 $skinConcernsList = [
-    '痘痘' => '痘痘',
-    '粉刺' => '粉刺',
+    '敏感肌' => '敏感肌',
+    '痘痘'   => '痘痘',
+    '粉刺'   => '粉刺',
     '毛孔粗大' => '毛孔粗大',
-    '黑斑' => '黑斑',
-    '細紋' => '細紋',
-    '皺紋' => '皺紋',
+    '黑斑'   => '黑斑',
+    '細紋'   => '細紋',
+    '皺紋'   => '皺紋',
     '乾燥脫皮' => '乾燥脫皮',
     '油光滿面' => '油光滿面',
     '暗瘡疤痕' => '暗瘡疤痕',
-    '曬斑' => '曬斑',
+    '曬斑'   => '曬斑',
     '黑眼圈' => '黑眼圈',
-    '浮腫' => '浮腫'
+    '浮腫'   => '浮腫',
 ];
 ?>
 <!DOCTYPE html>
@@ -141,7 +142,7 @@ $skinConcernsList = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>個人資料</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <style>
         * {
             margin: 0;
@@ -150,7 +151,7 @@ $skinConcernsList = [
         }
 
         body {
-            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
         }

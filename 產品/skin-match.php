@@ -15,7 +15,7 @@ while($t = $tones->fetch()) $all_tones[] = $t;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>膚色配對 - Makeup</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -72,10 +72,10 @@ while($t = $tones->fetch()) $all_tones[] = $t;
         // 查詢所有粉底產品及其色號
         $products = $conn->query("
             SELECT p.*, STRING_AGG(pc.color_name, ',') as colors, STRING_AGG(pc.color_hex, ',') as color_hexes
-            FROM products p
-            LEFT JOIN product_colors pc ON p.p_id = pc.p_id
+            FROM data p
+            LEFT JOIN product_colors pc ON p.id = pc.p_id
             WHERE p.category='底妝'
-            GROUP BY p.p_id
+            GROUP BY p.id
         ");
         ?>
 

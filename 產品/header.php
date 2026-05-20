@@ -8,7 +8,7 @@
             <a href="/SA/New-SA/產品/index.php">首頁</a>
             <a href="/SA/New-SA/產品/products.php">產品</a>
             <a href="/SA/New-SA/AI/index.php">AI檢測</a>
-            <a href="/SA/New-SA/產品/skinmatch.php">膚色配對</a>
+            <a href="/SA/New-SA/產品/skinmatch.php">產品推薦</a>
             <a href="/SA/New-SA/產品/compare.php">比較</a>
             <a href="/SA/New-SA/產品/favorite.php">收藏</a>
             <a href="/SA/New-SA/首頁/video.php">影片交流</a>

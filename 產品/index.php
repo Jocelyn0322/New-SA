@@ -9,7 +9,7 @@ $slides = [
 ];
 
 // 取最新的6個產品作為推薦
-$sql = "SELECT * FROM products ORDER BY created_at DESC LIMIT 6";
+$sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 6";
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -18,7 +18,7 @@ $result = $conn->query($sql);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>首頁 - Makeup</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 

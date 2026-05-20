@@ -6,7 +6,7 @@ $keyword = $_GET['keyword'] ?? '';
 $category = $_GET['category'] ?? '';
 $color_filter = $_GET['color'] ?? '';
 
-$sql = "SELECT DISTINCT p.* FROM products p";
+$sql = "SELECT DISTINCT p.*, p.id AS p_id FROM data p";
 
 $joins = "";
 $wheres = [];
@@ -20,7 +20,7 @@ if($category){
 }
 
 if($color_filter){
-    $joins .= " LEFT JOIN product_colors pc ON p.p_id = pc.p_id";
+    $joins .= " LEFT JOIN product_colors pc ON p.id = pc.p_id";
     $wheres[] = "pc.color_name='$color_filter'";
 }
 
@@ -33,7 +33,7 @@ if(!empty($wheres)){
 $result = $conn->query($sql);
 
 // 取所有分類（用於篩選按鈕）
-$categories_sql = "SELECT DISTINCT category FROM products";
+$categories_sql = "SELECT DISTINCT category FROM data";
 $categories_result = $conn->query($categories_sql);
 ?>
 
@@ -42,7 +42,7 @@ $categories_result = $conn->query($categories_sql);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <title>產品列表</title>
 </head>
 

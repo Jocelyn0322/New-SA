@@ -11,7 +11,7 @@ if(empty($ids)){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <title>我的收藏</title>
 </head>
 <body>
@@ -31,7 +31,7 @@ if(empty($ids)){
 }
 
 $id_list = implode(",", array_map('intval', $ids));
-$sql = "SELECT * FROM products WHERE p_id IN ($id_list)";
+$sql = "SELECT *, id AS p_id FROM data WHERE id IN ($id_list)";
 $result = $conn->query($sql);
 ?>
 
@@ -40,7 +40,7 @@ $result = $conn->query($sql);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <title>我的收藏</title>
 </head>
 

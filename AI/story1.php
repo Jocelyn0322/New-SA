@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="../產品/style.css">
+    <link rel="stylesheet" href="../產品/style.css?v=2">
     <link rel="stylesheet" href="ai-overrides.css">
     <link rel="stylesheet" href="story1-morandi.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -43,12 +43,13 @@
     <?php include 'footer.php'; ?>
 
     <!-- Load order matters: state must be first, app must be last -->
-    <script src="js/state.js"></script>
-    <script src="js/quiz.js"></script>
-    <script src="js/skin-engine.js"></script>
-    <script src="js/camera-liveness.js"></script>
-    <script src="js/skin-analysis.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/app.js"></script>
+    <?php $v = filemtime(__DIR__ . '/js/state.js'); ?>
+    <script src="js/state.js?v=<?= filemtime(__DIR__.'/js/state.js') ?>"></script>
+    <script src="js/quiz.js?v=<?= filemtime(__DIR__.'/js/quiz.js') ?>"></script>
+    <script src="js/skin-engine.js?v=<?= filemtime(__DIR__.'/js/skin-engine.js') ?>"></script>
+    <script src="js/camera-liveness.js?v=<?= filemtime(__DIR__.'/js/camera-liveness.js') ?>"></script>
+    <script src="js/skin-analysis.js?v=<?= filemtime(__DIR__.'/js/skin-analysis.js') ?>"></script>
+    <script src="js/api.js?v=<?= filemtime(__DIR__.'/js/api.js') ?>"></script>
+    <script src="js/app.js?v=<?= filemtime(__DIR__.'/js/app.js') ?>"></script>
 </body>
 </html>
