@@ -14,6 +14,7 @@ $options = [
 
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
+    $pdo->exec("SET search_path TO public");
     $conn = $pdo;
 } catch (PDOException $e) {
     die('資料庫連線失敗：' . $e->getMessage());
