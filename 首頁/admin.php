@@ -151,6 +151,27 @@ if (isset($_POST['save_monthly_ranking'])) {
     $tab = 'stats';
 }
 
+// 更新產品資料
+if (isset($_POST['update_product'])) {
+    $pid  = (int)$_POST['product_id'];
+    $name = trim($_POST['name'] ?? '');
+    if ($pid > 0 && $name !== '') {
+        $pdo->prepare("UPDATE data SET name=?, brand=?, category=?, origin=?, purpose=?, ingredients=?, precautions=? WHERE id=?")
+            ->execute([
+                $name,
+                trim($_POST['brand']        ?? ''),
+                trim($_POST['category']     ?? ''),
+                trim($_POST['origin']       ?? ''),
+                trim($_POST['purpose']      ?? ''),
+                trim($_POST['ingredients']  ?? ''),
+                trim($_POST['precautions']  ?? ''),
+                $pid,
+            ]);
+        $msg = '✅ 已更新「' . htmlspecialchars($name) . '」'; $msgType = 'success';
+    }
+    $tab = 'data_products';
+}
+
 // 標記檢舉為已處理
 if (isset($_POST['dismiss_report'])) {
     $vid = (int)$_POST['video_id'];
@@ -161,6 +182,28 @@ if (isset($_POST['dismiss_report'])) {
 }
 
 // ── 資料查詢 ───────────────────────────────────────────────
+
+if ($tab === 'data_products') {
+    $dpSearch  = trim($_GET['q'] ?? '');
+    $dpPage    = max(1, (int)($_GET['p'] ?? 1));
+    $dpPerPage = 25;
+    $dpOffset  = ($dpPage - 1) * $dpPerPage;
+
+    if ($dpSearch !== '') {
+        $like = '%' . $dpSearch . '%';
+        $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM data WHERE name ILIKE ? OR brand ILIKE ? OR category ILIKE ?");
+        $cntStmt->execute([$like,$like,$like]);
+        $dpTotal = (int)$cntStmt->fetchColumn();
+        $dpStmt  = $pdo->prepare("SELECT * FROM data WHERE name ILIKE ? OR brand ILIKE ? OR category ILIKE ? ORDER BY id LIMIT ? OFFSET ?");
+        $dpStmt->execute([$like,$like,$like,$dpPerPage,$dpOffset]);
+    } else {
+        $dpTotal = (int)$pdo->query("SELECT COUNT(*) FROM data")->fetchColumn();
+        $dpStmt  = $pdo->prepare("SELECT * FROM data ORDER BY id LIMIT ? OFFSET ?");
+        $dpStmt->execute([$dpPerPage,$dpOffset]);
+    }
+    $dpProducts = $dpStmt->fetchAll();
+    $dpPages    = (int)ceil($dpTotal / $dpPerPage);
+}
 
 if ($tab === 'products') {
     $filterStatus = $_GET['status'] ?? 'pending';
@@ -427,6 +470,7 @@ body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
     <a href="?tab=comments" class="adm-tab <?php echo $tab==='comments' ? 'active':''; ?>"> 留言管理</a>
     <a href="?tab=reports"  class="adm-tab <?php echo $tab==='reports'  ? 'active':''; ?>"> 檢舉管理</a>
     <a href="?tab=users"    class="adm-tab <?php echo $tab==='users'    ? 'active':''; ?>"> 會員管理</a>
+    <a href="?tab=data_products" class="adm-tab <?php echo $tab==='data_products' ? 'active':''; ?>"> 產品管理</a>
     <a href="?tab=products" class="adm-tab <?php echo $tab==='products' ? 'active':''; ?>" style="position:relative;">
         商品審核
         <?php
@@ -1017,6 +1061,175 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
     </div>
     <p style="color:#aaa;font-size:13px;margin-top:10px;">共 <?php echo count($allUsers); ?> 位使用者</p>
 <?php endif; ?>
+
+<?php elseif ($tab === 'data_products'): ?>
+<!-- ══════════ 產品管理 ══════════ -->
+<style>
+.dp-search-bar { display:flex; gap:10px; margin-bottom:18px; align-items:center; flex-wrap:wrap; }
+.dp-search-bar input { flex:1; min-width:200px; padding:9px 14px; border:1.5px solid #f0d5dc; border-radius:10px; font-size:14px; outline:none; }
+.dp-search-bar input:focus { border-color:#c47a8a; }
+.dp-search-bar button { padding:9px 18px; background:#c47a8a; color:#fff; border:none; border-radius:10px; font-size:14px; cursor:pointer; font-weight:600; }
+.dp-table { width:100%; border-collapse:collapse; font-size:13px; }
+.dp-table th { background:#fdf8f8; padding:10px 14px; text-align:left; font-weight:600; color:#9a7878; border-bottom:1px solid #f0e8e8; font-size:12px; }
+.dp-table td { padding:10px 14px; border-bottom:1px solid #f8f0f0; vertical-align:middle; color:#4a3535; }
+.dp-table tbody tr:hover { background:#fdf8f8; }
+.dp-edit-btn { padding:5px 14px; background:#efc6cd; color:#7a3040; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:background .15s; }
+.dp-edit-btn:hover { background:#e4a0b0; }
+.dp-pagination { display:flex; gap:6px; margin-top:18px; flex-wrap:wrap; }
+.dp-pagination a { padding:6px 14px; border-radius:8px; font-size:13px; text-decoration:none; background:#f0e8e8; color:#7a3040; }
+.dp-pagination a.active { background:#c47a8a; color:#fff; }
+
+/* 編輯 Modal */
+.dp-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:2000; align-items:center; justify-content:center; }
+.dp-modal-bg.open { display:flex; }
+.dp-modal { background:#fff; border-radius:18px; width:90%; max-width:560px; max-height:90vh; overflow-y:auto; padding:28px 28px 24px; box-shadow:0 12px 48px rgba(0,0,0,.22); }
+.dp-modal h3 { margin:0 0 20px; font-size:17px; color:#3a2a2a; }
+.dp-field { margin-bottom:14px; }
+.dp-field label { display:block; font-size:12px; font-weight:600; color:#9a7878; margin-bottom:4px; }
+.dp-field input, .dp-field textarea, .dp-field select {
+    width:100%; padding:9px 12px; border:1.5px solid #f0d5dc; border-radius:9px;
+    font-size:14px; font-family:inherit; box-sizing:border-box; outline:none;
+}
+.dp-field input:focus, .dp-field textarea:focus, .dp-field select:focus { border-color:#c47a8a; }
+.dp-field textarea { resize:vertical; min-height:72px; }
+.dp-modal-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.dp-modal-btns { display:flex; gap:10px; margin-top:18px; }
+.dp-modal-save { flex:1; padding:10px; background:#c47a8a; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
+.dp-modal-save:hover { background:#b3647a; }
+.dp-modal-cancel { padding:10px 20px; background:#f0e8e8; color:#7a3040; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+</style>
+
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+    <div class="section-title" style="margin:0;">📦 產品管理</div>
+    <span style="font-size:13px;color:#aaa;">共 <?php echo $dpTotal; ?> 筆產品</span>
+</div>
+
+<form method="get" class="dp-search-bar">
+    <input type="hidden" name="tab" value="data_products">
+    <input type="text" name="q" value="<?php echo htmlspecialchars($dpSearch); ?>" placeholder="搜尋名稱、品牌、分類…">
+    <button type="submit">搜尋</button>
+    <?php if ($dpSearch): ?>
+        <a href="?tab=data_products" style="font-size:13px;color:#aaa;text-decoration:none;">✕ 清除</a>
+    <?php endif; ?>
+</form>
+
+<div class="adm-table-wrap">
+<table class="dp-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>品牌</th>
+            <th>名稱</th>
+            <th>分類</th>
+            <th>產地</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($dpProducts as $p): ?>
+        <tr>
+            <td style="color:#bbb;"><?php echo $p['id']; ?></td>
+            <td><?php echo htmlspecialchars($p['brand'] ?? ''); ?></td>
+            <td style="font-weight:600;"><?php echo htmlspecialchars($p['name']); ?></td>
+            <td><span style="background:#f9eef0;color:#b06070;padding:2px 8px;border-radius:10px;font-size:11px;"><?php echo htmlspecialchars($p['category'] ?? ''); ?></span></td>
+            <td style="color:#aaa;"><?php echo htmlspecialchars($p['origin'] ?? ''); ?></td>
+            <td>
+                <button class="dp-edit-btn" onclick='openEdit(<?php echo htmlspecialchars(json_encode([
+                    "id"           => $p["id"],
+                    "name"         => $p["name"]         ?? "",
+                    "brand"        => $p["brand"]        ?? "",
+                    "category"     => $p["category"]     ?? "",
+                    "origin"       => $p["origin"]       ?? "",
+                    "purpose"      => $p["purpose"]      ?? "",
+                    "ingredients"  => $p["ingredients"]  ?? "",
+                    "precautions"  => $p["precautions"]  ?? "",
+                ], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>)'>編輯</button>
+            </td>
+        </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
+</div>
+
+<!-- 分頁 -->
+<?php if ($dpPages > 1): ?>
+<div class="dp-pagination">
+    <?php for ($i = 1; $i <= $dpPages; $i++): ?>
+        <a href="?tab=data_products&p=<?php echo $i; ?>&q=<?php echo urlencode($dpSearch); ?>"
+           class="<?php echo $i === $dpPage ? 'active' : ''; ?>"><?php echo $i; ?></a>
+    <?php endfor; ?>
+</div>
+<?php endif; ?>
+
+<!-- 編輯 Modal -->
+<div id="dpModalBg" class="dp-modal-bg" onclick="if(event.target===this)closeEdit()">
+    <div class="dp-modal">
+        <h3>編輯產品</h3>
+        <form method="post">
+            <input type="hidden" name="product_id" id="dp_id">
+            <div class="dp-modal-row">
+                <div class="dp-field">
+                    <label>品牌</label>
+                    <input type="text" name="brand" id="dp_brand">
+                </div>
+                <div class="dp-field">
+                    <label>分類</label>
+                    <select name="category" id="dp_category">
+                        <?php foreach(['底妝','眼影','腮紅','口紅','唇彩','唇釉','唇油','唇膏','唇泥','睫毛膏','眼線','打亮','修容','帶亮','遮瑕','護膚','防曬'] as $cat): ?>
+                        <option value="<?php echo $cat; ?>"><?php echo $cat; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="dp-field">
+                <label>產品名稱 *</label>
+                <input type="text" name="name" id="dp_name" required>
+            </div>
+            <div class="dp-field">
+                <label>產地</label>
+                <input type="text" name="origin" id="dp_origin">
+            </div>
+            <div class="dp-field">
+                <label>用途</label>
+                <textarea name="purpose" id="dp_purpose"></textarea>
+            </div>
+            <div class="dp-field">
+                <label>成分</label>
+                <textarea name="ingredients" id="dp_ingredients"></textarea>
+            </div>
+            <div class="dp-field">
+                <label>注意事項</label>
+                <textarea name="precautions" id="dp_precautions"></textarea>
+            </div>
+            <div class="dp-modal-btns">
+                <button type="submit" name="update_product" value="1" class="dp-modal-save">儲存</button>
+                <button type="button" class="dp-modal-cancel" onclick="closeEdit()">取消</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEdit(p) {
+    document.getElementById('dp_id').value          = p.id;
+    document.getElementById('dp_name').value        = p.name;
+    document.getElementById('dp_brand').value       = p.brand;
+    document.getElementById('dp_origin').value      = p.origin;
+    document.getElementById('dp_purpose').value     = p.purpose;
+    document.getElementById('dp_ingredients').value = p.ingredients;
+    document.getElementById('dp_precautions').value = p.precautions;
+    var sel = document.getElementById('dp_category');
+    for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === p.category) { sel.selectedIndex = i; break; }
+    }
+    document.getElementById('dpModalBg').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeEdit() {
+    document.getElementById('dpModalBg').classList.remove('open');
+    document.body.style.overflow = '';
+}
+</script>
 
 <?php endif; ?>
 </div>

@@ -109,14 +109,15 @@ if (empty($_SESSION[$viewedKey])) {
             <p><?php echo htmlspecialchars($row['precautions']); ?></p>
 
             <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
-            <!-- 管理員上傳照片區 -->
-            <div style="margin-bottom:16px; padding:14px; background:#fff8f9; border-radius:12px; border:1px dashed #efc6cd;">
-                <p style="font-size:13px; color:#999; margin-bottom:8px;">📷 更換產品照片（上傳後自動存入 Supabase）</p>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="file" id="imgUpload" accept="image/*" style="font-size:13px; flex:1;">
-                    <button onclick="uploadImage(<?php echo $row['p_id']; ?>)" class="btn btn-outline" style="white-space:nowrap;">上傳</button>
-                </div>
-                <p id="uploadMsg" style="font-size:12px; margin-top:6px; color:#27ae60;"></p>
+            <!-- 管理員工具列 -->
+            <div style="margin-bottom:16px; padding:14px; background:#fff8f9; border-radius:12px; border:1px dashed #efc6cd; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                <span style="font-size:12px;color:#bbb;flex:1;">管理員工具</span>
+                <button onclick="openEditProduct()" class="btn btn-outline" style="font-size:13px;padding:7px 16px;">✏️ 編輯產品資料</button>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+                    <input type="file" id="imgUpload" accept="image/*" style="display:none;" onchange="uploadImage(<?php echo $row['p_id']; ?>)">
+                    <span class="btn btn-outline" style="font-size:13px;padding:7px 16px;" onclick="document.getElementById('imgUpload').click()">📷 更換照片</span>
+                </label>
+                <p id="uploadMsg" style="font-size:12px;color:#27ae60;margin:0;width:100%;display:none;"></p>
             </div>
             <?php endif; ?>
 
@@ -140,6 +141,42 @@ if (empty($_SESSION[$viewedKey])) {
             </div>
         </div>
     </div>
+
+    <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+    <!-- 管理員：編輯產品資料浮窗 -->
+    <div id="editProductPanel" class="color-upload-panel" style="width:340px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <strong style="font-size:14px;">編輯產品資料</strong>
+            <button onclick="closeEditProduct()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+                <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">品牌</label>
+                <input id="ep_brand" type="text" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">分類</label>
+                <select id="ep_category" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                    <?php foreach(['底妝','眼影','腮紅','口紅','唇彩','唇釉','唇油','唇膏','唇泥','睫毛膏','眼線','打亮','修容','帶亮','遮瑕','護膚','防曬'] as $cat): ?>
+                    <option value="<?php echo $cat; ?>" <?php echo ($row['category']??'')===$cat?'selected':''; ?>><?php echo $cat; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">產品名稱</label>
+        <input id="ep_name" type="text" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:10px;">
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">產地</label>
+        <input id="ep_origin" type="text" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:10px;">
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">用途</label>
+        <textarea id="ep_purpose" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">成分</label>
+        <textarea id="ep_ingredients" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">注意事項</label>
+        <textarea id="ep_precautions" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:12px;"></textarea>
+        <button onclick="saveEditProduct(<?php echo $row['p_id']; ?>)" class="btn btn-primary" style="width:100%;">儲存</button>
+        <p id="editProductMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
+    </div>
+    <?php endif; ?>
 
     <h3 style="margin-top:40px; margin-bottom:20px;">色號列表</h3>
 
@@ -587,11 +624,84 @@ document.querySelectorAll('.stars-interactive').forEach(function(container) {
 </div>
 
 <script>
+// ── 編輯產品資料浮窗 ───────────────────────────────────────
+(function() {
+    var data = <?php echo json_encode([
+        'name'        => $row['name']        ?? '',
+        'brand'       => $row['brand']       ?? '',
+        'category'    => $row['category']    ?? '',
+        'origin'      => $row['origin']      ?? '',
+        'purpose'     => $row['purpose']     ?? '',
+        'ingredients' => $row['ingredients'] ?? '',
+        'precautions' => $row['precautions'] ?? '',
+    ], JSON_UNESCAPED_UNICODE); ?>;
+    window._epData = data;
+})();
+
+function openEditProduct() {
+    var d = window._epData;
+    document.getElementById('ep_name').value        = d.name;
+    document.getElementById('ep_brand').value       = d.brand;
+    document.getElementById('ep_origin').value      = d.origin;
+    document.getElementById('ep_purpose').value     = d.purpose;
+    document.getElementById('ep_ingredients').value = d.ingredients;
+    document.getElementById('ep_precautions').value = d.precautions;
+    var sel = document.getElementById('ep_category');
+    for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === d.category) { sel.selectedIndex = i; break; }
+    }
+    document.getElementById('editProductMsg').textContent = '';
+    document.getElementById('editProductPanel').classList.add('show');
+}
+
+function closeEditProduct() {
+    document.getElementById('editProductPanel').classList.remove('show');
+}
+
+async function saveEditProduct(pid) {
+    var msg  = document.getElementById('editProductMsg');
+    var name = document.getElementById('ep_name').value.trim();
+    if (!name) { msg.style.color='#e05'; msg.textContent='名稱不能空白'; return; }
+
+    msg.style.color='#999'; msg.textContent='儲存中…';
+    var form = new FormData();
+    form.append('product_id',  pid);
+    form.append('name',        name);
+    form.append('brand',       document.getElementById('ep_brand').value.trim());
+    form.append('category',    document.getElementById('ep_category').value);
+    form.append('origin',      document.getElementById('ep_origin').value.trim());
+    form.append('purpose',     document.getElementById('ep_purpose').value.trim());
+    form.append('ingredients', document.getElementById('ep_ingredients').value.trim());
+    form.append('precautions', document.getElementById('ep_precautions').value.trim());
+
+    try {
+        var res  = await fetch('update_product.php', { method:'POST', body:form });
+        var data = await res.json();
+        if (data.success) {
+            msg.style.color='#27ae60'; msg.textContent='✓ 已儲存';
+            window._epData.name        = document.getElementById('ep_name').value.trim();
+            window._epData.brand       = document.getElementById('ep_brand').value.trim();
+            window._epData.category    = document.getElementById('ep_category').value;
+            window._epData.origin      = document.getElementById('ep_origin').value.trim();
+            window._epData.purpose     = document.getElementById('ep_purpose').value.trim();
+            window._epData.ingredients = document.getElementById('ep_ingredients').value.trim();
+            window._epData.precautions = document.getElementById('ep_precautions').value.trim();
+            // 更新頁面上顯示的名稱
+            document.querySelector('.product-info h1').textContent = window._epData.name;
+        } else {
+            msg.style.color='#e05'; msg.textContent='失敗：' + data.message;
+        }
+    } catch(e) {
+        msg.style.color='#e05'; msg.textContent='網路錯誤';
+    }
+}
+
 async function uploadImage(productId) {
     const file = document.getElementById('imgUpload').files[0];
     const msg  = document.getElementById('uploadMsg');
-    if (!file) { msg.style.color='#e05'; msg.textContent='請先選擇照片'; return; }
+    if (!file) return;
 
+    msg.style.display = 'block';
     msg.style.color='#999'; msg.textContent='上傳中…';
 
     const form = new FormData();
@@ -604,6 +714,7 @@ async function uploadImage(productId) {
         if (data.success) {
             msg.style.color = '#27ae60';
             msg.textContent = '✓ 上傳成功，重新整理頁面即可看到新照片';
+            document.getElementById('mainProductImg').src = data.url;
         } else {
             msg.style.color = '#e05';
             msg.textContent = '失敗：' + data.message;

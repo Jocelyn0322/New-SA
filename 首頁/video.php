@@ -11,12 +11,44 @@ require 'db.php';
 $isLoggedIn = isset($_SESSION['user']);
 $isAdmin    = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 
-// 建立 videos 目錄
-$videosDir = __DIR__ . '/videos';
-if (!is_dir($videosDir)) {
-    if (!mkdir($videosDir, 0755, true)) {
-        die('無法創建 videos 目錄，請檢查權限設定');
-    }
+// Supabase Storage 上傳影片
+function uploadVideoToSupabase(string $tmpPath, string $filename, string $mimeType): array {
+    $uploadUrl = SUPABASE_URL . '/storage/v1/object/' . SUPABASE_BUCKET . '/videos/' . $filename;
+    $fp   = fopen($tmpPath, 'rb');
+    $size = filesize($tmpPath);
+    $ch   = curl_init($uploadUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_PUT            => true,
+        CURLOPT_INFILE         => $fp,
+        CURLOPT_INFILESIZE     => $size,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+            'apikey: '               . SUPABASE_SERVICE_KEY,
+            'Content-Type: '         . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $resp   = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    fclose($fp);
+    return ['status' => $status, 'body' => $resp];
+}
+
+// Supabase Storage 刪除影片
+function deleteVideoFromSupabase(string $filename): void {
+    $ch = curl_init(SUPABASE_URL . '/storage/v1/object/' . SUPABASE_BUCKET . '/videos/' . $filename);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST  => 'DELETE',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+            'apikey: '               . SUPABASE_SERVICE_KEY,
+        ],
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
 }
 
 $message = '';
@@ -86,44 +118,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['video']) && !isset($
             } else {
                 $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', basename($file['name']));
                 $filename = time() . '_' . $safeName;
-                $relativePath = 'videos/' . $filename;
-                $fullPath = $videosDir . '/' . $filename;
 
-                if (move_uploaded_file($file['tmp_name'], $fullPath)) {
+                // 依 MIME 判斷 Content-Type（瀏覽器送來的有時不準，以伺服器偵測為準）
+                $mimeType = mime_content_type($file['tmp_name']) ?: 'video/mp4';
+
+                $result = uploadVideoToSupabase($file['tmp_name'], $filename, $mimeType);
+
+                if ($result['status'] === 200) {
+                    $publicUrl = SUPABASE_URL . '/storage/v1/object/public/' . SUPABASE_BUCKET . '/videos/' . $filename;
                     try {
                         $stmt = $pdo->prepare("
                             INSERT INTO videos (title, description, filename, file_path, uploaded_by)
                             VALUES (?, ?, ?, ?, ?)
                         ");
-                        $stmt->execute([$title, $description, $filename, $relativePath, $_SESSION['user']]);
-
+                        $stmt->execute([$title, $description, $filename, $publicUrl, $_SESSION['user']]);
                         $message = '影片上傳成功！';
                         $messageType = 'success';
                     } catch (PDOException $e) {
-                        // 如果資料庫插入失敗，刪除已上傳的檔案
-                        if (file_exists($fullPath)) {
-                            unlink($fullPath);
-                        }
+                        deleteVideoFromSupabase($filename);
                         $message = '資料庫儲存失敗：' . $e->getMessage();
                         $messageType = 'error';
                     }
                 } else {
-                    // 檢查可能的 move_uploaded_file 失敗原因
-                    $errorDetails = [];
-                    if (!is_writable($videosDir)) {
-                        $errorDetails[] = 'videos 目錄沒有寫入權限';
-                    }
-                    if (disk_free_space($videosDir) < $file['size']) {
-                        $errorDetails[] = '磁盤空間不足';
-                    }
-                    if (!is_uploaded_file($file['tmp_name'])) {
-                        $errorDetails[] = '臨時檔案不存在或不是有效的上傳檔案';
-                    }
-
-                    $message = '檔案移動失敗';
-                    if (!empty($errorDetails)) {
-                        $message .= '：' . implode('、', $errorDetails);
-                    }
+                    $message = '上傳到 Supabase 失敗（HTTP ' . $result['status'] . '）：' . $result['body'];
                     $messageType = 'error';
                 }
             }
@@ -144,13 +161,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_
         $canDelete = ($_SESSION['role'] ?? '') === 'admin' || $video['uploaded_by'] === $_SESSION['user'];
 
         if ($canDelete) {
-            // 刪除檔案
-            $stmt = $pdo->prepare("SELECT file_path FROM videos WHERE id = ?");
+            // 從 Supabase Storage 刪除
+            $stmt = $pdo->prepare("SELECT filename FROM videos WHERE id = ?");
             $stmt->execute([$videoId]);
-            $filePath = $stmt->fetch()['file_path'];
-            $fullPath = __DIR__ . '/' . $filePath;
-            if (file_exists($fullPath)) {
-                unlink($fullPath);
+            $row = $stmt->fetch();
+            if ($row && !empty($row['filename'])) {
+                deleteVideoFromSupabase($row['filename']);
             }
 
             // 刪除資料庫記錄
@@ -200,13 +216,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_like']) && iss
 
 // 管理員：強制刪除影片
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_force_delete'])) {
-    $vid = (int)$_POST['video_id'];
-    $row = $pdo->prepare("SELECT file_path FROM videos WHERE id = ?");
-    $row->execute([$vid]);
-    $vrow = $row->fetch();
+    $vid  = (int)$_POST['video_id'];
+    $stmt = $pdo->prepare("SELECT filename FROM videos WHERE id = ?");
+    $stmt->execute([$vid]);
+    $vrow = $stmt->fetch();
     if ($vrow) {
-        $fp = __DIR__ . '/' . $vrow['file_path'];
-        if (file_exists($fp) && is_file($fp)) unlink($fp);
+        if (!empty($vrow['filename'])) {
+            deleteVideoFromSupabase($vrow['filename']);
+        }
         $pdo->prepare("DELETE FROM videos WHERE id = ?")->execute([$vid]);
         $message     = '已強制刪除影片';
         $messageType = 'success';
