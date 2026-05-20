@@ -6,7 +6,7 @@ $keyword = $_GET['keyword'] ?? '';
 $category = $_GET['category'] ?? '';
 $color_filter = $_GET['color'] ?? '';
 
-$sql = "SELECT DISTINCT p.*, p.id AS p_id, p.image_url FROM data p";
+$sql = "SELECT * FROM (SELECT DISTINCT p.*, p.id AS p_id, p.image_url FROM data p";
 
 $joins = "";
 $wheres = [];
@@ -30,10 +30,21 @@ if(!empty($wheres)){
     $sql .= " WHERE " . implode(" AND ", $wheres);
 }
 
+$sql .= ") sub ORDER BY CASE sub.category
+    WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2 WHEN '防曬' THEN 3
+    WHEN '唇膏' THEN 4 WHEN '唇彩' THEN 5 WHEN '唇油' THEN 6 WHEN '唇泥' THEN 7
+    WHEN '眼影' THEN 8 WHEN '眼線' THEN 9 WHEN '睫毛膏' THEN 10
+    WHEN '腮紅' THEN 11 WHEN '修容' THEN 12 WHEN '打亮' THEN 13 WHEN '護膚' THEN 14
+    ELSE 99 END, sub.id";
 $result = $conn->query($sql);
 
 // 取所有分類（用於篩選按鈕）
-$categories_sql = "SELECT DISTINCT category FROM data";
+$categories_sql = "SELECT category FROM (SELECT DISTINCT category FROM data) sub ORDER BY CASE category
+    WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2 WHEN '防曬' THEN 3
+    WHEN '唇膏' THEN 4 WHEN '唇彩' THEN 5 WHEN '唇油' THEN 6 WHEN '唇泥' THEN 7
+    WHEN '眼影' THEN 8 WHEN '眼線' THEN 9 WHEN '睫毛膏' THEN 10
+    WHEN '腮紅' THEN 11 WHEN '修容' THEN 12 WHEN '打亮' THEN 13 WHEN '護膚' THEN 14
+    ELSE 99 END";
 $categories_result = $conn->query($categories_sql);
 ?>
 
