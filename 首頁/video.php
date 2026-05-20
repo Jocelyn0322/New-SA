@@ -314,7 +314,7 @@ if ($view === 'personal') {
                    CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
             FROM videos v
             LEFT JOIN likes l ON v.id = l.video_id AND l.user_id = ?
-            WHERE v.is_active = 1 AND FIND_IN_SET(?, v.tags)
+            WHERE v.is_active = 1 AND ? = ANY(string_to_array(v.tags, ','))
             ORDER BY v.upload_time DESC
         ");
         $stmt->execute([$_SESSION['user'] ?? null, $activeTag]);
