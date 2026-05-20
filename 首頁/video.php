@@ -7,6 +7,19 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require 'db.php';
 
+// 確保 tags 欄位存在
+try { $pdo->exec("ALTER TABLE videos ADD COLUMN tags VARCHAR(500) NOT NULL DEFAULT ''"); } catch (Exception $e) {}
+
+// 撈現有標籤（給 autocomplete 用）
+$existingTags = [];
+try {
+    $tagRows = $pdo->query("SELECT tags FROM videos WHERE tags != '' AND is_active = 1")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($tagRows as $row) {
+        foreach (explode(',', $row) as $t) { $t = trim($t); if ($t) $existingTags[] = $t; }
+    }
+    $existingTags = array_values(array_unique($existingTags));
+} catch (Exception $e) {}
+
 // 檢查是否已登入
 $isLoggedIn = isset($_SESSION['user']);
 $isAdmin    = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
@@ -72,6 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['video']) && !isset($
         $file = $_FILES['video'];
         $title = trim($_POST['title'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        // 清理標籤：去空白、去重、最多 10 個
+        $rawTags = trim($_POST['tags'] ?? '');
+        $tagsArr = array_unique(array_filter(array_map(fn($t) => mb_substr(ltrim(trim($t), '#'), 0, 20), explode(',', $rawTags))));
+        $tags = implode(',', $tagsArr);
 
         if (empty($title)) {
             $message = '請輸入影片標題';
@@ -128,10 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['video']) && !isset($
                     $publicUrl = SUPABASE_URL . '/storage/v1/object/public/' . SUPABASE_BUCKET . '/videos/' . $filename;
                     try {
                         $stmt = $pdo->prepare("
-                            INSERT INTO videos (title, description, filename, file_path, uploaded_by)
-                            VALUES (?, ?, ?, ?, ?)
+                            INSERT INTO videos (title, description, filename, file_path, uploaded_by, tags)
+                            VALUES (?, ?, ?, ?, ?, ?)
                         ");
-                        $stmt->execute([$title, $description, $filename, $publicUrl, $_SESSION['user']]);
+                        $stmt->execute([$title, $description, $filename, $publicUrl, $_SESSION['user'], $tags]);
                         $message = '影片上傳成功！';
                         $messageType = 'success';
                     } catch (PDOException $e) {
@@ -242,10 +259,12 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_dis
 // 獲取影片列表
 $view = $_GET['view'] ?? 'home';
 if ($view === 'admin' && !$isAdmin) $view = 'home';
+$activeTag = ltrim(trim($_GET['tag'] ?? ''), '#');
+
 if ($view === 'personal') {
     // 個人頁面：獲取用戶上傳的影片和按讚的影片
     $stmt = $pdo->prepare("
-        SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes,
+        SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags,
                CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
         FROM videos v
         LEFT JOIN likes l ON v.id = l.video_id AND l.user_id = ?
@@ -305,16 +324,28 @@ if ($view === 'personal') {
         $reportedDetails[$d['video_id']][] = $d;
     }
 } else {
-    // 主頁：顯示所有影片
-    $stmt = $pdo->prepare("
-        SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes,
+    // 主頁：顯示所有影片（支援 tag 篩選）
+    if ($activeTag !== '') {
+        $stmt = $pdo->prepare("
+            SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags,
+                   CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
+            FROM videos v
+            LEFT JOIN likes l ON v.id = l.video_id AND l.user_id = ?
+            WHERE v.is_active = 1 AND ? = ANY(string_to_array(v.tags, ','))
+            ORDER BY v.upload_time DESC
+        ");
+        $stmt->execute([$_SESSION['user'] ?? null, $activeTag]);
+    } else {
+        $stmt = $pdo->prepare("
+        SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags,
                CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
         FROM videos v
         LEFT JOIN likes l ON v.id = l.video_id AND l.user_id = ?
         WHERE v.is_active = 1
         ORDER BY v.upload_time DESC
-    ");
-    $stmt->execute([$_SESSION['user'] ?? null]);
+        ");
+        $stmt->execute([$_SESSION['user'] ?? null]);
+    }
     $videos = $stmt->fetchAll();
 }
 ?>
@@ -568,6 +599,135 @@ if ($view === 'personal') {
             flex-direction: column;
             gap: 6px;
         }
+
+        .vc-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 2px;
+        }
+
+        .vc-tag {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 99px;
+            background: #fff0f3;
+            color: #e83e5a;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid #ffd6de;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            text-decoration: none;
+        }
+
+        .vc-tag:hover, .vc-tag.active {
+            background: #e83e5a;
+            color: white;
+            border-color: #e83e5a;
+        }
+
+        .tag-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 10px 14px;
+            background: #fff0f3;
+            border: 1px solid #ffd6de;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #c0375a;
+            font-weight: 600;
+        }
+
+        .tag-filter-bar a {
+            margin-left: auto;
+            color: #e83e5a;
+            font-size: 12px;
+            text-decoration: none;
+            padding: 3px 10px;
+            border-radius: 99px;
+            border: 1px solid #e83e5a;
+        }
+
+        .tag-filter-bar a:hover { background: #e83e5a; color: white; }
+
+        /* Hashtag chip input */
+        .hashtag-input-box {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            min-height: 42px;
+            padding: 7px 12px;
+            border: 1.5px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            cursor: text;
+            transition: border-color 0.2s;
+        }
+        .hashtag-input-box:focus-within { border-color: #e83e5a; }
+
+        .hashtag-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fff0f3;
+            color: #e83e5a;
+            border: 1px solid #ffd6de;
+            border-radius: 99px;
+            padding: 2px 10px 2px 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .hashtag-chip-remove {
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            color: #e83e5a;
+            opacity: 0.6;
+            margin-left: 2px;
+        }
+        .hashtag-chip-remove:hover { opacity: 1; }
+
+        .hashtag-typing {
+            border: none;
+            outline: none;
+            font-size: 13px;
+            min-width: 120px;
+            flex: 1;
+            color: #333;
+            background: transparent;
+        }
+
+        .preset-tag-btn {
+            background: white;
+            border: 1.5px solid #ffd6de;
+            color: #e83e5a;
+            border-radius: 99px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .preset-tag-btn:hover { background: #fff0f3; }
+        .preset-tag-btn.selected { background: #e83e5a; color: white; border-color: #e83e5a; }
+
+        .suggestion-chip {
+            display: inline-block;
+            padding: 3px 11px;
+            border-radius: 99px;
+            background: #fff0f3;
+            color: #e83e5a;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #ffd6de;
+        }
+        .suggestion-chip:hover { background: #e83e5a; color: white; }
 
         .vc-title {
             font-size: 14px;
@@ -1410,6 +1570,32 @@ if ($view === 'personal') {
                         </div>
 
                         <div class="form-group">
+                            <label>標籤</label>
+
+                            <!-- 建議標籤 -->
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+                                <?php
+                                $presetTags = ['唇妝','眼妝','底妝','腮紅','修容','眉毛','韓系','日系','歐美','裸妝','教學','彩妝','彩妝品','穿搭','護膚'];
+                                foreach ($presetTags as $pt): ?>
+                                <button type="button" class="preset-tag-btn" data-tag="<?= htmlspecialchars($pt) ?>">#<?= htmlspecialchars($pt) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <!-- 已選 + 自訂輸入 -->
+                            <div class="hashtag-input-box" id="hashtagInputBox" onclick="document.getElementById('hashtagTyping').focus()">
+                                <input type="text" id="hashtagTyping" class="hashtag-typing" placeholder="輸入標籤，按 Enter 確認" autocomplete="off">
+                            </div>
+
+                            <!-- 即時建議下拉 -->
+                            <div style="position:relative;">
+                                <div id="tagSuggestions" style="display:none;position:absolute;top:4px;left:0;right:0;background:white;border:1.5px solid #ffd6de;border-radius:12px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;box-shadow:0 4px 16px rgba(232,62,90,.12);z-index:200;" id="tagSuggestionList"></div>
+                            </div>
+
+                            <input type="hidden" name="tags" id="tagsHidden">
+                            <small style="color: #999; margin-top: 5px; display: block;">點選建議標籤或輸入自訂標籤（按 Enter）</small>
+                        </div>
+
+                        <div class="form-group">
                             <label for="video">選擇影片檔案 *</label>
                             <input type="file" id="video" name="video" accept="video/*" required>
                             <small style="color: #999; margin-top: 5px; display: block;">支援 MP4、AVI、MOV 等格式，最大 40MB</small>
@@ -1646,13 +1832,33 @@ if ($view === 'personal') {
         </div>
 
         <?php else: ?>
-            <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;">
+                <!-- 標籤搜尋 -->
+                <form method="get" action="" id="tagSearchForm" style="display:flex;align-items:center;gap:8px;flex:1;min-width:180px;max-width:320px;">
+                    <input type="hidden" name="view" value="home">
+                    <input type="hidden" name="tag" id="tagSearchHidden" value="<?php echo htmlspecialchars($activeTag); ?>">
+                    <input type="text" id="tagSearchDisplay" placeholder="#搜尋標籤"
+                           value="<?php echo $activeTag ? '#'.htmlspecialchars($activeTag) : ''; ?>"
+                           style="flex:1;border:1.5px solid #ffd6de;border-radius:20px;padding:7px 14px;font-size:13px;outline:none;color:#333;"
+                           onfocus="this.style.borderColor='#e83e5a'" onblur="this.style.borderColor='#ffd6de'">
+                    <button type="submit" style="background:#e83e5a;color:white;border:none;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">搜尋</button>
+                </form>
                 <a href="?view=personal" style="display:inline-flex;align-items:center;gap:6px;background:#e83e5a;color:#fff;padding:9px 18px;border-radius:20px;text-decoration:none;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(232,62,90,0.3);">
                     + 上傳影片
                 </a>
             </div>
+
+            <?php if ($activeTag !== ''): ?>
+            <div class="tag-filter-bar">
+                篩選標籤：#<?php echo htmlspecialchars($activeTag); ?>
+                &nbsp;·&nbsp; 共 <?php echo count($videos); ?> 部影片
+                <a href="?view=home">× 清除篩選</a>
+            </div>
+            <?php endif; ?>
+
             <div class="video-grid">
                 <?php foreach ($videos as $index => $video): ?>
+                    <?php $videoTags = array_filter(array_map('trim', explode(',', $video['tags'] ?? ''))); ?>
                     <div class="video-card"
                          data-video-id="<?php echo $video['id']; ?>"
                          data-title="<?php echo htmlspecialchars($video['title']); ?>"
@@ -1671,6 +1877,15 @@ if ($view === 'personal') {
                         </div>
                         <div class="vc-info">
                             <div class="vc-title"><?php echo htmlspecialchars($video['title']); ?></div>
+                            <?php if (!empty($videoTags)): ?>
+                            <div class="vc-tags">
+                                <?php foreach ($videoTags as $tag): ?>
+                                <a href="?view=home&tag=<?php echo urlencode($tag); ?>"
+                                   class="vc-tag<?php echo ($activeTag === $tag) ? ' active' : ''; ?>"
+                                   onclick="event.stopPropagation()">#<?php echo htmlspecialchars($tag); ?></a>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
                             <div class="vc-footer">
                                 <span class="vc-author"><?php echo htmlspecialchars($video['uploaded_by']); ?></span>
                                 <span class="vc-likes">❤️ <?php echo (int)$video['likes']; ?></span>
@@ -2348,6 +2563,122 @@ if ($view === 'personal') {
             nextVideo();
         }
     });
+</script>
+
+<script>
+// ── Hashtag chip input ───────────────────────────────────────────
+(function () {
+    const box        = document.getElementById('hashtagInputBox');
+    const typing     = document.getElementById('hashtagTyping');
+    const hidden     = document.getElementById('tagsHidden');
+    const sugList    = document.getElementById('tagSuggestionList');
+    const presetBtns = document.querySelectorAll('.preset-tag-btn');
+    if (!box || !typing || !hidden) return;
+
+    // 推薦池 = 預設標籤 + DB 現有標籤（合併去重）
+    const presetPool = Array.from(presetBtns).map(b => b.dataset.tag);
+    const dbTags     = <?= json_encode($existingTags) ?>;
+    const allPool    = [...new Set([...presetPool, ...dbTags])];
+
+    let tags = [];
+    let isComposing = false;
+
+    typing.addEventListener('compositionstart', () => { isComposing = true; });
+    typing.addEventListener('compositionend', (e) => {
+        isComposing = false;
+        // compositionend 後瀏覽器還沒把 value 更新完，用 setTimeout 等一個 tick
+        setTimeout(() => updateSuggestions(), 0);
+    });
+
+    function syncHidden() { hidden.value = tags.join(','); }
+
+    function addTag(raw) {
+        const tag = raw.replace(/^#+/, '').trim();
+        if (!tag || tags.includes(tag)) return;
+        tags.push(tag);
+
+        const chip = document.createElement('span');
+        chip.className = 'hashtag-chip';
+        chip.dataset.tag = tag;
+        chip.innerHTML = `#${tag} <span class="hashtag-chip-remove">×</span>`;
+        chip.querySelector('.hashtag-chip-remove').addEventListener('click', () => removeTag(tag));
+        box.insertBefore(chip, typing);
+
+        // 同步 preset 按鈕狀態
+        presetBtns.forEach(btn => { if (btn.dataset.tag === tag) btn.classList.add('selected'); });
+        syncHidden();
+        hideSuggestions();
+    }
+
+    function removeTag(tag) {
+        tags = tags.filter(t => t !== tag);
+        box.querySelector(`.hashtag-chip[data-tag="${tag}"]`)?.remove();
+        presetBtns.forEach(btn => { if (btn.dataset.tag === tag) btn.classList.remove('selected'); });
+        syncHidden();
+    }
+
+    // Preset 按鈕
+    presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tag = btn.dataset.tag;
+            if (tags.includes(tag)) removeTag(tag);
+            else addTag(tag);
+        });
+    });
+
+    // 鍵盤
+    typing.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = typing.value.trim();
+            if (val) { addTag(val); typing.value = ''; }
+        } else if (e.key === 'Backspace' && typing.value === '' && tags.length) {
+            removeTag(tags[tags.length - 1]);
+        } else if (e.key === 'Escape') {
+            hideSuggestions();
+        }
+    });
+
+    // 自動補 # + 即時建議
+    function updateSuggestions() {
+        const val = typing.value;
+        const query = val.replace(/^#+/, '').trim().toLowerCase();
+        if (query.length < 1) { hideSuggestions(); return; }
+
+        const matched = allPool.filter(t => t.toLowerCase().includes(query) && !tags.includes(t));
+        if (matched.length === 0) { hideSuggestions(); return; }
+
+        sugList.innerHTML = '';
+        matched.forEach(t => {
+            const chip = document.createElement('span');
+            chip.className = 'suggestion-chip';
+            const idx = t.toLowerCase().indexOf(query);
+            chip.innerHTML = '#' + t.slice(0, idx) + `<strong>${t.slice(idx, idx + query.length)}</strong>` + t.slice(idx + query.length);
+            chip.addEventListener('mousedown', (e) => { e.preventDefault(); addTag(t); typing.value = ''; });
+            sugList.appendChild(chip);
+        });
+        sugList.style.display = 'flex';
+    }
+
+    typing.addEventListener('input', () => {
+        updateSuggestions();
+    });
+
+    function hideSuggestions() { if (sugList) sugList.style.display = 'none'; }
+    document.addEventListener('click', (e) => { if (!box.contains(e.target) && !sugList.contains(e.target)) hideSuggestions(); });
+})();
+
+// ── 搜尋欄：去掉 # 才送出 ────────────────────────────────────────
+(function () {
+    const form    = document.getElementById('tagSearchForm');
+    const display = document.getElementById('tagSearchDisplay');
+    const hidden  = document.getElementById('tagSearchHidden');
+    if (!form || !display || !hidden) return;
+
+    form.addEventListener('submit', (e) => {
+        hidden.value = display.value.replace(/^#+/, '').trim();
+    });
+})();
 </script>
 
 </body>
