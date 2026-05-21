@@ -18,6 +18,47 @@ if ($rawInput) {
 $action   = $jsonBody['action']   ?? $_POST['action']   ?? $_GET['action'] ?? '';
 $username = $_SESSION['user'];
 
+// ── 不當言辭偵測 ───────────────────────────────────────────
+function detectInappropriate(string $text): bool {
+    // 統一小寫、去全形空白，方便比對
+    $t = mb_strtolower($text);
+    $t = str_replace(['　', ' '], ' ', $t);
+
+    $keywords = [
+        // 中文罵人／歧視
+        '幹你娘','幹你媽','操你媽','操你娘','你他媽','我操你','你大爺',
+        '死去吧','去死吧','去死','幹死你','殺了你','操你','幹你','你媽死了',
+        '白癡','傻逼','智障','腦殘','廢物','垃圾人','賤人','賤貨','賤男','賤女',
+        '騷貨','臭婊子','婊子','妓女','雞女','幹砲','爛貨','死肥豬','豬頭',
+        '賣逼','賣屄','肏','屁眼','屌','老屌','幹炮','操炮','ㄓㄣ他媽',
+        '他媽的','媽的','靠北','靠腰','靠杯','機掰','機車','幹醒','你去死',
+        '我去你的','狗日的','日你媽','日你','幹你老師',
+        // 仇恨 / 歧視字眼
+        '死同性戀','死gay','死les','滾回去','賤種','賤民','下賤',
+        '噁心死了','髒貨','廢渣','人渣','社會渣滓',
+        // 英文罵人
+        'fuck you','fuck off','motherfucker','fucking','wtf','bitch',
+        'asshole','bastard','dickhead','son of a bitch','piece of shit',
+        'go to hell','shut the fuck','bullshit','horseshit',
+        'stupid bitch','dumb ass','dumbass','shitty','fucktard',
+        'cunt','nigger','faggot','retard',
+        // 常見變體（插入符號或數字）
+        'f*ck','sh*t','b*tch','f**k','s**t','a**hole',
+        '幹你m','幹你*','操你m',
+    ];
+
+    foreach ($keywords as $kw) {
+        if (mb_strpos($t, $kw) !== false) {
+            return true;
+        }
+    }
+
+    // 正則：連續星號替代敏感字
+    if (preg_match('/[幹操他媽妳媽][^\x00-\x7F]{0,3}[的你妳]/', $t)) return true;
+
+    return false;
+}
+
 try {
     if ($action === 'add') {
         $videoId = (int)($_POST['video_id'] ?? 0);
@@ -39,6 +80,12 @@ try {
         $stmt->execute([$videoId]);
         if (!$stmt->fetch()) {
             echo json_encode(['success' => false, 'message' => '影片不存在']);
+            exit;
+        }
+
+        // 不當言辭偵測
+        if (detectInappropriate($content)) {
+            echo json_encode(['success' => false, 'message' => '留言含有不當言辭，無法發佈', 'blocked' => true]);
             exit;
         }
 

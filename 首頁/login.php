@@ -75,24 +75,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $code   = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
                     $expiry = date("Y-m-d H:i:s", strtotime("+15 minutes"));
 
-                    $stmt = $pdo->prepare("
-                        INSERT INTO users (username, email, password, role, email_verified, verification_code, verification_expiry)
-                        VALUES (?, ?, ?, 'user', 0, ?, ?)
-                    ");
-                    if ($stmt->execute([$username, $email, $password, $code, $expiry])) {
-                        $emailSent = sendVerificationEmail($email, $username, $code);
+                    // 暫存於 Session，驗證成功後才寫入資料庫
+                    $_SESSION['pending_user']     = $username;
+                    $_SESSION['pending_email']    = $email;
+                    $_SESSION['pending_password'] = $password;
+                    $_SESSION['pending_code']     = $code;
+                    $_SESSION['pending_expiry']   = $expiry;
 
-                        $_SESSION['pending_user']  = $username;
-                        $_SESSION['pending_email'] = $email;
-                        if (!$emailSent) {
-                            $_SESSION['email_send_failed'] = true;
-                        }
-
-                        header("Location: verify_email.php");
-                        exit();
-                    } else {
-                        $error = "註冊失敗，請重試";
+                    $emailSent = sendVerificationEmail($email, $username, $code);
+                    if (!$emailSent) {
+                        $_SESSION['email_send_failed'] = true;
                     }
+
+                    header("Location: verify_email.php");
+                    exit();
                 }
             }
         }
@@ -330,6 +326,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     <?php else: ?>
+        <?php if (isset($_GET['reset']) && $_GET['reset'] === 'success'): ?>
+            <div class="message success" style="background:#d4edda;color:#155724;padding:12px;border-radius:8px;margin-bottom:16px;text-align:center;">
+                密碼已重設成功，請使用新密碼登入
+            </div>
+        <?php endif; ?>
         <form class="auth-form" method="post">
             <input type="hidden" name="action" value="login">
 
@@ -338,6 +339,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <button type="submit">登入</button>
         </form>
+        <div style="text-align:right;margin-top:10px;">
+            <a href="forgot_password.php" style="font-size:13px;color:#c0606b;text-decoration:none;">忘記密碼？</a>
+        </div>
     <?php endif; ?>
 </div>
 
