@@ -4,7 +4,7 @@ require 'db.php';
 require 'send_mail.php';
 
 if (isset($_SESSION['user'])) {
-    header("Location: /SA/New-SA/產品/index.php");
+    header("Location: /SA拷貝/New-SA/產品/index.php");
     exit();
 }
 
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <title>忘記密碼</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css">
     <style>
         .auth-container {
             max-width: 430px;

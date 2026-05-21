@@ -2,163 +2,112 @@
 session_start();
 include 'db.php';
 
-$slides = [
-    "images/slide1.jpg",
-    "images/slide2.jpg",
-    "images/slide3.jpg"
-];
-
-// 取最新的6個產品作為推薦
 $sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 6";
 $result = $conn->query($sql);
+$favorites = $_SESSION['favorite'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>首頁 - Makeup</title>
-    <link rel="stylesheet" href="style.css?v=2">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COSMETIC — 首頁</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #1a0820 0%, #3d1a4a 40%, #7a3060 70%, #c26b7c 100%);
+      padding: 72px 0 80px; color: white; text-align: center;
+    }
+    .hero-inner { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+    .hero-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; opacity: .65; margin-bottom: 16px; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.2; margin-bottom: 16px; }
+    .hero p { font-size: 16px; opacity: .75; max-width: 480px; margin: 0 auto 32px; }
+    .hero-pills { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 36px; }
+    .hero-pill {
+      display: flex; align-items: center; gap: 8px; padding: 8px 18px;
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22);
+      border-radius: var(--r-full); font-size: 13px; font-weight: 500; color: white;
+      backdrop-filter: blur(4px); transition: background var(--t);
+    }
+    .hero-pill:hover { background: rgba(255,255,255,.22); }
+  </style>
 </head>
 <body>
 
-    <?php include 'header.php'; ?>
+<?php include 'header.php'; ?>
 
-    <main class="page">
-        <!-- 輪播區 -->
-        <section class="hero">
-            <div class="slider">
-                <?php foreach ($slides as $index => $slide): ?>
-                    <div class="slide <?php echo $index === 0 ? 'active' : ''; ?>">
-                        <img src="<?php echo htmlspecialchars($slide); ?>" alt="輪播圖片">
-                    </div>
-                <?php endforeach; ?>
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">你的彩妝顧問</div>
+    <h1>找到最適合你的<br>彩妝產品</h1>
+    <p>透過 AI 分析膚色與膚質，精準推薦最適合你的彩妝品</p>
+    <div class="hero-pills">
+      <a href="/SA拷貝/New-SA/AI/index.php"      class="hero-pill">✨ AI 膚色分析</a>
+      <a href="/SA拷貝/New-SA/產品/products.php" class="hero-pill">💄 產品庫</a>
+      <a href="/SA拷貝/New-SA/首頁/video.php"    class="hero-pill">🎬 影片交流</a>
+      <a href="/SA拷貝/New-SA/產品/compare.php"  class="hero-pill">⚖ 比較功能</a>
+    </div>
+    <a href="/SA拷貝/New-SA/AI/index.php" class="btn btn-ghost btn-lg">開始 AI 分析 →</a>
+  </div>
+</section>
 
-                <div class="hero-text">💄 精選美妝</div>
+<!-- Products -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow">熱門推薦</div>
+        <div class="section-title">最新上架精選</div>
+      </div>
+      <a href="/SA拷貝/New-SA/產品/products.php" class="btn btn-outline btn-sm">查看全部 →</a>
+    </div>
 
-                <button class="slider-btn prev" onclick="changeSlide(-1)">❮</button>
-                <button class="slider-btn next" onclick="changeSlide(1)">❯</button>
+    <div class="product-grid">
+    <?php while ($row = $result->fetch()): ?>
+      <?php $isFav = in_array($row['p_id'], $favorites); ?>
+      <div class="product-card">
+        <div class="product-card-img">
+          <?php if (!empty($row['image_url'])): ?>
+            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'">
+          <?php else: ?>
+            💄
+          <?php endif; ?>
+        </div>
 
-                <div class="dots">
-                    <?php foreach ($slides as $index => $slide): ?>
-                        <span class="dot <?php echo $index === 0 ? 'active' : ''; ?>" onclick="goToSlide(<?php echo $index; ?>)"></span>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </section>
+        <!-- Favorite button (form POST) -->
+        <?php if ($isFav): ?>
+          <form action="remove_favorite.php" method="POST" style="position:absolute;top:10px;right:10px;margin:0;">
+            <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
+            <button type="submit" class="fav-btn active" title="移除收藏">♥</button>
+          </form>
+        <?php else: ?>
+          <form action="add_favorite.php" method="POST" style="position:absolute;top:10px;right:10px;margin:0;">
+            <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
+            <button type="submit" class="fav-btn" title="加入收藏">♡</button>
+          </form>
+        <?php endif; ?>
 
-        <!-- 推薦商品區 -->
-        <section class="features">
-            <div style="max-width: 1400px; margin: 0 auto; padding: 0 40px;">
-                <h2 style="font-size: 28px; font-weight: 600; margin-bottom: 10px; color: #333;">✨ 熱門推薦</h2>
-                <p style="color: #999; margin-bottom: 30px;">最新上架的精選商品</p>
+        <div class="product-card-body">
+          <div class="product-card-brand"><?= htmlspecialchars($row['brand']) ?></div>
+          <div class="product-card-name"><?= htmlspecialchars($row['name']) ?></div>
+          <?php if (!empty($row['category'])): ?>
+            <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
+          <?php endif; ?>
+          <div class="product-card-actions">
+            <a href="product.php?id=<?= $row['p_id'] ?>" class="btn btn-primary">查看</a>
+            <form action="add_compare.php" method="POST" style="flex:1;">
+              <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
+              <button type="submit" class="btn btn-outline" style="width:100%;">比較</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <?php endwhile; ?>
+    </div>
+  </div>
+</section>
 
-                <div class="product-grid">
-                <?php 
-                $favorites = $_SESSION['favorite'] ?? [];
-                while($row = $result->fetch()){
-                    $isFav = in_array($row['p_id'], $favorites);
-                ?>
-
-                    <div class="product-card">
-
-                        <div class="fav-btn">
-                            <?php if($isFav){ ?>
-                                <form action="remove_favorite.php" method="POST" style="margin:0; padding:0;">
-                                    <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
-                                    <button type="submit" class="heart active">❤️</button>
-                                </form>
-                            <?php }else{ ?>
-                                <form action="add_favorite.php" method="POST" style="margin:0; padding:0;">
-                                    <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
-                                    <button type="submit" class="heart">🤍</button>
-                                </form>
-                            <?php } ?>
-                        </div>
-
-                        <?php $imgSrc = !empty($row['image_url']) ? htmlspecialchars($row['image_url']) : 'images/' . $row['p_id'] . '.jpg'; ?>
-                        <img src="<?php echo $imgSrc; ?>" alt="<?php echo htmlspecialchars($row['name']); ?>"
-                             onerror="this.style.background='#f5f0f0';this.removeAttribute('src')">
-
-                        <div class="product-card-inner">
-                            <h3><?php echo htmlspecialchars($row['name']); ?></h3>
-                            <p><?php echo htmlspecialchars($row['brand']); ?></p>
-
-                            <div class="product-actions">
-                                <a href="product.php?id=<?php echo $row['p_id']; ?>" class="btn btn-primary">查看</a>
-                                <form action="add_compare.php" method="POST" style="flex: 1;">
-                                    <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
-                                    <button type="submit" class="btn btn-outline">比較</button>
-                                </form>
-                            </div>
-                        </div>
-
-                    </div>
-
-                <?php } ?>
-                </div>
-
-                <div style="text-align: center; margin-top: 40px;">
-                    <a href="products.php" class="btn btn-primary" style="padding: 12px 32px; font-size: 15px; display: inline-block;">查看全部產品</a>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <?php include 'footer.php'; ?>
-
-    <script>
-        const slides = document.querySelectorAll('.slide');
-        const dots = document.querySelectorAll('.dot');
-        let currentSlide = 0;
-        let autoSlide;
-
-        function showSlide(index) {
-            slides.forEach((slide, i) => {
-                slide.classList.toggle('active', i === index);
-            });
-
-            dots.forEach((dot, i) => {
-                dot.classList.toggle('active', i === index);
-            });
-
-            currentSlide = index;
-        }
-
-        function changeSlide(step) {
-            let newIndex = currentSlide + step;
-
-            if (newIndex < 0) {
-                newIndex = slides.length - 1;
-            } else if (newIndex >= slides.length) {
-                newIndex = 0;
-            }
-
-            showSlide(newIndex);
-            resetAutoSlide();
-        }
-
-        function goToSlide(index) {
-            showSlide(index);
-            resetAutoSlide();
-        }
-
-        function startAutoSlide() {
-            autoSlide = setInterval(() => {
-                let newIndex = currentSlide + 1;
-                if (newIndex >= slides.length) {
-                    newIndex = 0;
-                }
-                showSlide(newIndex);
-            }, 3000);
-        }
-
-        function resetAutoSlide() {
-            clearInterval(autoSlide);
-            startAutoSlide();
-        }
-
-        startAutoSlide();
-    </script>
+<?php include 'footer.php'; ?>
 </body>
 </html>
