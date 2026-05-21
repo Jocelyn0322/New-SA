@@ -4,7 +4,7 @@ require 'db.php';
 require 'send_mail.php';
 
 if (isset($_SESSION['user'])) {
-    header("Location: /SA拷貝/New-SA/產品/index.php");
+    header("Location: /SA/New-SA/產品/index.php");
     exit();
 }
 

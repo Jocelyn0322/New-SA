@@ -460,7 +460,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
     <div class="adm-topbar-logo">Cosmetic後台</div>
     <div class="adm-topbar-right">
         <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
-        <a href="/SA拷貝/New-SA/產品/index.php">← 返回網站</a>
+        <a href="/SA/New-SA/產品/index.php">← 返回網站</a>
         <a href="logout.php" class="logout-btn">登出</a>
     </div>
 </div>

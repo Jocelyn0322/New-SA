@@ -2,12 +2,6 @@
 // session 必須在所有 HTML 輸出之前啟動
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// 已登入直接進入分析
-if (isset($_SESSION['user'])) {
-    header("Location: story1.php");
-    exit();
-}
-
 // 告訴 産品/header.php 路徑基底
 $base   = '../產品/';
 $aiBase = '';

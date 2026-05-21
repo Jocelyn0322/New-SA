@@ -43,12 +43,12 @@ $favorites = $_SESSION['favorite'] ?? [];
     <h1>找到最適合你的<br>彩妝產品</h1>
     <p>透過 AI 分析膚色與膚質，精準推薦最適合你的彩妝品</p>
     <div class="hero-pills">
-      <a href="/SA拷貝/New-SA/AI/index.php"      class="hero-pill">✨ AI 膚色分析</a>
-      <a href="/SA拷貝/New-SA/產品/products.php" class="hero-pill">💄 產品庫</a>
-      <a href="/SA拷貝/New-SA/首頁/video.php"    class="hero-pill">🎬 影片交流</a>
-      <a href="/SA拷貝/New-SA/產品/compare.php"  class="hero-pill">⚖ 比較功能</a>
+      <a href="/SA/New-SA/AI/index.php"      class="hero-pill">✨ AI 膚色分析</a>
+      <a href="/SA/New-SA/產品/products.php" class="hero-pill">💄 產品庫</a>
+      <a href="/SA/New-SA/首頁/video.php"    class="hero-pill">🎬 影片交流</a>
+      <a href="/SA/New-SA/產品/compare.php"  class="hero-pill">⚖ 比較功能</a>
     </div>
-    <a href="/SA拷貝/New-SA/AI/index.php" class="btn btn-ghost btn-lg">開始 AI 分析 →</a>
+    <a href="/SA/New-SA/AI/index.php" class="btn btn-ghost btn-lg">開始 AI 分析 →</a>
   </div>
 </section>
 
@@ -60,7 +60,7 @@ $favorites = $_SESSION['favorite'] ?? [];
         <div class="section-eyebrow">熱門推薦</div>
         <div class="section-title">最新上架精選</div>
       </div>
-      <a href="/SA拷貝/New-SA/產品/products.php" class="btn btn-outline btn-sm">查看全部 →</a>
+      <a href="/SA/New-SA/產品/products.php" class="btn btn-outline btn-sm">查看全部 →</a>
     </div>
 
     <div class="product-grid">

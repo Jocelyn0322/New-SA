@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   $_SESSION['pending_password'], $_SESSION['pending_code'],
                   $_SESSION['pending_expiry'], $_SESSION['email_send_failed']);
 
-            header("Location: /SA拷貝/New-SA/產品/index.php");
+            header("Location: /SA/New-SA/產品/index.php");
             exit();
         }
     }

@@ -187,7 +187,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
   <?php if ($message): ?>
     <div class="msg-bar <?= $messageType ?>"><?= htmlspecialchars($message) ?></div>
     <?php if ($messageType === 'success' && $isNewUser): ?>
-      <script>setTimeout(()=>window.location.href='/SA拷貝/New-SA/產品/index.php',1500);</script>
+      <script>setTimeout(()=>window.location.href='/SA/New-SA/產品/index.php',1500);</script>
     <?php endif; ?>
   <?php endif; ?>
 
@@ -358,8 +358,8 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
               <div class="vid-title"><?= htmlspecialchars($v['title'] ?? '未命名影片') ?></div>
               <div class="vid-meta"><?= htmlspecialchars($v['uploaded_by']) ?> · ❤ <?= $v['likes'] ?></div>
               <div class="vid-actions">
-                <a href="/SA拷貝/New-SA/首頁/video.php" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">觀看</a>
-                <form method="POST" action="/SA拷貝/New-SA/首頁/video.php">
+                <a href="/SA/New-SA/首頁/video.php" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">觀看</a>
+                <form method="POST" action="/SA/New-SA/首頁/video.php">
                   <input type="hidden" name="toggle_like" value="1">
                   <input type="hidden" name="video_id" value="<?= $v['id'] ?>">
                   <button type="submit" class="btn btn-outline btn-sm">移除</button>
@@ -374,7 +374,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
         <div class="empty-icon">❤</div>
         <h3>還沒有收藏影片</h3>
         <p>到影片交流區按讚收藏你喜歡的影片</p>
-        <a href="/SA拷貝/New-SA/首頁/video.php" class="btn btn-primary">去逛逛</a>
+        <a href="/SA/New-SA/首頁/video.php" class="btn btn-primary">去逛逛</a>
       </div>
     <?php endif; ?>
   </div>
@@ -396,7 +396,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
               <div class="vid-title"><?= htmlspecialchars($v['title'] ?? '未命名影片') ?></div>
               <div class="vid-meta"><?= date('Y/m/d', strtotime($v['upload_time'])) ?> · ❤ <?= $v['likes'] ?></div>
               <div class="vid-actions">
-                <a href="/SA拷貝/New-SA/首頁/video.php" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">觀看</a>
+                <a href="/SA/New-SA/首頁/video.php" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">觀看</a>
               </div>
             </div>
           </div>
@@ -407,7 +407,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
         <div class="empty-icon">🎬</div>
         <h3>還沒有上傳影片</h3>
         <p>分享你的彩妝心得和教學影片</p>
-        <a href="/SA拷貝/New-SA/首頁/video.php" class="btn btn-primary">上傳影片</a>
+        <a href="/SA/New-SA/首頁/video.php" class="btn btn-primary">上傳影片</a>
       </div>
     <?php endif; ?>
   </div>
