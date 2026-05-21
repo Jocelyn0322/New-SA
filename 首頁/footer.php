@@ -1,3 +1,1 @@
-<footer class="footer">
-    <p>© <?php echo date("Y"); ?> 我的網站. All Rights Reserved.</p>
-</footer>
+<footer class="footer"><p>© <?php echo date("Y"); ?> COSMETIC — 找到最適合你的彩妝</p></footer>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COSMETIC — 登入</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: var(--bg); display: flex; flex-direction: column; min-height: 100vh; }
+.auth-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px;
+}
+.auth-card {
+  background: var(--card); border-radius: var(--r-xl); border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg); width: 100%; max-width: 420px; overflow: hidden;
+}
+.auth-top {
+  background: linear-gradient(135deg, #3d1520, #c26b7c);
+  padding: 36px 40px 32px; text-align: center; color: white;
+}
+.auth-logo { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.auth-tagline { font-size: 13px; opacity: .75; }
+.auth-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.auth-tab {
+  flex: 1; padding: 14px; text-align: center; font-size: 14px; font-weight: 600;
+  color: var(--text-3); cursor: pointer; transition: all var(--t); border-bottom: 2px solid transparent;
+  background: none; border-top: none; border-left: none; border-right: none; font-family: inherit;
+}
+.auth-tab.active { color: var(--rose); border-bottom-color: var(--rose); }
+.auth-body { padding: 32px 36px 36px; }
+.auth-footer { text-align: center; font-size: 13px; color: var(--text-3); margin-top: 20px; }
+.auth-footer a { color: var(--rose); }
+.divider-text { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text-3); font-size: 12px; }
+.divider-text::before, .divider-text::after { content:''; flex:1; height:1px; background:var(--border); }
+.social-btn { width: 100%; padding: 10px; border: 1.5px solid var(--border); border-radius: var(--r); background: var(--card); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--t); display: flex; align-items: center; justify-content: center; gap: 10px; font-family: inherit; color: var(--text-2); }
+.social-btn:hover { background: var(--bg); border-color: #ccc; }
+.forgot-link { display: block; text-align: right; font-size: 12px; color: var(--rose); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo"><div class="logo-mark">💄</div>COSMETIC</a>
+    <nav class="nav">
+      <a href="index.html" class="nav-link">首頁</a>
+      <a href="products.html" class="nav-link">產品</a>
+      <a href="ai.html" class="nav-link">AI 檢測</a>
+      <a href="video.html" class="nav-link">影片交流</a>
+    </nav>
+    <div class="header-actions">
+      <a href="login.html" class="btn btn-primary btn-sm">登入</a>
+    </div>
+  </div>
+</header>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-top">
+      <div class="auth-logo">💄 COSMETIC</div>
+      <div class="auth-tagline">找到最適合你的彩妝</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login',this)">登入</button>
+      <button class="auth-tab" onclick="switchTab('register',this)">註冊</button>
+    </div>
+
+    <!-- Login Form -->
+    <div class="auth-body" id="loginForm">
+      <div class="form-group">
+        <label class="form-label">帳號</label>
+        <input type="text" class="form-input" placeholder="輸入帳號">
+      </div>
+      <div class="form-group">
+        <label class="form-label">密碼</label>
+        <input type="password" class="form-input" placeholder="輸入密碼">
+        <a href="#" class="forgot-link">忘記密碼？</a>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="window.location.href='index.html'">登入</button>
+      <div class="divider-text">或</div>
+      <button class="social-btn">🔵 使用 Google 登入</button>
+      <div class="auth-footer">還沒有帳號？<a href="#" onclick="switchTabByName('register')">立即註冊</a></div>
+    </div>
+
+    <!-- Register Form -->
+    <div class="auth-body" id="registerForm" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">帳號</label>
+        <input type="text" class="form-input" placeholder="設定帳號（英數字）">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">密碼</label>
+        <input type="password" class="form-input" placeholder="至少 8 個字元">
+      </div>
+      <div class="form-group">
+        <label class="form-label">確認密碼</label>
+        <input type="password" class="form-input" placeholder="再次輸入密碼">
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;">建立帳號</button>
+      <div class="auth-footer">已有帳號？<a href="#" onclick="switchTabByName('login')">立即登入</a></div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><p>© 2025 COSMETIC</p></footer>
+<script>
+function switchTab(name, el) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('loginForm').style.display = name === 'login' ? '' : 'none';
+  document.getElementById('registerForm').style.display = name === 'register' ? '' : 'none';
+}
+function switchTabByName(name) {
+  const tabs = document.querySelectorAll('.auth-tab');
+  switchTab(name, name === 'login' ? tabs[0] : tabs[1]);
+}
+</script>
+</body>
+</html>

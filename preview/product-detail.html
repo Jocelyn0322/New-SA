@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COSMETIC — 產品詳情</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.breadcrumb { font-size: 13px; color: var(--text-3); margin-bottom: 28px; }
+.breadcrumb a { color: var(--text-3); }
+.breadcrumb a:hover { color: var(--rose); }
+.breadcrumb span { margin: 0 8px; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+@media(max-width:768px){ .detail-grid { grid-template-columns:1fr; gap:24px; } }
+
+.product-img-wrap { position: sticky; top: calc(var(--header-h) + 24px); }
+.product-img-main {
+  width: 100%; aspect-ratio: 1; border-radius: var(--r-xl);
+  background: var(--rose-50); display: flex; align-items: center; justify-content: center;
+  font-size: 80px; margin-bottom: 14px; border: 1px solid var(--border);
+  transition: all var(--t);
+}
+.color-thumbs { display: flex; gap: 10px; flex-wrap: wrap; }
+.color-swatch {
+  width: 44px; height: 44px; border-radius: var(--r);
+  border: 2px solid transparent; cursor: pointer; transition: all var(--t);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 2px;
+}
+.color-swatch:hover { border-color: var(--rose-200); }
+.color-swatch.active { border-color: var(--rose); }
+.color-dot { width: 36px; height: 36px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); }
+.color-name { font-size: 9px; color: var(--text-3); text-align: center; white-space: nowrap; }
+
+.product-info h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; line-height: 1.25; }
+.product-brand { font-size: 13px; color: var(--text-3); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.product-meta { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 20px; align-items: center; }
+
+.info-block { margin-bottom: 20px; }
+.info-block h4 { font-size: 13px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.info-block p { font-size: 14px; color: var(--text-2); line-height: 1.7; }
+
+.action-row { display: flex; gap: 10px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.action-row .btn { flex: 1; }
+
+/* Rating */
+.rating-section { margin-top: 48px; }
+.rating-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media(max-width:600px){ .rating-grid { grid-template-columns:1fr; } }
+.rating-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 22px; }
+.rating-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 18px; color: var(--text); }
+.rating-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rating-label { min-width: 70px; font-size: 13px; color: var(--text-2); }
+.stars { display: flex; gap: 2px; }
+.star { font-size: 18px; color: #e5e7eb; cursor: pointer; transition: color var(--t); }
+.star.filled { color: #f59e0b; }
+.star.interactive:hover { color: #f59e0b; }
+.rating-score { font-size: 12px; color: var(--text-3); margin-left: 4px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo"><div class="logo-mark">💄</div>COSMETIC</a>
+    <nav class="nav">
+      <a href="index.html" class="nav-link">首頁</a>
+      <a href="products.html" class="nav-link active">產品</a>
+      <a href="ai.html" class="nav-link">AI 檢測</a>
+      <a href="video.html" class="nav-link">影片交流</a>
+    </nav>
+    <div class="header-actions">
+      <a href="favorite.html" class="icon-btn">♡<span class="count">3</span></a>
+      <a href="compare.html" class="icon-btn">⚖</a>
+      <a href="profile.html" class="user-chip"><div class="user-avatar">A</div><span>alice</span></a>
+    </div>
+  </div>
+</header>
+
+<main style="max-width:var(--max-w);margin:0 auto;padding:32px 24px 80px;">
+
+  <div class="breadcrumb">
+    <a href="index.html">首頁</a><span>›</span>
+    <a href="products.html">產品</a><span>›</span>
+    NARS 裸光蜜粉餅
+  </div>
+
+  <div class="detail-grid">
+    <!-- Left: Image -->
+    <div class="product-img-wrap">
+      <div class="product-img-main" id="mainImg">🌸</div>
+      <div class="color-thumbs" id="colorThumbs">
+        <div class="color-swatch active" onclick="selectColor(this,'#F0C8B0','MEDIUM')">
+          <div class="color-dot" style="background:#F0C8B0;"></div>
+          <div class="color-name">MEDIUM</div>
+        </div>
+        <div class="color-swatch" onclick="selectColor(this,'#D4956A','TAN')">
+          <div class="color-dot" style="background:#D4956A;"></div>
+          <div class="color-name">TAN</div>
+        </div>
+        <div class="color-swatch" onclick="selectColor(this,'#C27A50','DEEP')">
+          <div class="color-dot" style="background:#C27A50;"></div>
+          <div class="color-name">DEEP</div>
+        </div>
+        <div class="color-swatch" onclick="selectColor(this,'#EDD9C8','FAIR')">
+          <div class="color-dot" style="background:#EDD9C8;"></div>
+          <div class="color-name">FAIR</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Info -->
+    <div class="product-info">
+      <div class="product-brand">NARS</div>
+      <h1>裸光蜜粉餅<br>Radiant Pressed Powder</h1>
+      <div class="product-meta">
+        <span class="badge badge-rose">底妝</span>
+        <span class="badge badge-gray">日本製</span>
+        <span style="font-size:13px;color:var(--text-3);">👁 1,230 次觀看</span>
+        <span style="font-size:13px;color:var(--text-3);">♥ 421 人收藏</span>
+      </div>
+
+      <div class="info-block">
+        <h4>用途</h4>
+        <p>提亮膚色，打造自然光澤感。輕盈裸光質地，讓肌膚呈現健康光澤，適合日常妝容與宴會妝。</p>
+      </div>
+      <div class="info-block">
+        <h4>主要成分</h4>
+        <p>雲母、二氧化矽、氧化鋅、維生素 E、玫瑰果萃取物</p>
+      </div>
+      <div class="info-block">
+        <h4>注意事項</h4>
+        <p>避免接觸眼睛。如有過敏反應請停止使用。放置於陰涼乾燥處。</p>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary" onclick="this.textContent='♥ 已收藏';this.classList.add('btn-secondary');this.classList.remove('btn-primary');">♡ 加入收藏</button>
+        <button class="btn btn-outline">⚖ 加入比較</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rating Section -->
+  <div class="rating-section">
+    <h2 style="margin-bottom:20px;">商品評分</h2>
+    <div class="rating-grid">
+      <div class="rating-card">
+        <h4>使用者平均評價</h4>
+        <div class="rating-row">
+          <span class="rating-label">控油力</span>
+          <div class="stars"><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span><span class="star">★</span></div>
+          <span class="rating-score">4.0（128人）</span>
+        </div>
+        <div class="rating-row">
+          <span class="rating-label">延展性</span>
+          <div class="stars"><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span></div>
+          <span class="rating-score">4.8（128人）</span>
+        </div>
+        <div class="rating-row">
+          <span class="rating-label">持久度</span>
+          <div class="stars"><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span><span class="star">★</span><span class="star">★</span></div>
+          <span class="rating-score">3.2（128人）</span>
+        </div>
+        <div class="rating-row">
+          <span class="rating-label">遮瑕力</span>
+          <div class="stars"><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span><span class="star filled">★</span><span class="star">★</span></div>
+          <span class="rating-score">3.9（128人）</span>
+        </div>
+      </div>
+
+      <div class="rating-card">
+        <h4>你的評價</h4>
+        <div class="rating-row">
+          <span class="rating-label">控油力</span>
+          <div class="stars" id="r1">
+            <span class="star interactive filled" data-v="1">★</span><span class="star interactive filled" data-v="2">★</span><span class="star interactive filled" data-v="3">★</span><span class="star interactive" data-v="4">★</span><span class="star interactive" data-v="5">★</span>
+          </div>
+        </div>
+        <div class="rating-row">
+          <span class="rating-label">延展性</span>
+          <div class="stars" id="r2">
+            <span class="star interactive" data-v="1">★</span><span class="star interactive" data-v="2">★</span><span class="star interactive" data-v="3">★</span><span class="star interactive" data-v="4">★</span><span class="star interactive" data-v="5">★</span>
+          </div>
+        </div>
+        <div class="rating-row">
+          <span class="rating-label">持久度</span>
+          <div class="stars" id="r3">
+            <span class="star interactive" data-v="1">★</span><span class="star interactive" data-v="2">★</span><span class="star interactive" data-v="3">★</span><span class="star interactive" data-v="4">★</span><span class="star interactive" data-v="5">★</span>
+          </div>
+        </div>
+        <div class="rating-row">
+          <span class="rating-label">遮瑕力</span>
+          <div class="stars" id="r4">
+            <span class="star interactive" data-v="1">★</span><span class="star interactive" data-v="2">★</span><span class="star interactive" data-v="3">★</span><span class="star interactive" data-v="4">★</span><span class="star interactive" data-v="5">★</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer"><p>© 2025 COSMETIC</p></footer>
+
+<div class="toast-container" id="toastWrap"></div>
+
+<script>
+function selectColor(el, hex, name) {
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
+document.querySelectorAll('.stars').forEach(group => {
+  const stars = group.querySelectorAll('.star.interactive');
+  stars.forEach(star => {
+    star.addEventListener('click', function() {
+      const v = parseInt(this.dataset.v);
+      stars.forEach((s,i) => s.classList.toggle('filled', i < v));
+      showToast('已儲存評分 ' + '★'.repeat(v));
+    });
+  });
+});
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast success';
+  t.textContent = msg;
+  document.getElementById('toastWrap').appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+</script>
+</body>
+</html>

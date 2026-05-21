@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>問卷呈現方式比較</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: #f4f4f6; }
+
+/* ── Picker Bar ── */
+.picker {
+  position: sticky; top: 0; z-index: 200;
+  background: #1f2937; color: white;
+  padding: 0 24px; height: 52px;
+  display: flex; align-items: center; gap: 12px;
+}
+.picker-label { font-size: 13px; font-weight: 500; opacity: .6; white-space: nowrap; }
+.style-tabs { display: flex; gap: 4px; }
+.style-tab {
+  padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s; border: none; font-family: inherit;
+  background: rgba(255,255,255,.08); color: rgba(255,255,255,.65);
+}
+.style-tab:hover { background: rgba(255,255,255,.15); color: white; }
+.style-tab.active { background: var(--rose); color: white; }
+.picker-desc { margin-left: auto; font-size: 12px; opacity: .5; }
+
+/* ══════════════════════════════════
+   STYLE A — Typeform (全螢幕單題)
+   ══════════════════════════════════ */
+#styleA { display: block; }
+.tf-wrap {
+  min-height: calc(100vh - 52px);
+  background: linear-gradient(160deg, #2a0e1a 0%, #5a2040 60%, #9a4a70 100%);
+  display: flex; flex-direction: column;
+}
+.tf-progress {
+  height: 4px; background: rgba(255,255,255,.15);
+  position: relative; flex-shrink: 0;
+}
+.tf-progress-bar {
+  height: 100%; background: #f9cfd8;
+  transition: width .4s ease;
+}
+.tf-body {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 40px 24px;
+}
+.tf-q-num { font-size: 13px; color: rgba(255,255,255,.5); margin-bottom: 12px; font-weight: 600; }
+.tf-q-text { font-size: 1.5rem; font-weight: 700; color: white; text-align: center; max-width: 560px; margin-bottom: 36px; line-height: 1.4; }
+.tf-choices { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 460px; }
+.tf-choice {
+  background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.2);
+  border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px;
+  cursor: pointer; transition: all .2s; color: white;
+}
+.tf-choice:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.5); transform: translateX(4px); }
+.tf-choice.selected { background: rgba(249,207,216,.2); border-color: #f9cfd8; }
+.tf-choice-key {
+  width: 28px; height: 28px; border-radius: 8px; background: rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0; letter-spacing: 0;
+  border: 1px solid rgba(255,255,255,.2);
+}
+.tf-choice.selected .tf-choice-key { background: #f9cfd8; color: #3d1520; border-color: transparent; }
+.tf-choice-text { font-size: 15px; font-weight: 500; }
+.tf-choice-sub { font-size: 12px; opacity: .6; margin-top: 2px; }
+.tf-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 40px; border-top: 1px solid rgba(255,255,255,.08);
+  flex-shrink: 0;
+}
+.tf-btn {
+  padding: 12px 28px; border-radius: 12px; font-size: 14px; font-weight: 700;
+  border: none; cursor: pointer; font-family: inherit; transition: all .18s;
+}
+.tf-btn-prev { background: rgba(255,255,255,.1); color: white; }
+.tf-btn-prev:hover { background: rgba(255,255,255,.2); }
+.tf-btn-next { background: #f9cfd8; color: #3d1520; }
+.tf-btn-next:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(249,207,216,.4); }
+.tf-page-info { font-size: 13px; color: rgba(255,255,255,.45); }
+
+/* ══════════════════════════════════
+   STYLE B — 分組單頁 (Scroll)
+   ══════════════════════════════════ */
+#styleB { display: none; }
+.scroll-wrap { max-width: 700px; margin: 0 auto; padding: 40px 24px 80px; }
+.group-card {
+  background: var(--card); border-radius: 20px; border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0,0,0,.06); margin-bottom: 24px; overflow: hidden;
+}
+.group-header {
+  padding: 20px 28px 0; display: flex; align-items: center; gap: 14px;
+}
+.group-icon { font-size: 28px; }
+.group-title { font-size: 1rem; font-weight: 700; }
+.group-sub { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+.group-divider { height: 1px; background: var(--border); margin: 16px 28px 0; }
+.scroll-q { padding: 20px 28px; }
+.scroll-q-label { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+.scroll-q-num { display: inline-block; width: 22px; height: 22px; background: var(--rose-100); color: var(--rose); border-radius: 6px; font-size: 11px; font-weight: 700; text-align: center; line-height: 22px; margin-right: 8px; flex-shrink: 0; }
+.pill-choices { display: flex; flex-wrap: wrap; gap: 10px; }
+.pill {
+  padding: 9px 18px; border-radius: 30px; font-size: 13px; font-weight: 600;
+  border: 1.5px solid var(--border); background: var(--card); color: var(--text-2);
+  cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 7px;
+}
+.pill:hover { border-color: var(--rose-200); background: var(--rose-50); color: var(--rose); }
+.pill.sel { background: var(--rose); border-color: var(--rose); color: white; }
+.pill-icon { font-size: 16px; }
+.scroll-submit { text-align: center; margin-top: 32px; }
+
+/* ══════════════════════════════════
+   STYLE C — Chat 對話式
+   ══════════════════════════════════ */
+#styleC { display: none; }
+.chat-wrap {
+  max-width: 600px; margin: 0 auto; padding: 32px 24px 100px;
+}
+.chat-messages { display: flex; flex-direction: column; gap: 20px; }
+.chat-bubble-row { display: flex; gap: 10px; align-items: flex-end; }
+.chat-bubble-row.user { flex-direction: row-reverse; }
+.chat-bot-avatar {
+  width: 34px; height: 34px; background: linear-gradient(135deg, #c26b7c, #9a3d5a);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0; color: white;
+}
+.chat-bubble {
+  max-width: 80%; padding: 13px 18px; border-radius: 18px; font-size: 14px; line-height: 1.6;
+  animation: bubbleIn .25s ease;
+}
+@keyframes bubbleIn { from { opacity:0; transform: scale(.95) translateY(6px); } to { opacity:1; transform: none; } }
+.chat-bubble.bot {
+  background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px;
+  color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.chat-bubble.user-ans {
+  background: var(--rose); color: white; border-bottom-right-radius: 4px;
+}
+.chat-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chat-opt {
+  padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--card); font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .15s; color: var(--text-2); display: flex; align-items: center; gap: 6px;
+}
+.chat-opt:hover { border-color: var(--rose); color: var(--rose); background: var(--rose-50); }
+.chat-opt.chosen { background: var(--rose); color: white; border-color: var(--rose); pointer-events: none; }
+.chat-opt.disabled { opacity: .4; pointer-events: none; }
+.chat-typing { display: flex; gap: 5px; align-items: center; padding: 14px 18px; }
+.chat-typing span { width: 7px; height: 7px; background: var(--text-3); border-radius: 50%; animation: typing 1.2s infinite; }
+.chat-typing span:nth-child(2) { animation-delay: .2s; }
+.chat-typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:.4;} 30%{transform:translateY(-5px);opacity:1;} }
+.chat-input-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(255,255,255,.95); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border); padding: 16px 24px;
+  display: flex; justify-content: center;
+}
+.chat-input-inner { max-width: 600px; width: 100%; text-align: center; }
+.chat-progress-text { font-size: 12px; color: var(--text-3); margin-bottom: 8px; }
+.chat-prog-bar { height: 3px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 0; }
+.chat-prog-fill { height: 100%; background: var(--rose); transition: width .4s ease; }
+</style>
+</head>
+<body>
+
+<!-- Style Picker -->
+<div class="picker">
+  <span class="picker-label">問卷呈現方式：</span>
+  <div class="style-tabs">
+    <button class="style-tab active" onclick="show('A',this)">A · 全螢幕單題</button>
+    <button class="style-tab" onclick="show('B',this)">B · 分組捲動</button>
+    <button class="style-tab" onclick="show('C',this)">C · 對話式</button>
+  </div>
+  <span class="picker-desc">點選切換，實際互動體驗</span>
+</div>
+
+
+<!-- ══ STYLE A: Typeform 全螢幕 ══ -->
+<div id="styleA">
+<div class="tf-wrap">
+  <div class="tf-progress"><div class="tf-progress-bar" id="tfBar" style="width:14%;"></div></div>
+  <div class="tf-body">
+    <!-- Q1 -->
+    <div id="tf-q1" class="tf-q-screen">
+      <div class="tf-q-num">膚色問題 1 / 3</div>
+      <div class="tf-q-text">你的臉部在日光燈下，整體偏向哪個色調？</div>
+      <div class="tf-choices">
+        <div class="tf-choice" onclick="tfSelect(this,'q1','warm')">
+          <div class="tf-choice-key">A</div>
+          <div><div class="tf-choice-text">🌅 暖色調</div><div class="tf-choice-sub">偏黃、偏橘、偏金棕</div></div>
+        </div>
+        <div class="tf-choice" onclick="tfSelect(this,'q1','cool')">
+          <div class="tf-choice-key">B</div>
+          <div><div class="tf-choice-text">❄️ 冷色調</div><div class="tf-choice-sub">偏粉、偏紫、偏藍底</div></div>
+        </div>
+        <div class="tf-choice" onclick="tfSelect(this,'q1','neutral')">
+          <div class="tf-choice-key">C</div>
+          <div><div class="tf-choice-text">⚖️ 中性調</div><div class="tf-choice-sub">冷暖都有，不明顯偏向</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- Q2 -->
+    <div id="tf-q2" class="tf-q-screen" style="display:none;">
+      <div class="tf-q-num">膚色問題 2 / 3</div>
+      <div class="tf-q-text">曬太陽後，你的皮膚通常…？</div>
+      <div class="tf-choices">
+        <div class="tf-choice" onclick="tfSelect(this,'q2','burn')">
+          <div class="tf-choice-key">A</div>
+          <div><div class="tf-choice-text">🔴 容易曬傷，很少變深</div><div class="tf-choice-sub">皮膚白皙敏感型</div></div>
+        </div>
+        <div class="tf-choice" onclick="tfSelect(this,'q2','tan')">
+          <div class="tf-choice-key">B</div>
+          <div><div class="tf-choice-text">☀️ 會曬黑，不太曬傷</div><div class="tf-choice-sub">容易積累黑色素</div></div>
+        </div>
+        <div class="tf-choice" onclick="tfSelect(this,'q2','both')">
+          <div class="tf-choice-key">C</div>
+          <div><div class="tf-choice-text">🌤 先曬傷後曬黑</div><div class="tf-choice-sub">兩者都有</div></div>
+        </div>
+        <div class="tf-choice" onclick="tfSelect(this,'q2','none')">
+          <div class="tf-choice-key">D</div>
+          <div><div class="tf-choice-text">🛡 幾乎不受影響</div><div class="tf-choice-sub">深色膚調，耐曬</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- Q3 -->
+    <div id="tf-q3" class="tf-q-screen" style="display:none;">
+      <div class="tf-q-num">膚色問題 3 / 3</div>
+      <div class="tf-q-text">你手腕內側的血管，顏色看起來偏向？</div>
+      <div class="tf-choices">
+        <div class="tf-choice" onclick="tfSelect(this,'q3','blue')">
+          <div class="tf-choice-key">A</div>
+          <div><div class="tf-choice-text">💙 藍色或紫色</div><div class="tf-choice-sub">代表冷色調膚底</div></div>
+        </div>
+        <div class="tf-choice" onclick="tfSelect(this,'q3','green')">
+          <div class="tf-choice-key">B</div>
+          <div><div class="tf-choice-text">💚 綠色或橄欖色</div><div class="tf-choice-sub">代表暖色調膚底</div></div>
+        </div>
+        <div class="tf-choice" onclick="tfSelect(this,'q3','mix')">
+          <div class="tf-choice-key">C</div>
+          <div><div class="tf-choice-text">🩵 藍綠混合，難分辨</div><div class="tf-choice-sub">中性色調膚底</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- Q4 -->
+    <div id="tf-q4" class="tf-q-screen" style="display:none;">
+      <div class="tf-q-num">膚質問題 1 / 4</div>
+      <div class="tf-q-text">你的膚質偏向哪一種？</div>
+      <div class="tf-choices">
+        <div class="tf-choice" onclick="tfSelect(this,'q4','oily')"><div class="tf-choice-key">A</div><div><div class="tf-choice-text">🌊 油性肌</div><div class="tf-choice-sub">T 字容易出油</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q4','dry')"><div class="tf-choice-key">B</div><div><div class="tf-choice-text">🌵 乾性肌</div><div class="tf-choice-sub">容易緊繃脫皮</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q4','combo')"><div class="tf-choice-key">C</div><div><div class="tf-choice-text">⚖️ 混合性肌</div><div class="tf-choice-sub">T 區油、兩頰乾</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q4','sensitive')"><div class="tf-choice-key">D</div><div><div class="tf-choice-text">🌸 敏感肌</div><div class="tf-choice-sub">容易泛紅過敏</div></div></div>
+      </div>
+    </div>
+    <!-- Q5 -->
+    <div id="tf-q5" class="tf-q-screen" style="display:none;">
+      <div class="tf-q-num">膚質問題 2 / 4</div>
+      <div class="tf-q-text">日常保養步驟，你的肌膚最在意什麼？</div>
+      <div class="tf-choices">
+        <div class="tf-choice" onclick="tfSelect(this,'q5','hydration')"><div class="tf-choice-key">A</div><div><div class="tf-choice-text">💧 保濕補水</div><div class="tf-choice-sub">乾燥是最大困擾</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q5','oil-control')"><div class="tf-choice-key">B</div><div><div class="tf-choice-text">🧴 控油</div><div class="tf-choice-sub">希望妝感不脫妝</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q5','brightening')"><div class="tf-choice-key">C</div><div><div class="tf-choice-text">✨ 提亮膚色</div><div class="tf-choice-sub">追求自然光感</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q5','anti-aging')"><div class="tf-choice-key">D</div><div><div class="tf-choice-text">🌿 抗老抗氧化</div><div class="tf-choice-sub">細紋、鬆弛是困擾</div></div></div>
+      </div>
+    </div>
+    <!-- Q6 -->
+    <div id="tf-q6" class="tf-q-screen" style="display:none;">
+      <div class="tf-q-num">膚質問題 3 / 4</div>
+      <div class="tf-q-text">你平常上妝後，大概多久妝容開始「脫」？</div>
+      <div class="tf-choices">
+        <div class="tf-choice" onclick="tfSelect(this,'q6','2h')"><div class="tf-choice-key">A</div><div><div class="tf-choice-text">⏰ 2 小時內</div><div class="tf-choice-sub">皮膚容易出油或容易脫妝</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q6','4h')"><div class="tf-choice-key">B</div><div><div class="tf-choice-text">⏰ 4–6 小時</div><div class="tf-choice-sub">正常持妝力</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q6','8h')"><div class="tf-choice-key">C</div><div><div class="tf-choice-text">⏰ 8 小時以上</div><div class="tf-choice-sub">妝感持久穩定</div></div></div>
+      </div>
+    </div>
+    <!-- Q7 -->
+    <div id="tf-q7" class="tf-q-screen" style="display:none;">
+      <div class="tf-q-num">膚質問題 4 / 4</div>
+      <div class="tf-q-text">你最常遇到的底妝困擾是什麼？</div>
+      <div class="tf-choices">
+        <div class="tf-choice" onclick="tfSelect(this,'q7','dryness')"><div class="tf-choice-key">A</div><div><div class="tf-choice-text">🏜 乾燥浮粉</div><div class="tf-choice-sub">粉底浮在表面，感覺乾</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q7','oily-finish')"><div class="tf-choice-key">B</div><div><div class="tf-choice-text">🫧 脫妝出油</div><div class="tf-choice-sub">鼻頭、額頭很快油光</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q7','coverage')"><div class="tf-choice-key">C</div><div><div class="tf-choice-text">🎭 遮瑕不足</div><div class="tf-choice-sub">黑眼圈、斑點遮不住</div></div></div>
+        <div class="tf-choice" onclick="tfSelect(this,'q7','none')"><div class="tf-choice-key">D</div><div><div class="tf-choice-text">😊 沒有特別困擾</div><div class="tf-choice-sub">妝容大致穩定</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="tf-footer">
+    <button class="tf-btn tf-btn-prev" id="tfPrev" onclick="tfNav(-1)" style="opacity:.4;pointer-events:none;">← 上一題</button>
+    <span class="tf-page-info" id="tfPageInfo">1 / 7</span>
+    <button class="tf-btn tf-btn-next" id="tfNext" onclick="tfNav(1)">下一題 →</button>
+  </div>
+</div>
+</div>
+
+
+<!-- ══ STYLE B: 分組捲動 ══ -->
+<div id="styleB">
+<div class="scroll-wrap">
+  <div style="margin-bottom:24px;">
+    <h2 style="margin-bottom:4px;">膚色與膚質問卷</h2>
+    <p style="font-size:13px;color:var(--text-3);">共 7 題，約需 2 分鐘完成</p>
+  </div>
+
+  <!-- 膚色 Group -->
+  <div class="group-card">
+    <div class="group-header">
+      <div class="group-icon">🎨</div>
+      <div><div class="group-title">膚色色調分析</div><div class="group-sub">3 題 · 幫助判斷你的底色屬性</div></div>
+    </div>
+    <div class="group-divider"></div>
+
+    <div class="scroll-q">
+      <div class="scroll-q-label"><span class="scroll-q-num">1</span>臉部在日光燈下，整體偏向哪個色調？</div>
+      <div class="pill-choices">
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🌅</span>暖色調（偏黃橘）</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">❄️</span>冷色調（偏粉藍）</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">⚖️</span>中性調</button>
+      </div>
+    </div>
+    <div class="group-divider" style="margin:0 28px;"></div>
+
+    <div class="scroll-q">
+      <div class="scroll-q-label"><span class="scroll-q-num">2</span>曬太陽後，你的皮膚通常…？</div>
+      <div class="pill-choices">
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🔴</span>容易曬傷，少變深</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">☀️</span>會曬黑，不太曬傷</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🌤</span>先曬傷後曬黑</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🛡</span>幾乎不受影響</button>
+      </div>
+    </div>
+    <div class="group-divider" style="margin:0 28px;"></div>
+
+    <div class="scroll-q">
+      <div class="scroll-q-label"><span class="scroll-q-num">3</span>手腕內側的血管，顏色看起來偏向？</div>
+      <div class="pill-choices">
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">💙</span>藍色或紫色</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">💚</span>綠色或橄欖色</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🩵</span>藍綠混合</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 膚質 Group -->
+  <div class="group-card">
+    <div class="group-header">
+      <div class="group-icon">🔬</div>
+      <div><div class="group-title">膚質狀況分析</div><div class="group-sub">4 題 · 幫助推薦最適合的底妝質地</div></div>
+    </div>
+    <div class="group-divider"></div>
+
+    <div class="scroll-q">
+      <div class="scroll-q-label"><span class="scroll-q-num">4</span>你的膚質偏向哪一種？</div>
+      <div class="pill-choices">
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🌊</span>油性肌</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🌵</span>乾性肌</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">⚖️</span>混合性肌</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🌸</span>敏感肌</button>
+      </div>
+    </div>
+    <div class="group-divider" style="margin:0 28px;"></div>
+
+    <div class="scroll-q">
+      <div class="scroll-q-label"><span class="scroll-q-num">5</span>日常保養，你的肌膚最在意什麼？</div>
+      <div class="pill-choices">
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">💧</span>保濕補水</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🧴</span>控油</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">✨</span>提亮膚色</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🌿</span>抗老</button>
+      </div>
+    </div>
+    <div class="group-divider" style="margin:0 28px;"></div>
+
+    <div class="scroll-q">
+      <div class="scroll-q-label"><span class="scroll-q-num">6</span>上妝後，大概多久妝容開始「脫」？</div>
+      <div class="pill-choices">
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">⚡</span>2 小時內</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🕐</span>4–6 小時</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">💪</span>8 小時以上</button>
+      </div>
+    </div>
+    <div class="group-divider" style="margin:0 28px;"></div>
+
+    <div class="scroll-q">
+      <div class="scroll-q-label"><span class="scroll-q-num">7</span>最常遇到的底妝困擾是什麼？</div>
+      <div class="pill-choices">
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🏜</span>乾燥浮粉</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🫧</span>脫妝出油</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">🎭</span>遮瑕不足</button>
+        <button class="pill" onclick="pillSel(this)"><span class="pill-icon">😊</span>沒有困擾</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-submit">
+    <button class="btn btn-primary btn-lg" style="padding:14px 48px;" onclick="alert('提交問卷，進行 AI 分析！')">開始 AI 分析 →</button>
+    <p style="font-size:12px;color:var(--text-3);margin-top:12px;">請確認所有問題都已作答</p>
+  </div>
+</div>
+</div>
+
+
+<!-- ══ STYLE C: Chat 對話式 ══ -->
+<div id="styleC">
+<div class="chat-wrap">
+  <div class="chat-messages" id="chatMessages">
+    <!-- Bot greeting -->
+    <div class="chat-bubble-row">
+      <div class="chat-bot-avatar">✨</div>
+      <div class="chat-bubble bot">
+        哈囉！我是 COSMETIC AI 分析師 👋<br>我會問你 7 個問題，幫你找到最適合的彩妝推薦，只需要約 2 分鐘！
+      </div>
+    </div>
+    <!-- Q1 -->
+    <div class="chat-bubble-row">
+      <div class="chat-bot-avatar">✨</div>
+      <div>
+        <div class="chat-bubble bot">
+          <strong>問題 1 / 7</strong><br>
+          你的臉部在日光燈下，整體偏向哪個色調？
+        </div>
+        <div class="chat-options" id="cOpts1">
+          <button class="chat-opt" onclick="chatPick(1,this,'🌅 暖色調')"><span>🌅</span>暖色調（偏黃橘）</button>
+          <button class="chat-opt" onclick="chatPick(1,this,'❄️ 冷色調')"><span>❄️</span>冷色調（偏粉藍）</button>
+          <button class="chat-opt" onclick="chatPick(1,this,'⚖️ 中性調')"><span>⚖️</span>中性調</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Input Bar -->
+<div class="chat-input-bar">
+  <div class="chat-input-inner">
+    <div class="chat-progress-text" id="chatProgressText">問題 1 / 7</div>
+    <div class="chat-prog-bar"><div class="chat-prog-fill" id="chatProgFill" style="width:14%;"></div></div>
+  </div>
+</div>
+</div>
+
+
+<script>
+/* ── Style Switcher ── */
+function show(id, el) {
+  ['A','B','C'].forEach(s => document.getElementById('style'+s).style.display = 'none');
+  document.getElementById('style'+id).style.display = 'block';
+  document.querySelectorAll('.style-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ── Style A: Typeform ── */
+let tfCurrent = 1;
+const tfTotal = 7;
+
+function tfNav(dir) {
+  document.getElementById('tf-q'+tfCurrent).style.display = 'none';
+  tfCurrent = Math.max(1, Math.min(tfTotal, tfCurrent + dir));
+  document.getElementById('tf-q'+tfCurrent).style.display = '';
+  document.getElementById('tfBar').style.width = (tfCurrent / tfTotal * 100) + '%';
+  document.getElementById('tfPageInfo').textContent = tfCurrent + ' / ' + tfTotal;
+  document.getElementById('tfPrev').style.opacity = tfCurrent === 1 ? '.4' : '1';
+  document.getElementById('tfPrev').style.pointerEvents = tfCurrent === 1 ? 'none' : '';
+  document.getElementById('tfNext').textContent = tfCurrent === tfTotal ? '完成分析 ✓' : '下一題 →';
+  if (tfCurrent === tfTotal) {
+    document.getElementById('tfNext').onclick = () => alert('問卷完成，開始 AI 分析！');
+  } else {
+    document.getElementById('tfNext').onclick = () => tfNav(1);
+  }
+}
+
+function tfSelect(el, q, val) {
+  el.closest('.tf-choices').querySelectorAll('.tf-choice').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  setTimeout(() => tfNav(1), 380);
+}
+
+/* ── Style B: Pills ── */
+function pillSel(el) {
+  el.closest('.pill-choices').querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+/* ── Style C: Chat ── */
+const chatQs = [
+  null, // placeholder (1-indexed)
+  { q: '問題 1 / 7<br>你的臉部在日光燈下，整體偏向哪個色調？', opts: ['🌅 暖色調（偏黃橘）','❄️ 冷色調（偏粉藍）','⚖️ 中性調'] },
+  { q: '問題 2 / 7<br>曬太陽後，你的皮膚通常…？', opts: ['🔴 容易曬傷','☀️ 會曬黑','🌤 先曬傷後曬黑','🛡 幾乎不受影響'] },
+  { q: '問題 3 / 7<br>手腕內側血管，顏色偏向？', opts: ['💙 藍色或紫色','💚 綠色或橄欖色','🩵 藍綠混合'] },
+  { q: '問題 4 / 7<br>你的膚質偏向哪一種？', opts: ['🌊 油性肌','🌵 乾性肌','⚖️ 混合性肌','🌸 敏感肌'] },
+  { q: '問題 5 / 7<br>日常保養，你的肌膚最在意什麼？', opts: ['💧 保濕補水','🧴 控油','✨ 提亮','🌿 抗老'] },
+  { q: '問題 6 / 7<br>上妝後大概多久開始脫妝？', opts: ['⚡ 2小時內','🕐 4–6小時','💪 8小時以上'] },
+  { q: '問題 7 / 7<br>最常遇到的底妝困擾？', opts: ['🏜 乾燥浮粉','🫧 脫妝出油','🎭 遮瑕不足','😊 沒有困擾'] },
+];
+let chatStep = 1;
+
+function chatPick(step, el, answer) {
+  if (step !== chatStep) return;
+  const optsEl = document.getElementById('cOpts'+step);
+  optsEl.querySelectorAll('.chat-opt').forEach(o => o.classList.add('disabled'));
+  el.classList.add('chosen');
+
+  const msgs = document.getElementById('chatMessages');
+  const userRow = document.createElement('div');
+  userRow.className = 'chat-bubble-row user';
+  userRow.innerHTML = '<div class="chat-bubble user-ans">' + answer + '</div>';
+  msgs.appendChild(userRow);
+
+  chatStep++;
+  const pct = (chatStep / 7 * 100);
+  document.getElementById('chatProgFill').style.width = Math.min(pct,100) + '%';
+  document.getElementById('chatProgressText').textContent = chatStep <= 7 ? '問題 ' + chatStep + ' / 7' : '完成！';
+
+  if (chatStep <= 7) {
+    const typingRow = document.createElement('div');
+    typingRow.className = 'chat-bubble-row';
+    typingRow.id = 'typing';
+    typingRow.innerHTML = '<div class="chat-bot-avatar">✨</div><div class="chat-bubble bot"><div class="chat-typing"><span></span><span></span><span></span></div></div>';
+    msgs.appendChild(typingRow);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    setTimeout(() => {
+      document.getElementById('typing').remove();
+      const q = chatQs[chatStep];
+      const nextRow = document.createElement('div');
+      nextRow.className = 'chat-bubble-row';
+      nextRow.innerHTML = `<div class="chat-bot-avatar">✨</div><div>
+        <div class="chat-bubble bot"><strong>${q.q}</strong></div>
+        <div class="chat-options" id="cOpts${chatStep}">
+          ${q.opts.map(o => `<button class="chat-opt" onclick="chatPick(${chatStep},this,'${o}')">${o}</button>`).join('')}
+        </div></div>`;
+      msgs.appendChild(nextRow);
+      msgs.scrollTop = msgs.scrollHeight;
+    }, 900);
+  } else {
+    setTimeout(() => {
+      const doneRow = document.createElement('div');
+      doneRow.className = 'chat-bubble-row';
+      doneRow.innerHTML = '<div class="chat-bot-avatar">✨</div><div class="chat-bubble bot">謝謝你的回答！正在分析你的膚色與膚質，請稍候…<br><br><button class="btn btn-primary btn-sm" onclick="alert(\'AI 分析完成！\')">查看分析結果 →</button></div>';
+      document.getElementById('chatMessages').appendChild(doneRow);
+      msgs.scrollTop = msgs.scrollHeight;
+    }, 700);
+  }
+}
+</script>
+</body>
+</html>

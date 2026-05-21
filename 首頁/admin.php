@@ -360,11 +360,12 @@ if ($tab === 'comments') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>管理後台</title>
-@import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-tc-webfont@latest/style.css');
+<title>COSMETIC — 管理後台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif; background: #f5f0f0; color: #3a2a2a; font-size: 15px; }
+body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; background: #f5f0f0; color: #3a2a2a; font-size: 15px; }
 
 /* ── Topbar ── */
 .adm-topbar {
@@ -459,7 +460,7 @@ body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
     <div class="adm-topbar-logo">Cosmetic後台</div>
     <div class="adm-topbar-right">
         <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
-        <a href="/SA/New-SA/產品/index.php">← 返回網站</a>
+        <a href="/SA拷貝/New-SA/產品/index.php">← 返回網站</a>
         <a href="logout.php" class="logout-btn">登出</a>
     </div>
 </div>
