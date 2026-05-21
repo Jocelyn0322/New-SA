@@ -21,14 +21,15 @@
             <!-- Progress indicator -->
             <div class="p-5 rounded-2xl border border-violet-100 bg-violet-50/70">
                 <div class="flex items-center justify-between text-sm font-semibold text-violet-800">
-                    <span>步驟 {{ currentStep }} / 4</span>
+                    <span>步驟 {{ currentStep }} / 5</span>
                     <span v-if="currentStep === 1">第一頁：膚色問答</span>
                     <span v-else-if="currentStep === 2">第二頁：膚質問答</span>
                     <span v-else-if="currentStep === 3">第三頁：相機拍照</span>
-                    <span v-else>第四頁：結果確認</span>
+                    <span v-else-if="currentStep === 4">第四頁：分析結果</span>
+                    <span v-else>第五頁：確認結果</span>
                 </div>
                 <div class="mt-2 h-2 rounded-full bg-violet-100 overflow-hidden">
-                    <div class="h-full bg-violet-500 transition-all duration-300" :style="{ width: `${(currentStep / 4) * 100}%` }"></div>
+                    <div class="h-full bg-violet-500 transition-all duration-300" :style="{ width: `${(currentStep / 5) * 100}%` }"></div>
                 </div>
             </div>
 

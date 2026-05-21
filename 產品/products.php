@@ -56,7 +56,207 @@ $categories_result = $conn->query($categories_sql);
         <input type="text" name="keyword" placeholder="搜尋產品名稱或品牌..." value="<?php echo htmlspecialchars($keyword); ?>">
         <button type="submit">🔍 搜尋</button>
     </form>
+    <button type="button" id="imgSearchBtn" onclick="openImgSearch()"
+        style="display:inline-flex;align-items:center;gap:6px;background:#fff;color:#c0748a;border:1.5px solid #e8b4c0;border-radius:20px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s;"
+        onmouseover="this.style.background='#fdf0f3';this.style.borderColor='#c0748a'"
+        onmouseout="this.style.background='#fff';this.style.borderColor='#e8b4c0'">
+        📷 以圖搜尋
+    </button>
 </div>
+
+<!-- 以圖搜尋 Modal -->
+<div id="imgSearchModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;">
+    <div id="imgModalInner" style="background:#fff;border-radius:20px;padding:28px;width:min(520px,94vw);max-height:88vh;overflow-y:auto;position:relative;box-shadow:0 8px 40px rgba(0,0,0,.18);scroll-behavior:smooth;">
+        <!-- 關閉 -->
+        <button onclick="closeImgSearch()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;line-height:1;">✕</button>
+
+        <h3 style="font-size:17px;font-weight:700;color:#3d2a30;margin:0 0 6px;">📷 以圖搜尋產品</h3>
+        <p style="font-size:13px;color:#888;margin:0 0 18px;">上傳產品照片，AI 自動識別並找出相似商品</p>
+
+        <!-- 上傳區 -->
+        <div id="imgDropZone"
+            onclick="document.getElementById('imgFileInput').click()"
+            ondragover="event.preventDefault();this.style.borderColor='#c0748a';this.style.background='#fdf0f3'"
+            ondragleave="this.style.borderColor='#e8c0cc';this.style.background='#fdf7f8'"
+            ondrop="handleImgDrop(event)"
+            style="border:2px dashed #e8c0cc;border-radius:14px;background:#fdf7f8;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;">
+            <div id="imgDropZoneContent">
+                <div style="font-size:36px;margin-bottom:8px;">🖼️</div>
+                <p style="font-size:14px;font-weight:600;color:#c0748a;margin:0 0 4px;">點擊或拖曳圖片至此</p>
+                <p style="font-size:12px;color:#bbb;margin:0;">支援 JPG、PNG、WEBP</p>
+            </div>
+            <img id="imgPreview" src="" alt="" style="display:none;max-width:100%;max-height:200px;border-radius:10px;object-fit:contain;">
+        </div>
+        <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImgFile(this.files[0])">
+
+        <!-- 分析按鈕 -->
+        <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled
+            style="width:100%;margin-top:14px;padding:11px;border-radius:12px;border:none;background:#e8b4c0;color:#fff;font-size:14px;font-weight:700;cursor:not-allowed;transition:all .2s;">
+            開始搜尋
+        </button>
+
+        <!-- Loading -->
+        <div id="imgLoading" style="display:none;text-align:center;padding:20px 0;">
+            <div style="display:inline-block;width:28px;height:28px;border:3px solid #f0d0d8;border-top-color:#c0748a;border-radius:50%;animation:spin .8s linear infinite;"></div>
+            <p style="font-size:13px;color:#888;margin:10px 0 0;">AI 正在識別產品…</p>
+        </div>
+
+        <!-- 識別結果標籤 -->
+        <div id="imgParsedTags" style="display:none;margin-top:16px;">
+            <p style="font-size:12px;color:#aaa;margin:0 0 6px;">識別結果：</p>
+            <div id="imgTagsContainer" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+
+        <!-- 搜尋結果 -->
+        <div id="imgResults" style="display:none;margin-top:18px;">
+            <p id="imgResultsTitle" style="font-size:13px;font-weight:600;color:#3d2a30;margin:0 0 12px;"></p>
+            <div id="imgResultsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;"></div>
+        </div>
+
+        <!-- 無結果 -->
+        <div id="imgNoResult" style="display:none;text-align:center;padding:20px 0;color:#aaa;font-size:13px;">
+            找不到相似產品，試試其他照片
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+let imgBase64 = null;
+let imgMime   = 'image/jpeg';
+
+function openImgSearch() {
+    const modal = document.getElementById('imgSearchModal');
+    modal.style.display = 'flex';
+    resetImgSearch();
+}
+function closeImgSearch() {
+    document.getElementById('imgSearchModal').style.display = 'none';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImgSearch(); });
+document.getElementById('imgSearchModal').addEventListener('click', function(e) {
+    if (e.target === this) closeImgSearch();
+});
+
+function resetImgSearch() {
+    imgBase64 = null;
+    document.getElementById('imgPreview').style.display = 'none';
+    document.getElementById('imgDropZoneContent').style.display = 'block';
+    document.getElementById('imgAnalyzeBtn').disabled = true;
+    document.getElementById('imgAnalyzeBtn').style.background = '#e8b4c0';
+    document.getElementById('imgAnalyzeBtn').style.cursor = 'not-allowed';
+    document.getElementById('imgLoading').style.display = 'none';
+    document.getElementById('imgParsedTags').style.display = 'none';
+    document.getElementById('imgResults').style.display = 'none';
+    document.getElementById('imgNoResult').style.display = 'none';
+    document.getElementById('imgFileInput').value = '';
+}
+
+function handleImgDrop(e) {
+    e.preventDefault();
+    document.getElementById('imgDropZone').style.borderColor = '#e8c0cc';
+    document.getElementById('imgDropZone').style.background = '#fdf7f8';
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleImgFile(file);
+}
+
+function handleImgFile(file) {
+    if (!file) return;
+    imgMime = file.type || 'image/jpeg';
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        imgBase64 = dataUrl.split(',')[1];
+        const preview = document.getElementById('imgPreview');
+        preview.src = dataUrl;
+        preview.style.display = 'block';
+        document.getElementById('imgDropZoneContent').style.display = 'none';
+        const btn = document.getElementById('imgAnalyzeBtn');
+        btn.disabled = false;
+        btn.style.background = '#c0748a';
+        btn.style.cursor = 'pointer';
+        // clear previous results
+        document.getElementById('imgResults').style.display = 'none';
+        document.getElementById('imgNoResult').style.display = 'none';
+        document.getElementById('imgParsedTags').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+async function runImgSearch() {
+    if (!imgBase64) return;
+    document.getElementById('imgLoading').style.display = 'block';
+    document.getElementById('imgResults').style.display = 'none';
+    document.getElementById('imgNoResult').style.display = 'none';
+    document.getElementById('imgParsedTags').style.display = 'none';
+    document.getElementById('imgAnalyzeBtn').disabled = true;
+
+    try {
+        const res = await fetch('image_search_api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: imgBase64, mimeType: imgMime })
+        });
+        const data = await res.json();
+
+        document.getElementById('imgLoading').style.display = 'none';
+        document.getElementById('imgAnalyzeBtn').disabled = false;
+
+        if (data.error) {
+            alert('搜尋失敗：' + data.error);
+            return;
+        }
+
+        // 顯示識別標籤
+        if (data.terms && data.terms.length) {
+            const container = document.getElementById('imgTagsContainer');
+            container.innerHTML = data.terms.map(t =>
+                `<span style="background:#fdf0f3;color:#c0748a;border:1px solid #e8c0cc;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">#${t}</span>`
+            ).join('');
+            document.getElementById('imgParsedTags').style.display = 'block';
+        }
+
+        if (!data.products || data.products.length === 0) {
+            document.getElementById('imgNoResult').style.display = 'block';
+            const modalInner2 = document.getElementById('imgModalInner');
+            modalInner2.scrollTo({ top: document.getElementById('imgNoResult').offsetTop - 16, behavior: 'smooth' });
+            return;
+        }
+
+        // 顯示結果
+        document.getElementById('imgResultsTitle').textContent = `找到 ${data.products.length} 個相關產品`;
+        const grid = document.getElementById('imgResultsGrid');
+        grid.innerHTML = data.products.map(p => {
+            const img = p.image_url
+                ? `<img src="${p.image_url}" alt="${p.name}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;background:#f5f0f0;" onerror="this.style.background='#f5f0f0';this.removeAttribute('src')">`
+                : `<div style="width:100%;height:90px;border-radius:8px;background:#f5f0f0;"></div>`;
+            return `<a href="product.php?id=${p.id}" style="text-decoration:none;color:inherit;display:block;border:1px solid #f0e4e8;border-radius:12px;overflow:hidden;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
+                ${img}
+                <div style="padding:8px;">
+                    <p style="font-size:12px;font-weight:600;color:#3d2a30;margin:0 0 2px;line-height:1.3;">${p.name}</p>
+                    <p style="font-size:11px;color:#aaa;margin:0;">${p.brand} · ${p.category}</p>
+                </div>
+            </a>`;
+        }).join('');
+        document.getElementById('imgResults').style.display = 'block';
+
+        // 捲到識別標籤位置（在 modal 內部捲動）
+        const modalInner = document.getElementById('imgModalInner');
+        const scrollTarget = document.getElementById('imgParsedTags').style.display !== 'none'
+            ? document.getElementById('imgParsedTags')
+            : document.getElementById('imgResults');
+        modalInner.scrollTo({ top: scrollTarget.offsetTop - 16, behavior: 'smooth' });
+
+    } catch (err) {
+        document.getElementById('imgLoading').style.display = 'none';
+        document.getElementById('imgAnalyzeBtn').disabled = false;
+        alert('網路錯誤，請稍後再試');
+    }
+}
+</script>
 
 <!-- 分類按鈕 -->
 <div class="filter-section">

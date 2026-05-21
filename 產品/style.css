@@ -168,11 +168,15 @@ body {
     max-width: 1400px;
     margin: 30px auto 0;
     padding: 0 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .search-bar {
     display: flex;
     gap: 10px;
+    flex: 1;
 }
 
 .search-bar input {
