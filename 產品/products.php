@@ -270,19 +270,6 @@ async function runImgSearch() {
     </div>
 </div>
 
-<!-- 在搜尋下方加 -->
-<div class="filter-section">
-    <div class="filter-bar">
-        <a class="filter-btn" href="products.php">全部色號</a>
-
-        <?php
-        $colors = $conn->query("SELECT DISTINCT color_name FROM product_colors LIMIT 5");
-        while($color = $colors->fetch()){
-            echo '<a class="filter-btn" href="?color=' . $color['color_name'] . '">' . $color['color_name'] . '</a>';
-        }
-        ?>
-    </div>
-</div>
 
 <div class="products">
     <div class="product-grid">
