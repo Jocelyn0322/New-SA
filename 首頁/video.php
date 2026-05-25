@@ -407,15 +407,10 @@ if ($view === 'following') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>影片交流</title>
-    <link rel="stylesheet" href="style.css?v=2">
-    <link rel="stylesheet" href="/SA/New-SA/產品/style.css?v=2">
+    <title>COSMETIC — 影片交流</title>
+    <link rel="stylesheet" href="style.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* Bridge: map old class names to new design tokens */
 
         .video-page {
             min-height: 100vh;
@@ -1578,7 +1573,7 @@ if ($view === 'following') {
 </head>
 <body>
 
-<?php include '../產品/header.php'; ?>
+<?php include 'header.php'; ?>
 
 <main class="video-page">
     <?php if (!$isLoggedIn): ?>

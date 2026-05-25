@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COSMETIC — 管理後台</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: #f4f4f6; }
+.adm-header {
+  background: var(--card); border-bottom: 1px solid var(--border);
+  height: 56px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; box-shadow: var(--shadow-sm);
+}
+.adm-logo { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.adm-logo-dot { width: 8px; height: 8px; background: var(--rose); border-radius: 50%; }
+.adm-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+.adm-tabs { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; gap: 0; }
+.adm-tab { padding: 13px 16px; font-size: 13px; font-weight: 500; color: var(--text-3); border-bottom: 2px solid transparent; transition: all var(--t); cursor: pointer; display: flex; align-items: center; gap: 6px; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; white-space: nowrap; }
+.adm-tab:hover { color: var(--text); }
+.adm-tab.active { color: var(--rose); border-bottom-color: var(--rose); font-weight: 600; }
+.adm-tab .pill { background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
+.adm-body { max-width: 1160px; margin: 28px auto; padding: 0 24px; }
+
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+@media(max-width:900px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 20px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 16px;
+}
+.stat-icon { width: 46px; height: 46px; border-radius: var(--r); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.stat-num { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 3px; }
+.stat-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
+.stat-link { font-size: 11px; color: var(--rose); margin-left: 4px; }
+
+/* Table */
+.tbl-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { background: #fafafa; padding: 11px 16px; text-align: left; font-weight: 600; color: var(--text-3); border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: .4px; text-transform: uppercase; }
+.tbl td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.tbl tbody tr:last-child td { border-bottom: none; }
+.tbl tbody tr:hover { background: #fafafa; }
+.tbl-hint { color: var(--text-3); font-size: 12px; margin-top: 10px; }
+
+/* Search */
+.search-row { display: flex; gap: 10px; margin-bottom: 18px; }
+.search-row input { flex: 1; padding: 9px 14px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 13px; font-family: inherit; outline: none; background: var(--card); transition: border var(--t); }
+.search-row input:focus { border-color: var(--rose); }
+.search-row button { padding: 9px 20px; background: var(--rose); color: white; border: none; border-radius: var(--r); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; }
+
+/* Vio dots */
+.vio-bar { display: inline-flex; gap: 3px; vertical-align: middle; }
+.vio-dot { width: 8px; height: 8px; border-radius: 50%; }
+.vio-dot.on { background: #ef4444; }
+.vio-dot.off { background: #e5e7eb; }
+
+/* Rank */
+.rank-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+@media(max-width:700px){ .rank-grid{grid-template-columns:1fr;} }
+.rank-block { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.rank-header { padding: 12px 16px; border-bottom: 1px solid var(--border); background: #fafafa; display: flex; align-items: center; gap: 8px; }
+.rank-label { font-size: 11px; font-weight: 700; color: var(--text-3); letter-spacing: .4px; text-transform: uppercase; flex: 1; }
+.rank-tag { font-size: 10px; color: var(--text-3); background: var(--border); border-radius: 4px; padding: 1px 6px; }
+.rank-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+.rank-row:last-child { border-bottom: none; }
+.rank-pos { min-width: 22px; text-align: center; font-size: 15px; }
+.rank-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-score { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+</style>
+</head>
+<body>
+
+<!-- Admin Header -->
+<div class="adm-header">
+  <div class="adm-logo">
+    <div class="adm-logo-dot"></div>
+    COSMETIC 管理後台
+  </div>
+  <div class="adm-user">
+    <span>管理員：alice</span>
+    <a href="index.html" class="btn btn-outline btn-sm">← 返回網站</a>
+    <a href="login.html" class="btn btn-sm" style="background:var(--rose-50);color:var(--rose);border:1px solid var(--rose-200);">登出</a>
+  </div>
+</div>
+
+<!-- Admin Tabs -->
+<div class="adm-tabs">
+  <button class="adm-tab active" onclick="switchAdmTab(0,this)">數據總覽</button>
+  <button class="adm-tab" onclick="switchAdmTab(1,this)">影片管理</button>
+  <button class="adm-tab" onclick="switchAdmTab(2,this)">留言管理</button>
+  <button class="adm-tab" onclick="switchAdmTab(3,this)">檢舉管理</button>
+  <button class="adm-tab" onclick="switchAdmTab(4,this)">會員管理</button>
+  <button class="adm-tab" onclick="switchAdmTab(5,this)">產品資料</button>
+  <button class="adm-tab" onclick="switchAdmTab(6,this)">商品審核 <span class="pill">3</span></button>
+</div>
+
+<div class="adm-body">
+
+<!-- Tab 0: Stats -->
+<div id="admTab0">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon" style="background:var(--rose-100);">👥</div><div><div class="stat-num" style="color:var(--rose);">1,284</div><div class="stat-label">總使用者</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:var(--blue-bg);">✨</div><div><div class="stat-num" style="color:var(--blue);">24</div><div class="stat-label">本週新增會員</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#f5f3ff;">🎬</div><div><div class="stat-num" style="color:#7c3aed;">87</div><div class="stat-label">影片總數</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:var(--green-bg);">💬</div><div><div class="stat-num" style="color:var(--green);">4,321</div><div class="stat-label">總留言數</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:var(--red-bg);">🚨</div><div><div class="stat-num" style="color:var(--red);">5</div><div class="stat-label">待處理檢舉 <a href="#" class="stat-link">→</a></div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:var(--yellow-bg);">📋</div><div><div class="stat-num" style="color:var(--yellow);">3</div><div class="stat-label">待審核商品 <a href="#" class="stat-link">→</a></div></div></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 16px;flex-wrap:wrap;gap:10px;">
+    <h3>排名統計</h3>
+    <button class="btn btn-outline btn-sm">存入本月快照</button>
+  </div>
+  <div class="rank-grid">
+    <div class="rank-block">
+      <div class="rank-header"><span>👁</span><span class="rank-label">產品・觀看數</span><span class="rank-tag">TOP 10</span></div>
+      <div class="rank-row"><span class="rank-pos">🥇</span><span class="rank-name">NARS 裸光蜜粉餅</span><span class="rank-score" style="background:var(--rose-100);color:var(--rose);">1,230 次</span></div>
+      <div class="rank-row"><span class="rank-pos">🥈</span><span class="rank-name">Dior 超完美唇膏</span><span class="rank-score" style="background:var(--rose-100);color:var(--rose);">980 次</span></div>
+      <div class="rank-row"><span class="rank-pos">🥉</span><span class="rank-name">Shiseido 氣墊</span><span class="rank-score" style="background:var(--rose-100);color:var(--rose);">742 次</span></div>
+      <div class="rank-row"><span class="rank-pos" style="color:var(--text-3);font-size:12px;font-weight:700;">4</span><span class="rank-name">3CE 眼影盤</span><span class="rank-score" style="background:var(--rose-100);color:var(--rose);">610 次</span></div>
+    </div>
+    <div class="rank-block">
+      <div class="rank-header"><span>♡</span><span class="rank-label">產品・收藏數</span><span class="rank-tag">TOP 10</span></div>
+      <div class="rank-row"><span class="rank-pos">🥇</span><span class="rank-name">MAC Ruby Woo</span><span class="rank-score" style="background:var(--yellow-bg);color:var(--yellow);">421 人</span></div>
+      <div class="rank-row"><span class="rank-pos">🥈</span><span class="rank-name">NARS 眼影盤</span><span class="rank-score" style="background:var(--yellow-bg);color:var(--yellow);">389 人</span></div>
+      <div class="rank-row"><span class="rank-pos">🥉</span><span class="rank-name">Fenty Beauty 粉底液</span><span class="rank-score" style="background:var(--yellow-bg);color:var(--yellow);">311 人</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 1: Videos -->
+<div id="admTab1" style="display:none;">
+  <div class="search-row"><input type="text" placeholder="搜尋影片標題或上傳者…"><button>搜尋</button></div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>標題</th><th>上傳者</th><th>上傳時間</th><th style="text-align:center;">留言</th><th style="text-align:center;">檢舉</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr><td style="color:var(--text-3);">#1</td><td>NARS 裸光蜜粉使用教學</td><td>alice</td><td>2025/05/18 14:23</td><td style="text-align:center;">12</td><td style="text-align:center;"><span class="badge badge-yellow">⚠ 2</span></td><td><button class="btn btn-danger btn-sm">刪除</button></td></tr>
+        <tr><td style="color:var(--text-3);">#2</td><td>夏日防水眼線實測比較</td><td>bella_tw</td><td>2025/05/15 09:11</td><td style="text-align:center;">7</td><td style="text-align:center;"><span style="color:var(--text-3);">—</span></td><td><button class="btn btn-danger btn-sm">刪除</button></td></tr>
+        <tr><td style="color:var(--text-3);">#3</td><td>護膚底妝心得分享</td><td>cindy_makeup</td><td>2025/05/10 16:44</td><td style="text-align:center;">28</td><td style="text-align:center;"><span style="color:var(--text-3);">—</span></td><td><button class="btn btn-danger btn-sm">刪除</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tbl-hint">共 87 筆</p>
+</div>
+
+<!-- Tab 2: Comments -->
+<div id="admTab2" style="display:none;">
+  <div class="search-row"><input type="text" placeholder="搜尋留言者或內容…"><button>搜尋</button></div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>留言者</th><th>所屬影片</th><th>留言內容</th><th style="text-align:center;">檢舉</th><th>時間</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr style="background:#fffbf0;"><td><strong>user123</strong></td><td style="color:var(--text-3);font-size:12px;">NARS 教學</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">這個品牌真的超好用！推推推推推推推推</td><td style="text-align:center;"><span class="badge badge-yellow">⚠ 3</span></td><td style="color:var(--text-3);font-size:12px;">05/20 14:30</td><td><div style="display:flex;gap:6px;"><button class="btn btn-success btn-sm">已處理</button><button class="btn btn-danger btn-sm">刪除</button></div></td></tr>
+        <tr><td><strong>bella_tw</strong></td><td style="color:var(--text-3);font-size:12px;">NARS 教學</td><td>好好用喔！我用了三年推薦！</td><td style="text-align:center;"><span style="color:var(--text-3);">—</span></td><td style="color:var(--text-3);font-size:12px;">05/19 10:22</td><td><button class="btn btn-danger btn-sm">刪除</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Tab 3: Reports -->
+<div id="admTab3" style="display:none;">
+  <div class="card" style="padding:20px;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;">NARS 裸光蜜粉使用教學 <span class="badge badge-yellow">⚠ 2 件檢舉</span></div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:4px;">上傳者：alice · 最後檢舉：05/20 14:30</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <a href="video.html" class="btn btn-outline btn-sm">▶ 查看</a>
+        <button class="btn btn-success btn-sm">已處理</button>
+        <button class="btn btn-danger btn-sm">強制刪除</button>
+      </div>
+    </div>
+    <div style="background:var(--bg);border-radius:var(--r);padding:14px;font-size:13px;">
+      <div style="font-weight:600;margin-bottom:8px;color:var(--text-2);">檢舉明細</div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);"><strong>user999</strong> <span class="badge badge-yellow">不當內容</span> <span style="color:var(--text-2);">廣告性質留言，請審核</span> <span style="color:var(--text-3);font-size:11px;margin-left:8px;">05/20</span></div>
+      <div style="padding:8px 0;"><strong>user888</strong> <span class="badge badge-yellow">垃圾訊息</span> <span style="color:var(--text-2);">重複內容</span> <span style="color:var(--text-3);font-size:11px;margin-left:8px;">05/19</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 4: Users -->
+<div id="admTab4" style="display:none;">
+  <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+    <div class="card" style="padding:10px 18px;font-size:13px;">總會員 <strong>1,284</strong></div>
+    <div class="card" style="padding:10px 18px;font-size:13px;background:var(--yellow-bg);border-color:var(--yellow-border);color:var(--yellow);">⚠ 警告中 <strong>4</strong> 人</div>
+    <div class="card" style="padding:10px 18px;font-size:13px;background:var(--red-bg);border-color:var(--red-border);color:var(--red);">停用 <strong>2</strong> 人</div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>帳號</th><th>Email</th><th>身份</th><th>驗證</th><th style="text-align:center;">本月違規</th><th>狀態</th><th>加入時間</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>alice</strong></td><td style="color:var(--text-3);font-size:12px;">alice@email.com</td>
+          <td><span class="badge badge-blue">管理員</span></td>
+          <td><span class="badge badge-green">已驗證</span></td>
+          <td style="text-align:center;color:var(--text-3);font-size:12px;">—</td>
+          <td><span class="badge badge-green">正常</span></td>
+          <td style="color:var(--text-3);font-size:12px;">2024/01/15</td>
+          <td><span style="color:var(--text-3);font-size:12px;">（目前帳號）</span></td>
+        </tr>
+        <tr>
+          <td><strong>bob_chen</strong></td><td style="color:var(--text-3);font-size:12px;">bob@email.com</td>
+          <td><span class="badge badge-gray">一般</span></td>
+          <td><span class="badge badge-green">已驗證</span></td>
+          <td style="text-align:center;">
+            <div class="vio-bar"><div class="vio-dot on"></div><div class="vio-dot on"></div><div class="vio-dot off"></div><div class="vio-dot off"></div><div class="vio-dot off"></div></div>
+            <span style="font-size:11px;color:var(--text-3);margin-left:4px;">2/5</span>
+          </td>
+          <td><span class="badge badge-green">正常</span></td>
+          <td style="color:var(--text-3);font-size:12px;">2024/03/22</td>
+          <td><div style="display:flex;gap:6px;"><button class="btn btn-outline btn-sm">升管理員</button><button class="btn btn-danger btn-sm">停用</button></div></td>
+        </tr>
+        <tr style="opacity:.8;">
+          <td><strong>spam_user</strong><div style="font-size:11px;color:var(--red);">停用於 05/20</div></td>
+          <td style="color:var(--text-3);font-size:12px;">spam@em.com</td>
+          <td><span class="badge badge-gray">一般</span></td>
+          <td><span class="badge badge-red">未驗證</span></td>
+          <td style="text-align:center;">
+            <div class="vio-bar"><div class="vio-dot on"></div><div class="vio-dot on"></div><div class="vio-dot on"></div><div class="vio-dot on"></div><div class="vio-dot on"></div></div>
+            <span style="font-size:11px;color:var(--red);margin-left:4px;">5/5</span>
+          </td>
+          <td><span class="badge badge-red">已停用</span></td>
+          <td style="color:var(--text-3);font-size:12px;">2024/04/01</td>
+          <td><button class="btn btn-success btn-sm">恢復</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Tab 5: Products Data -->
+<div id="admTab5" style="display:none;">
+  <div class="search-row"><input type="text" placeholder="搜尋名稱、品牌、分類…"><button>搜尋</button></div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>#</th><th>品牌</th><th>名稱</th><th>分類</th><th>產地</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr><td style="color:var(--text-3);">1</td><td>NARS</td><td style="font-weight:600;">裸光蜜粉餅</td><td><span class="badge badge-rose">底妝</span></td><td style="color:var(--text-3);">日本</td><td><button class="btn btn-outline btn-sm">編輯</button></td></tr>
+        <tr><td style="color:var(--text-3);">2</td><td>MAC</td><td style="font-weight:600;">Ruby Woo 唇膏</td><td><span class="badge badge-rose">口紅</span></td><td style="color:var(--text-3);">加拿大</td><td><button class="btn btn-outline btn-sm">編輯</button></td></tr>
+        <tr><td style="color:var(--text-3);">3</td><td>Dior</td><td style="font-weight:600;">超完美柔霧唇膏</td><td><span class="badge badge-rose">唇膏</span></td><td style="color:var(--text-3);">法國</td><td><button class="btn btn-outline btn-sm">編輯</button></td></tr>
+        <tr><td style="color:var(--text-3);">4</td><td>Shiseido</td><td style="font-weight:600;">觸感氣墊粉餅</td><td><span class="badge badge-rose">底妝</span></td><td style="color:var(--text-3);">日本</td><td><button class="btn btn-outline btn-sm">編輯</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tbl-hint">共 512 筆產品</p>
+</div>
+
+<!-- Tab 6: Submissions -->
+<div id="admTab6" style="display:none;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+    <h3 style="margin-right:auto;">商品申請審核</h3>
+    <button class="btn btn-primary btn-sm" style="background:var(--rose);">待審核</button>
+    <button class="btn btn-outline btn-sm">已通過</button>
+    <button class="btn btn-outline btn-sm">已拒絕</button>
+    <button class="btn btn-outline btn-sm">全部</button>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:14px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:240px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px;">YSL 限定唇膏套組 <span class="badge badge-yellow">待審核</span></div>
+        <div style="font-size:13px;color:var(--text-3);line-height:1.8;">品牌：YSL &nbsp;·&nbsp; 分類：口紅 &nbsp;·&nbsp; 申請者：<strong>user456</strong><br>申請時間：2025/05/20 11:30</div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-2);background:var(--bg);border-radius:var(--r);padding:10px;">YSL 限定版唇膏套組，共 3 色，適合送禮，建議售價 NT$2,800。</div>
+      </div>
+      <div style="min-width:240px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:5px;">管理員備註</label>
+        <textarea class="form-input" rows="3" placeholder="可填入核准原因或修改建議…"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-success" style="flex:1;">✓ 核准</button>
+          <button class="btn btn-danger" style="flex:1;">✕ 拒絕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- adm-body -->
+
+<script>
+const admTabs = document.querySelectorAll('[id^="admTab"]');
+function switchAdmTab(i, el) {
+  document.querySelectorAll('.adm-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  admTabs.forEach((t, j) => t.style.display = j === i ? '' : 'none');
+}
+</script>
+</body>
+</html>

@@ -1,39 +1,145 @@
-<div v-if="currentStep === 1" class="p-5 md:p-6 border border-amber-100 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">
-    <div class="flex items-center justify-between mb-3">
-        <h3 class="font-extrabold text-gray-900 text-lg">🌤️ 第 1 頁：膚色問答</h3>
-        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-amber-700 border border-amber-200">Skin Tone Quiz</span>
-    </div>
-    <p class="text-sm text-gray-600 mb-3">先用簡單問答預測冷暖調，後面的相機分析會更穩。</p>
-    <div class="space-y-3 text-sm">
-        <div>
-            <p class="font-semibold text-gray-800 mb-1">Q1. 手腕血管看起來比較偏？</p>
-            <div class="grid gap-2">
-                <button type="button" @click="setToneQuizAnswer('t1', 'A')" :class="toneQuizOptionClass('t1', 'A')">(A) 藍紫色</button>
-                <button type="button" @click="setToneQuizAnswer('t1', 'B')" :class="toneQuizOptionClass('t1', 'B')">(B) 綠色</button>
-                <button type="button" @click="setToneQuizAnswer('t1', 'C')" :class="toneQuizOptionClass('t1', 'C')">(C) 兩種都有或看不太出來</button>
+<div v-if="currentStep === 1 || currentStep === 2" class="chat-card">
+
+    <!-- Header -->
+    <div class="chat-hd">
+        <div class="hd-left">
+            <div class="hd-av">✨</div>
+            <div>
+                <div class="hd-name">AI 膚況診斷助手</div>
+                <div class="hd-sub">• 正在引導你完成個人設定</div>
             </div>
         </div>
-        <div>
-            <p class="font-semibold text-gray-800 mb-1">Q2. 曬太陽後你的皮膚通常？</p>
-            <div class="grid gap-2">
-                <button type="button" @click="setToneQuizAnswer('t2', 'A')" :class="toneQuizOptionClass('t2', 'A')">(A) 先紅再黑</button>
-                <button type="button" @click="setToneQuizAnswer('t2', 'B')" :class="toneQuizOptionClass('t2', 'B')">(B) 很快曬黑</button>
-                <button type="button" @click="setToneQuizAnswer('t2', 'C')" :class="toneQuizOptionClass('t2', 'C')">(C) 看情況，兩者都會</button>
+        <div class="hd-right">
+            <div class="hd-step">
+                {{ toneQuizStep <= toneQuizData.length
+                    ? toneQuizStep
+                    : toneQuizData.length + skinQuizStep }} / 7
             </div>
-        </div>
-        <div>
-            <p class="font-semibold text-gray-800 mb-1">Q3. 你戴哪種飾品比較顯氣色？</p>
-            <div class="grid gap-2">
-                <button type="button" @click="setToneQuizAnswer('t3', 'A')" :class="toneQuizOptionClass('t3', 'A')">(A) 銀色</button>
-                <button type="button" @click="setToneQuizAnswer('t3', 'B')" :class="toneQuizOptionClass('t3', 'B')">(B) 金色</button>
-                <button type="button" @click="setToneQuizAnswer('t3', 'C')" :class="toneQuizOptionClass('t3', 'C')">(C) 都可以</button>
+            <div class="hd-track">
+                <div class="hd-prog" :style="{ width: ((toneQuizStep <= toneQuizData.length
+                    ? toneQuizStep - 1
+                    : toneQuizData.length + skinQuizStep - 1) / 7 * 100) + '%' }"></div>
             </div>
         </div>
     </div>
-    <div v-if="toneGuess" class="mt-3 p-3 rounded-xl border border-amber-200 bg-white text-sm text-amber-900">
-        問卷預估膚色方向：<span class="font-bold">{{ toneGuess }}</span>
+
+    <!-- Chat history -->
+    <div class="chat-body">
+
+        <!-- 開場白 -->
+        <div class="bot-row chat-in">
+            <div class="bot-av">✨</div>
+            <div class="bot-bubble">你好！先做幾個小問題，幫我了解你的膚色和膚質，後面拍照分析會更精準 🌸</div>
+        </div>
+
+        <!-- 膚色已答紀錄 -->
+        <template v-for="(q, idx) in toneQuizData" :key="'th'+idx">
+            <template v-if="toneQuizAnswers[q.key]">
+                <div class="bot-row chat-in">
+                    <div class="bot-av">✨</div>
+                    <div class="bot-bubble">{{ q.q }}</div>
+                </div>
+                <div class="user-row chat-in">
+                    <div class="user-bubble">{{ q.opts.find(o => o.val === toneQuizAnswers[q.key])?.label }}</div>
+                </div>
+            </template>
+        </template>
+
+        <!-- 打字中（膚色） -->
+        <div v-if="toneQuizTyping" class="bot-row chat-in">
+            <div class="bot-av">✨</div>
+            <div class="typing-bubble">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+        </div>
+
+        <!-- 目前膚色題（未答） -->
+        <div v-if="!toneQuizTyping && toneQuizStep <= toneQuizData.length" class="bot-row chat-in">
+            <div class="bot-av">✨</div>
+            <div class="bot-bubble">{{ toneQuizData[toneQuizStep - 1]?.q }}</div>
+        </div>
+
+        <!-- 膚色完成過渡 -->
+        <div v-if="toneQuizStep > toneQuizData.length" class="bot-row chat-in">
+            <div class="bot-av">✨</div>
+            <div class="transition-bubble">
+                膚色預測：<strong>{{ toneGuess || '中性調' }}</strong>！再來幾個膚質問題 📋
+            </div>
+        </div>
+
+        <!-- 膚質已答紀錄 -->
+        <template v-for="(q, idx) in skinQuizData" :key="'sh'+idx">
+            <template v-if="quizAnswers[q.key]">
+                <div class="bot-row chat-in">
+                    <div class="bot-av">✨</div>
+                    <div class="bot-bubble">
+                        {{ q.q }}
+                        <span v-if="q.hint" class="bubble-hint">{{ q.hint }}</span>
+                    </div>
+                </div>
+                <div class="user-row chat-in">
+                    <div class="user-bubble">{{ q.opts.find(o => o.val === quizAnswers[q.key])?.label }}</div>
+                </div>
+            </template>
+        </template>
+
+        <!-- 打字中（膚質） -->
+        <div v-if="skinQuizTyping" class="bot-row chat-in">
+            <div class="bot-av">✨</div>
+            <div class="typing-bubble">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+        </div>
+
+        <!-- 目前膚質題（未答） -->
+        <div v-if="!skinQuizTyping && toneQuizStep > toneQuizData.length && skinQuizStep <= skinQuizData.length"
+             class="bot-row chat-in">
+            <div class="bot-av">✨</div>
+            <div class="bot-bubble">
+                {{ skinQuizData[skinQuizStep - 1]?.q }}
+                <span v-if="skinQuizData[skinQuizStep - 1]?.hint" class="bubble-hint">{{ skinQuizData[skinQuizStep - 1]?.hint }}</span>
+            </div>
+        </div>
+
+        <!-- 全部完成 -->
+        <div v-if="skinQuizStep > skinQuizData.length" class="bot-row chat-in">
+            <div class="bot-av">✨</div>
+            <div class="bot-bubble">問卷完成！接下來用相機拍一張臉部照片，我來幫你分析 📸</div>
+        </div>
+
+        <div id="chatEnd" style="height:2px;"></div>
     </div>
-    <button @click="goToSkinTypeStep" class="mt-4 w-full bg-amber-600 text-white py-3 rounded-xl font-bold hover:bg-amber-500 active:scale-[0.99] transition duration-200 shadow-lg shadow-amber-600/20">
-        下一步：膚質問答
-    </button>
+
+    <!-- 底部：膚色選項 Chips -->
+    <div v-if="!toneQuizTyping && !skinQuizTyping && toneQuizStep <= toneQuizData.length" class="chip-zone">
+        <div class="chip-hint">選一個最符合的</div>
+        <div class="chip-row">
+            <button v-for="opt in toneQuizData[toneQuizStep - 1]?.opts" :key="opt.val"
+                class="chip" @click="setToneQuizAnswer(toneQuizData[toneQuizStep - 1].key, opt.val)">
+                {{ opt.label }}
+            </button>
+        </div>
+    </div>
+
+    <!-- 底部：膚質選項 Chips -->
+    <div v-if="!toneQuizTyping && !skinQuizTyping && toneQuizStep > toneQuizData.length && skinQuizStep <= skinQuizData.length"
+         class="chip-zone">
+        <div class="chip-hint">選一個最符合的</div>
+        <div class="chip-row">
+            <button v-for="opt in skinQuizData[skinQuizStep - 1]?.opts" :key="opt.val"
+                class="chip" @click="setQuizAnswer(skinQuizData[skinQuizStep - 1].key, opt.val)">
+                {{ opt.label }}
+            </button>
+        </div>
+    </div>
+
+    <!-- 底部：完成按鈕 -->
+    <div v-if="skinQuizStep > skinQuizData.length" class="next-btn-wrap">
+        <button class="next-btn" @click="goToCameraStep">下一步：拍照分析 →</button>
+    </div>
+
 </div>

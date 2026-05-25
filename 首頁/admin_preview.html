@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin 後台 — 改版預覽</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── 比較容器 ── */
+.compare-banner {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 12px 32px;
+    font-family: monospace;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+}
+.compare-banner strong { color: #cba6f7; }
+.compare-banner .tag {
+    padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+}
+.tag-before { background: #f38ba8; color: #1e1e2e; }
+.tag-after  { background: #a6e3a1; color: #1e1e2e; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   改版後的 CSS 設計系統
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --font: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+    --rose:      #c26b7c;
+    --rose-light: #f9edef;
+    --rose-border: #edd8dc;
+    --text:      #1f1f1f;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --bg:        #f4f4f6;
+    --card:      #ffffff;
+    --border:    #e5e7eb;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:    0 4px 12px rgba(0,0,0,.07);
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 14px;
+}
+
+/* ── Layout ── */
+.adm-wrap    { font-family: var(--font); background: var(--bg); min-height: 100vh; color: var(--text); font-size: 14px; }
+
+/* ── Topbar ── */
+.adm-topbar  {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+}
+.adm-logo { font-size: 15px; font-weight: 700; color: var(--rose); letter-spacing: .3px; }
+.adm-logo-dot { display: inline-block; width: 7px; height: 7px; background: var(--rose); border-radius: 50%; margin-right: 8px; vertical-align: 2px; }
+.adm-top-right { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.adm-top-right a {
+    color: var(--text-secondary); text-decoration: none;
+    padding: 6px 12px; border-radius: var(--radius-sm);
+    transition: all .15s; font-weight: 500;
+}
+.adm-top-right a:hover { background: var(--bg); color: var(--text); }
+.btn-logout {
+    color: var(--rose) !important;
+    border: 1px solid var(--rose-border) !important;
+    background: var(--rose-light) !important;
+}
+.btn-logout:hover { opacity: .85; }
+
+/* ── Tabs ── */
+.adm-tabs { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; gap: 0; }
+.adm-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 14px 16px; text-decoration: none;
+    color: var(--text-secondary); font-size: 13px; font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all .15s; white-space: nowrap;
+}
+.adm-tab:hover { color: var(--text); }
+.adm-tab.active { color: var(--rose); border-bottom-color: var(--rose); font-weight: 600; }
+.adm-tab .badge-pill {
+    background: #ef4444; color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 1px 5px; border-radius: 10px;
+    min-width: 16px; text-align: center;
+}
+
+/* ── Content ── */
+.adm-content { max-width: 1160px; margin: 28px auto; padding: 0 24px; }
+
+/* ── Flash message ── */
+.adm-flash {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: var(--radius); margin-bottom: 24px;
+    font-size: 13px; font-weight: 500;
+}
+.adm-flash.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.adm-flash.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+/* ── Section header ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.section-title  { font-size: 15px; font-weight: 700; color: var(--text); }
+
+/* ── Stat cards ── */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+@media(max-width:800px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
+.stat-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+}
+.stat-icon {
+    width: 44px; height: 44px;
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.stat-num   { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 3px; color: var(--text); }
+.stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.stat-link  { font-size: 11px; color: var(--rose); margin-left: 4px; text-decoration: none; }
+.stat-alert .stat-num { color: #dc2626; }
+
+/* ── Table ── */
+.adm-table-wrap {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.adm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adm-table th {
+    background: #fafafa;
+    padding: 11px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+}
+.adm-table td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.adm-table tbody tr:last-child td { border-bottom: none; }
+.adm-table tbody tr:hover { background: #fafafa; }
+.table-hint { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
+
+/* ── Badges ── */
+.badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: .2px;
+}
+.badge-admin    { background: #eff6ff; color: #1d4ed8; }
+.badge-user     { background: #f9fafb; color: #374151; border: 1px solid var(--border); }
+.badge-ok       { background: #f0fdf4; color: #166534; }
+.badge-warn     { background: #fffbeb; color: #92400e; }
+.badge-no       { background: #fef2f2; color: #991b1b; }
+.badge-suspended{ background: #fef2f2; color: #991b1b; }
+
+/* ── Buttons ── */
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 600; font-family: var(--font); transition: all .15s; }
+.btn-del  { background: #fef2f2; color: #991b1b; }
+.btn-del:hover  { background: #dc2626; color: #fff; }
+.btn-ok   { background: #f0fdf4; color: #166534; }
+.btn-ok:hover   { background: #16a34a; color: #fff; }
+.btn-role { background: #f5f3ff; color: #5b21b6; }
+.btn-role:hover { background: #7c3aed; color: #fff; }
+.btn-primary { background: var(--rose); color: #fff; padding: 8px 18px; border-radius: var(--radius); font-size: 13px; }
+.btn-primary:hover { opacity: .88; }
+.btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Search ── */
+.search-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+.search-bar input {
+    flex: 1; padding: 9px 14px; border: 1px solid var(--border);
+    border-radius: var(--radius); font-size: 13px; font-family: var(--font);
+    color: var(--text); outline: none; transition: border .15s;
+    background: var(--card);
+}
+.search-bar input:focus { border-color: var(--rose); }
+.search-bar button { padding: 9px 20px; background: var(--rose); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 600; font-family: var(--font); transition: opacity .15s; }
+.search-bar button:hover { opacity: .88; }
+
+/* ── Ranking ── */
+.rank-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-bottom: 8px; }
+@media(max-width:700px){ .rank-grid { grid-template-columns: 1fr; } }
+.rank-block { background: var(--card); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; }
+.rank-block-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: #fafafa; }
+.rank-block-label  { font-size: 12px; font-weight: 700; color: var(--text-secondary); letter-spacing: .3px; text-transform: uppercase; flex: 1; }
+.rank-block-tag    { font-size: 10px; color: var(--text-muted); background: var(--border); border-radius: 4px; padding: 1px 6px; }
+.rank-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid #f3f4f6; font-size: 13px; text-decoration: none; color: inherit; transition: background .1s; }
+.rank-row:last-child { border-bottom: none; }
+.rank-row:hover { background: #fafafa; }
+.rank-pos  { min-width: 22px; text-align: center; font-size: 14px; }
+.rank-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.rank-score { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; }
+
+/* ── Status summary chips ── */
+.summary-chips { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.chip { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; font-size: 13px; color: var(--text-secondary); }
+.chip strong { color: var(--text); }
+.chip-warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.chip-danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.chip-info { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; }
+
+/* ── Violation dots ── */
+.vio-bar { display: inline-flex; gap: 3px; vertical-align: middle; }
+.vio-dot { width: 8px; height: 8px; border-radius: 50%; }
+.vio-dot.on  { background: #ef4444; }
+.vio-dot.off { background: #e5e7eb; }
+
+/* ── Pagination ── */
+.dp-pagination { display: flex; gap: 6px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+.dp-pagination a {
+    padding: 6px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; text-decoration: none;
+    background: var(--card); color: var(--text-secondary);
+    border: 1px solid var(--border); transition: all .15s;
+}
+.dp-pagination a:hover { border-color: var(--rose); color: var(--rose); }
+.dp-pagination a.active { background: var(--rose); color: #fff; border-color: var(--rose); }
+</style>
+</head>
+<body>
+
+<div class="compare-banner">
+    <span class="tag tag-after">改版後預覽</span>
+    <strong>字體</strong>: Noto Sans TC &nbsp;|&nbsp;
+    <strong>色彩</strong>: 統一 design token &nbsp;|&nbsp;
+    <strong>排版</strong>: 去除 inline style &nbsp;|&nbsp;
+    <strong>Emoji</strong>: 只保留必要的
+</div>
+
+<div class="adm-wrap">
+
+<!-- Topbar -->
+<div class="adm-topbar">
+    <div class="adm-logo">
+        <span class="adm-logo-dot"></span>Cosmetic 管理後台
+    </div>
+    <div class="adm-top-right">
+        <span>管理員：admin</span>
+        <a href="#">← 返回網站</a>
+        <a href="#" class="btn-logout">登出</a>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="adm-tabs">
+    <a href="#" class="adm-tab active">數據總覽</a>
+    <a href="#" class="adm-tab">影片管理</a>
+    <a href="#" class="adm-tab">留言管理</a>
+    <a href="#" class="adm-tab">檢舉管理</a>
+    <a href="#" class="adm-tab">會員管理</a>
+    <a href="#" class="adm-tab">產品資料</a>
+    <a href="#" class="adm-tab">
+        商品審核
+        <span class="badge-pill">3</span>
+    </a>
+</div>
+
+<div class="adm-content">
+
+<!-- Flash message demo -->
+<div class="adm-flash success">
+    已核准「NARS 裸光蜜粉」（通知信已寄出）
+</div>
+
+<!-- ══ 數據總覽 ══ -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#fce7f3;">👥</div>
+        <div>
+            <div class="stat-num">1,284</div>
+            <div class="stat-label">總使用者</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#eff6ff;">✨</div>
+        <div>
+            <div class="stat-num" style="color:#2563eb;">24</div>
+            <div class="stat-label">本週新增會員</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#f5f3ff;">🎬</div>
+        <div>
+            <div class="stat-num" style="color:#7c3aed;">87</div>
+            <div class="stat-label">影片總數</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#f0fdf4;">💬</div>
+        <div>
+            <div class="stat-num" style="color:#16a34a;">4,321</div>
+            <div class="stat-label">總留言數</div>
+        </div>
+    </div>
+    <div class="stat-card stat-alert">
+        <div class="stat-icon" style="background:#fef2f2;">🚨</div>
+        <div>
+            <div class="stat-num">5</div>
+            <div class="stat-label">待處理檢舉 <a class="stat-link" href="#">→ 處理</a></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#fffbeb;">📋</div>
+        <div>
+            <div class="stat-num" style="color:#d97706;">3</div>
+            <div class="stat-label">待審核商品 <a class="stat-link" href="#">→ 審核</a></div>
+        </div>
+    </div>
+</div>
+
+<!-- 排名 -->
+<div class="section-header">
+    <div class="section-title">排名統計</div>
+    <button class="btn btn-primary">存入本月快照</button>
+</div>
+
+<div class="rank-grid">
+    <div class="rank-block">
+        <div class="rank-block-header">
+            <span>👁</span>
+            <span class="rank-block-label">產品・觀看數</span>
+            <span class="rank-block-tag">TOP 10</span>
+        </div>
+        <a class="rank-row" href="#"><span class="rank-pos">🥇</span><span class="rank-name">NARS 裸光蜜粉</span><span class="rank-score" style="background:#fce7f3;color:#9d174d;">1,230 次</span></a>
+        <a class="rank-row" href="#"><span class="rank-pos">🥈</span><span class="rank-name">Dior 氣墊粉餅</span><span class="rank-score" style="background:#fce7f3;color:#9d174d;">980 次</span></a>
+        <a class="rank-row" href="#"><span class="rank-pos">🥉</span><span class="rank-name">Shiseido 氣墊</span><span class="rank-score" style="background:#fce7f3;color:#9d174d;">742 次</span></a>
+        <a class="rank-row" href="#"><span class="rank-pos" style="color:#9ca3af;font-size:12px;font-weight:700;">4</span><span class="rank-name">3CE 唇膏</span><span class="rank-score" style="background:#fce7f3;color:#9d174d;">610 次</span></a>
+    </div>
+    <div class="rank-block">
+        <div class="rank-block-header">
+            <span>♡</span>
+            <span class="rank-block-label">產品・收藏數</span>
+            <span class="rank-block-tag">TOP 10</span>
+        </div>
+        <a class="rank-row" href="#"><span class="rank-pos">🥇</span><span class="rank-name">MAC 唇膏 Ruby Woo</span><span class="rank-score" style="background:#fff7ed;color:#c2410c;">421 人</span></a>
+        <a class="rank-row" href="#"><span class="rank-pos">🥈</span><span class="rank-name">NARS 眼影盤</span><span class="rank-score" style="background:#fff7ed;color:#c2410c;">389 人</span></a>
+        <a class="rank-row" href="#"><span class="rank-pos">🥉</span><span class="rank-name">Fenty Beauty 粉底</span><span class="rank-score" style="background:#fff7ed;color:#c2410c;">311 人</span></a>
+    </div>
+</div>
+
+<br>
+<hr style="border:none;border-top:1px solid var(--border);margin:28px 0;">
+
+<!-- ══ 會員管理（範例）══ -->
+<div class="section-header">
+    <div class="section-title">會員管理</div>
+</div>
+
+<div class="summary-chips">
+    <div class="chip">總會員 <strong>1,284</strong></div>
+    <div class="chip chip-warn">⚠ 警告中 <strong>4</strong> 人（違規 3 次以上）</div>
+    <div class="chip chip-danger">停用 <strong>2</strong> 人</div>
+    <div class="chip chip-info">ℹ 30 天內違規 5 次自動停用</div>
+</div>
+
+<div class="search-bar">
+    <input type="text" placeholder="搜尋帳號或 Email…">
+    <button>搜尋</button>
+</div>
+
+<div class="adm-table-wrap">
+    <table class="adm-table">
+        <thead>
+            <tr>
+                <th>帳號</th>
+                <th>Email</th>
+                <th>身份</th>
+                <th>信箱驗證</th>
+                <th>本月違規</th>
+                <th>狀態</th>
+                <th>加入時間</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>alice</strong></td>
+                <td style="color:#6b7280;font-size:12px;">alice@email.com</td>
+                <td><span class="badge badge-admin">管理員</span></td>
+                <td><span class="badge badge-ok">已驗證</span></td>
+                <td style="color:#9ca3af;font-size:12px;">—</td>
+                <td><span class="badge badge-ok">正常</span></td>
+                <td style="color:#9ca3af;font-size:12px;">2024/01/15</td>
+                <td><span style="color:#9ca3af;font-size:12px;">（目前帳號）</span></td>
+            </tr>
+            <tr>
+                <td><strong>bob_chen</strong></td>
+                <td style="color:#6b7280;font-size:12px;">bob@email.com</td>
+                <td><span class="badge badge-user">一般</span></td>
+                <td><span class="badge badge-ok">已驗證</span></td>
+                <td>
+                    <div class="vio-bar" title="2/5">
+                        <div class="vio-dot on"></div>
+                        <div class="vio-dot on"></div>
+                        <div class="vio-dot off"></div>
+                        <div class="vio-dot off"></div>
+                        <div class="vio-dot off"></div>
+                    </div>
+                    <span style="font-size:11px;color:#9ca3af;margin-left:4px;">2/5</span>
+                </td>
+                <td><span class="badge badge-ok">正常</span></td>
+                <td style="color:#9ca3af;font-size:12px;">2024/03/22</td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-role">升為管理員</button>
+                        <button class="btn btn-del">停用</button>
+                    </div>
+                </td>
+            </tr>
+            <tr style="opacity:.8;">
+                <td>
+                    <strong>spam_user</strong>
+                    <div style="font-size:11px;color:#ef4444;margin-top:2px;">停用於 05/20 14:30</div>
+                </td>
+                <td style="color:#6b7280;font-size:12px;">spam@email.com</td>
+                <td><span class="badge badge-user">一般</span></td>
+                <td><span class="badge badge-no">未驗證</span></td>
+                <td>
+                    <div class="vio-bar">
+                        <div class="vio-dot on"></div>
+                        <div class="vio-dot on"></div>
+                        <div class="vio-dot on"></div>
+                        <div class="vio-dot on"></div>
+                        <div class="vio-dot on"></div>
+                    </div>
+                    <span style="font-size:11px;color:#ef4444;margin-left:4px;">5/5</span>
+                </td>
+                <td><span class="badge badge-suspended">已停用</span></td>
+                <td style="color:#9ca3af;font-size:12px;">2024/04/01</td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-ok">恢復</button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<p class="table-hint">共 1,284 位使用者</p>
+
+</div><!-- adm-content -->
+</div><!-- adm-wrap -->
+
+</body>
+</html>
