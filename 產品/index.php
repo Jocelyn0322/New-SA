@@ -13,23 +13,72 @@ $favorites = $_SESSION['favorite'] ?? [];
   <title>COSMETIC — 首頁</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* Hero */
+    /* ── Hero ── */
     .hero {
-      background: linear-gradient(135deg, #1a0820 0%, #3d1a4a 40%, #7a3060 70%, #c26b7c 100%);
-      padding: 72px 0 80px; color: white; text-align: center;
+      min-height: 520px;
+      background: linear-gradient(135deg, #3d1520 0%, #6b2d3e 45%, #c26b7c 100%);
+      display: flex; align-items: center;
+      position: relative; overflow: hidden;
     }
-    .hero-inner { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
-    .hero-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; opacity: .65; margin-bottom: 16px; }
-    .hero h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.2; margin-bottom: 16px; }
-    .hero p { font-size: 16px; opacity: .75; max-width: 480px; margin: 0 auto 32px; }
-    .hero-pills { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 36px; }
-    .hero-pill {
-      display: flex; align-items: center; gap: 8px; padding: 8px 18px;
-      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22);
-      border-radius: var(--r-full); font-size: 13px; font-weight: 500; color: white;
-      backdrop-filter: blur(4px); transition: background var(--t);
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     }
-    .hero-pill:hover { background: rgba(255,255,255,.22); }
+    .hero-content {
+      max-width: var(--max-w); margin: 0 auto; padding: 80px 24px;
+      position: relative; z-index: 1;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+      color: rgba(255,255,255,.7); margin-bottom: 20px;
+    }
+    .hero-eyebrow::before {
+      content: ''; width: 24px; height: 2px;
+      background: rgba(255,255,255,.5); border-radius: 2px;
+    }
+    .hero-title {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 700; color: white; line-height: 1.15;
+      margin-bottom: 18px; letter-spacing: -.5px;
+    }
+    .hero-title em { color: #f9cfd8; font-style: normal; }
+    .hero-desc {
+      font-size: 16px; color: rgba(255,255,255,.75);
+      margin-bottom: 36px; max-width: 480px; line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero-stats {
+      display: flex; gap: 40px; margin-top: 56px;
+      padding-top: 40px; border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .hero-stat-num { font-size: 1.75rem; font-weight: 700; color: white; }
+    .hero-stat-label { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 2px; }
+
+    /* ── Feature Pills ── */
+    .feature-wrap { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+    .feature-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      margin-top: -32px; position: relative; z-index: 2;
+    }
+    .feature-pill {
+      background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border);
+      padding: 20px 22px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px;
+      transition: all var(--t); cursor: pointer; text-decoration: none; color: inherit;
+    }
+    .feature-pill:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--rose-200); }
+    .feature-pill-icon {
+      width: 44px; height: 44px; border-radius: var(--r); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .feature-pill-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .feature-pill-desc { font-size: 12px; color: var(--text-3); }
+
+    @media(max-width:768px){
+      .feature-row { grid-template-columns: repeat(2,1fr); margin-top: -16px; }
+      .hero-stats { gap: 24px; flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
@@ -38,19 +87,43 @@ $favorites = $_SESSION['favorite'] ?? [];
 
 <!-- Hero -->
 <section class="hero">
-  <div class="hero-inner">
-    <div class="hero-eyebrow">你的彩妝顧問</div>
-    <h1>找到最適合你的<br>彩妝產品</h1>
-    <p>透過 AI 分析膚色與膚質，精準推薦最適合你的彩妝品</p>
-    <div class="hero-pills">
-      <a href="/SA/New-SA/AI/index.php"      class="hero-pill">✨ AI 膚色分析</a>
-      <a href="/SA/New-SA/產品/products.php" class="hero-pill">💄 產品庫</a>
-      <a href="/SA/New-SA/首頁/video.php"    class="hero-pill">🎬 影片交流</a>
-      <a href="/SA/New-SA/產品/compare.php"  class="hero-pill">⚖ 比較功能</a>
+  <div class="hero-content">
+    <div class="hero-eyebrow">AI 驅動的美妝平台</div>
+    <h1 class="hero-title">找到最適合<em>你</em>的<br>彩妝產品</h1>
+    <p class="hero-desc">透過 AI 膚色分析，精準推薦適合你的彩妝。超過 500 款產品，讓你輕鬆比較、收藏、評分。</p>
+    <div class="hero-actions">
+      <a href="/SA/New-SA/AI/index.php" class="btn btn-primary btn-lg">✨ 立即 AI 分析</a>
+      <a href="/SA/New-SA/產品/products.php" class="btn btn-ghost btn-lg">瀏覽產品</a>
     </div>
-    <a href="/SA/New-SA/AI/index.php" class="btn btn-ghost btn-lg">開始 AI 分析 →</a>
+    <div class="hero-stats">
+      <div><div class="hero-stat-num">500+</div><div class="hero-stat-label">精選產品</div></div>
+      <div><div class="hero-stat-num">1,200+</div><div class="hero-stat-label">活躍會員</div></div>
+      <div><div class="hero-stat-num">4,800+</div><div class="hero-stat-label">使用者評分</div></div>
+    </div>
   </div>
 </section>
+
+<!-- Feature Pills -->
+<div class="feature-wrap">
+  <div class="feature-row">
+    <a href="/SA/New-SA/AI/index.php" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#fce7ec;">🤖</div>
+      <div><div class="feature-pill-title">AI 膚色分析</div><div class="feature-pill-desc">相機即時偵測膚色</div></div>
+    </a>
+    <a href="/SA/New-SA/產品/products.php" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#eff6ff;">💄</div>
+      <div><div class="feature-pill-title">完整產品庫</div><div class="feature-pill-desc">搜尋篩選一秒找到</div></div>
+    </a>
+    <a href="/SA/New-SA/首頁/video.php" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#f5f3ff;">🎬</div>
+      <div><div class="feature-pill-title">影片交流</div><div class="feature-pill-desc">分享彩妝教學影片</div></div>
+    </a>
+    <a href="/SA/New-SA/產品/compare.php" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#f0fdf4;">⚖️</div>
+      <div><div class="feature-pill-title">產品比較</div><div class="feature-pill-desc">並排分析找出最優</div></div>
+    </a>
+  </div>
+</div>
 
 <!-- Products -->
 <section class="section">
@@ -75,7 +148,6 @@ $favorites = $_SESSION['favorite'] ?? [];
           <?php endif; ?>
         </div>
 
-        <!-- Favorite button (form POST) -->
         <?php if ($isFav): ?>
           <form action="remove_favorite.php" method="POST" style="position:absolute;top:10px;right:10px;margin:0;">
             <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
