@@ -127,10 +127,41 @@ if (empty($_SESSION[$viewedKey])) {
             <p><strong>產地：</strong><?php echo htmlspecialchars($row['origin']); ?></p>
 
             <h3>用途</h3>
-            <p><?php echo htmlspecialchars($row['purpose']); ?></p>
+            <div id="purposeWrap">
+                <p id="purposeText" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><?php echo htmlspecialchars($row['purpose'] ?? ''); ?></p>
+                <?php if (mb_strlen($row['purpose'] ?? '') > 60): ?>
+                <button id="purposeToggle" onclick="toggleBlock('purpose')" style="background:none;border:none;color:var(--rose);font-size:13px;cursor:pointer;padding:4px 0;font-family:inherit;">▼ 查看更多</button>
+                <?php endif; ?>
+            </div>
+
+            <h3>成分</h3>
+            <?php $ing = htmlspecialchars($row['ingredients'] ?? ''); ?>
+            <div id="ingWrap">
+                <p id="ingText" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                    <?php echo $ing; ?>
+                </p>
+                <?php if (mb_strlen($row['ingredients'] ?? '') > 60): ?>
+                <button id="ingToggle" onclick="toggleBlock('ing')" style="background:none;border:none;color:var(--rose);font-size:13px;cursor:pointer;padding:4px 0;font-family:inherit;">▼ 查看更多</button>
+                <?php endif; ?>
+            </div>
+            <script>
+            function toggleBlock(key) {
+                var t = document.getElementById(key + 'Text');
+                var b = document.getElementById(key + 'Toggle');
+                var collapsed = t.style.overflow !== 'visible';
+                t.style.webkitLineClamp = collapsed ? 'unset' : '2';
+                t.style.overflow = collapsed ? 'visible' : 'hidden';
+                b.textContent = collapsed ? '▲ 收起' : '▼ 查看更多';
+            }
+            </script>
 
             <h3>注意事項</h3>
-            <p><?php echo htmlspecialchars($row['precautions']); ?></p>
+            <div id="precautionsWrap">
+                <p id="precautionsText" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><?php echo htmlspecialchars($row['precautions'] ?? ''); ?></p>
+                <?php if (mb_strlen($row['precautions'] ?? '') > 60): ?>
+                <button id="precautionsToggle" onclick="toggleBlock('precautions')" style="background:none;border:none;color:var(--rose);font-size:13px;cursor:pointer;padding:4px 0;font-family:inherit;">▼ 查看更多</button>
+                <?php endif; ?>
+            </div>
 
             <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
             <!-- 管理員工具列 -->

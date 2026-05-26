@@ -93,13 +93,13 @@ if (isset($_SESSION['user'])) {
       <a href="/SA/New-SA/產品/index.php"    class="nav-link <?= $_navHome   ? 'active' : '' ?>">首頁</a>
       <a href="/SA/New-SA/AI/index.php"      class="nav-link <?= $_navAI     ? 'active' : '' ?>">AI 檢測</a>
       <a href="/SA/New-SA/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
-      <a href="/SA/New-SA/產品/skinmatch.php" class="nav-link <?= $_navSkin  ? 'active' : '' ?>">膚色配對</a>
       <a href="/SA/New-SA/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
     <div class="header-actions">
-      <a href="/SA/New-SA/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="18" height="18" fill="currentColor" aria-hidden="true">
+      <a href="/SA/New-SA/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M50,85 C35,75 10,60 10,35 C10,18 20,8 33,8 C42,8 48,13 50,20 C52,13 58,8 67,8 C80,8 90,18 90,35 C90,60 65,75 50,85 Z"/>
             </svg><?php if ($_favCount > 0): ?><span class="count"><?= $_favCount ?></span><?php endif; ?></a>
+      <a href="/SA/New-SA/產品/skinmatch.php" class="icon-btn" data-tip="膚色配對"><img src="/SA/New-SA/images/weather-icon.png" width="26" height="26" alt="膚色配對" style="display:block;opacity:.75;"></a>
       <a href="/SA/New-SA/產品/compare.php"  class="icon-btn" data-tip="產品比較"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" width="20" height="20" fill="currentColor" aria-hidden="true">
               <!-- knob -->
               <circle cx="50" cy="7" r="6"/>
@@ -129,7 +129,7 @@ if (isset($_SESSION['user'])) {
       <?php if (isset($_SESSION['user'])): ?>
         <div class="notif-wrap">
           <button class="notif-bell" id="notifBell" onclick="toggleNotifPanel()" aria-label="通知" data-tip="通知">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="20" height="20" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="24" height="24" aria-hidden="true">
               <g transform="translate(0,-980.36218)">
                 <path fill="currentColor" transform="translate(0,980.36218)" d="M36,12.594c-1.609,0-4.781,0.656-4.781,0.656c-1.012,0.14-0.444,2.115-0.063,3.063c0.182,0.451,2.781,1.031,2.781,1.031l-0.063,3c0,0-4.356,0.657-5.719,1.844c-1.363,1.187-2.464,1.342-4.125,5.281c-1.038,2.464-2.282,14.221-3.094,17.875c-0.811,3.654-1.781,4.031-1.781,4.031L36,49.344l16.844,0.031c0,0-0.97-0.377-1.781-4.031c-0.811-3.654-2.056-15.411-3.094-17.875c-1.66-3.939-2.762-4.094-4.125-5.281c-1.363-1.187-5.719-1.844-5.719-1.844l-0.063-3c0,0,2.6-0.58,2.781-1.031c0.381-0.948,0.949-2.923-0.063-3.063C40.781,13.25,37.609,12.594,36,12.594z"/>
                 <path fill="currentColor" d="m55,1031.716-37.969,0.031c-0.739,0.001-1.024,1.219-1.031,1.969-0.007,0.75,0.24,2.032,1,2.031l14.406,0c-0.005,0.075-0.031,0.142-0.031,0.219c0,2.514,2.075,4.563,4.625,4.563c2.55,0,4.625-2.049,4.625-4.563c0-0.088-0.025-0.164-0.031-0.25l14.406,0c0.745-0.001,0.999-1.254,1-2c0.001-0.746-0.253-2.001-1-2z"/>
