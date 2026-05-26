@@ -6,7 +6,7 @@ if (!isset($_SESSION['user'])) {
     exit();
 }
 
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 $message = '';
 $messageType = '';
@@ -173,7 +173,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <div class="profile-wrap">
 

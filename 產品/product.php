@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 // 依分類決定評分屬性
 $attributeMap = [
@@ -32,7 +32,7 @@ $defaultAttributes = ['顯色度', '持久度', '易上色', '延展性'];
 
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <?php
 $id = intval($_GET['id'] ?? 0);

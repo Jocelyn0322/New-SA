@@ -1,6 +1,6 @@
 <?php
 session_start();
-require 'db.php';
+require __DIR__ . '/../db.php';
 require_once 'send_mail.php';
 
 if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
@@ -599,6 +599,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 </style>
 </head>
 <body>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <!-- Sidebar -->
 <aside class="sidebar">

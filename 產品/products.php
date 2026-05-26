@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 $keyword      = $_GET['keyword']  ?? '';
 $category     = $_GET['category'] ?? '';
@@ -84,7 +84,7 @@ function page_url($p) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <!-- Search Bar -->
 <div class="search-hero">

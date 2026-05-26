@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 $selected_tone = $_GET['tone'] ?? '';
 
@@ -19,7 +19,7 @@ while($t = $tones->fetch()) $all_tones[] = $t;
 </head>
 <body>
 
-    <?php include 'header.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
 
     <main class="page">
 

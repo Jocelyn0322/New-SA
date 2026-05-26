@@ -2,7 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json');
 
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 $data         = json_decode(file_get_contents('php://input'), true) ?? [];
 $skinType     = trim($data['skinType']     ?? '');

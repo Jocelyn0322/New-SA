@@ -44,7 +44,7 @@ $labL = isset($detectedLab['L']) ? (float)$detectedLab['L'] : null;
 $laba = isset($detectedLab['a']) ? (float)$detectedLab['a'] : null;
 $labb = isset($detectedLab['b']) ? (float)$detectedLab['b'] : null;
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../db.php';
 
 $clickCheck = $pdo->prepare(
     'SELECT COUNT(*) FROM user_product_clicks WHERE username = :username AND product_id = :product_id'

@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 $profile    = null;
 $products   = [];
@@ -303,7 +303,7 @@ if (isset($pdo)) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <main class="page">
 <div class="products">

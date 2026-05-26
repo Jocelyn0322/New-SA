@@ -5,7 +5,6 @@ $dbname = 'postgres';
 $user   = 'postgres.gykwxrymhgywarpyqxcr';
 $pass   = '2hq5hnoEYPU2qp38';
 
-// Supabase Storage 設定
 define('SUPABASE_URL',         'https://gykwxrymhgywarpyqxcr.supabase.co');
 define('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5a3d4cnltaGd5d2FycHlxeGNyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODUwMjkwNSwiZXhwIjoyMDk0MDc4OTA1fQ.A9SYbsbjQlpCpXGqMANMTlNR4ZA1Ix3NVSdznxN-PKg');
 define('SUPABASE_BUCKET',      'product-images');
