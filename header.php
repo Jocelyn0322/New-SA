@@ -41,8 +41,8 @@ $_initial   = isset($_SESSION['user']) ? mb_strtoupper(mb_substr($_SESSION['user
     </a>
     <nav class="nav">
       <a href="/SA/New-SA/產品/index.php"    class="nav-link <?= $_navHome   ? 'active' : '' ?>">首頁</a>
-      <a href="/SA/New-SA/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
       <a href="/SA/New-SA/AI/index.php"      class="nav-link <?= $_navAI     ? 'active' : '' ?>">AI 檢測</a>
+      <a href="/SA/New-SA/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
       <a href="/SA/New-SA/產品/skinmatch.php" class="nav-link <?= $_navSkin  ? 'active' : '' ?>">膚色配對</a>
       <a href="/SA/New-SA/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
