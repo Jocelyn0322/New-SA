@@ -410,9 +410,9 @@ if ($tab === 'comments') {
 :root {
   --sidebar-w: 220px;
   --topbar-h: 58px;
-  --sidebar-bg: #1e1b2e;
-  --sidebar-hover: #2a2640;
-  --sidebar-active: #3d3660;
+  --sidebar-bg: #5c1a2a;
+  --sidebar-hover: #7a2038;
+  --sidebar-active: #9d2942;
   --accent: #c26b7c;
   --accent-light: #f9cfd8;
   --text-main: #1a1a2e;
@@ -599,7 +599,6 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 </style>
 </head>
 <body>
-<?php include __DIR__ . '/../header.php'; ?>
 
 <!-- Sidebar -->
 <aside class="sidebar">

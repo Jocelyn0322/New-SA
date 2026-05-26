@@ -671,7 +671,7 @@ if ($view === 'following') {
         .video-detail-content { max-width: 1400px; margin: 0 auto; padding: 20px; display: flex; gap: 30px; align-items: flex-start; }
         .video-detail-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,.2); border: none; color: white; font-size: 30px; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; z-index: 1001; }
         .video-detail-player { width: 65%; max-height: 70vh; background: #000; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
-        .video-detail-player video { max-width: 100%; max-height: 70vh; }
+        .video-detail-player video { width: 100%; max-height: 70vh; display: block; }
         .video-detail-info {
             padding: 0;
             color: white;
@@ -936,7 +936,7 @@ if ($view === 'following') {
                                 </div>
 
                                 <div class="video-actions">
-                                    <button class="edit-btn" onclick="openEditModal(<?php echo (int)$video['id']; ?>, <?php echo json_encode($video['title']); ?>, <?php echo json_encode($video['description'] ?? ''); ?>, <?php echo json_encode($video['tags'] ?? ''); ?>)">✏️ 編輯</button>
+                                    <button class="edit-btn" onclick="openEditModal(<?php echo (int)$video['id']; ?>, <?php echo htmlspecialchars(json_encode($video['title']), ENT_QUOTES); ?>, <?php echo htmlspecialchars(json_encode($video['description'] ?? ''), ENT_QUOTES); ?>, <?php echo htmlspecialchars(json_encode($video['tags'] ?? ''), ENT_QUOTES); ?>)">✏️ 編輯</button>
                                     <button class="delete-btn" onclick="deleteVideoAjax(<?php echo (int)$video['id']; ?>, this)">🗑️ 刪除</button>
                                 </div>
                             </div>
@@ -1482,7 +1482,7 @@ if ($view === 'following') {
 
                 const video = overlay.querySelector('.video-detail-player video');
                 if (video) {
-                    video.querySelector('source').src = filePath;
+                    video.src = filePath;
                     video.load();
                     video.play().catch(e => console.warn('自動播放失敗:', e.message));
                     video.onended = function() {
