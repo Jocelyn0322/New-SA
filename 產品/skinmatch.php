@@ -113,14 +113,16 @@ if ($hasProfile) {
         $colorHexes = array_values(array_filter(array_map('trim', explode(',', $row['color_hexes'] ?? ''))));
 
         $ranked[] = [
-            'id'         => $row['id'],
-            'brand'      => $row['brand'] ?? '',
-            'name'       => $row['name']  ?? '',
-            'purpose'    => $row['purpose'] ?? '',
-            'score'      => round($score, 1),
-            'reasons'    => array_values(array_unique($reasons)),
-            'colorNames' => $colorNames,
-            'colorHexes' => $colorHexes,
+            'id'        => $row['id'],
+            'brand'     => $row['brand']     ?? '',
+            'name'      => $row['name']      ?? '',
+            'purpose'   => $row['purpose']   ?? '',
+            'image_url' => $row['image_url'] ?? '',
+            'category'  => $row['category']  ?? '',
+            'score'     => round($score, 1),
+            'reasons'   => array_values(array_unique($reasons)),
+            'colorNames'=> $colorNames,
+            'colorHexes'=> $colorHexes,
         ];
     }
 
@@ -134,7 +136,7 @@ if (isset($pdo)) {
     try {
         $heatKw = ['控油', '持妝', '定妝', '抗汗', '霧面', '長效'];
         $conditions = array_map(fn($k) => "purpose LIKE :kw_p_$k OR name LIKE :kw_n_$k", array_keys($heatKw));
-        $sql = "SELECT id, name, brand, purpose FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
+        $sql = "SELECT id, name, brand, purpose, image_url FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
         $st = $pdo->prepare($sql);
         foreach ($heatKw as $i => $kw) {
             $st->bindValue(":kw_p_$i", '%' . $kw . '%');
@@ -160,6 +162,7 @@ if (isset($pdo)) {
     <link rel="stylesheet" href="style.css">
     <title>COSMETIC — AI 專屬推薦</title>
     <style>
+        .products-wrap { max-width: var(--max-w); margin: 24px auto 60px; padding: 0 24px; }
         .ai-profile-card {
             background: linear-gradient(135deg, #f9f0f2 0%, #ede8f0 60%, #edf0f5 100%);
             border: 1px solid #e3d8e8;
@@ -209,7 +212,7 @@ if (isset($pdo)) {
             position: absolute;
             top: 10px;
             left: 10px;
-            background: linear-gradient(135deg, #b5a8c0, #c4a5a5);
+            background: linear-gradient(135deg, #6b2d3e, #c26b7c);
             color: white;
             font-size: 11px;
             font-weight: 700;
@@ -306,7 +309,7 @@ if (isset($pdo)) {
 <?php include __DIR__ . '/../header.php'; ?>
 
 <main class="page">
-<div class="products">
+<div class="products-wrap">
 
 <?php if (!isset($_SESSION['user'])): ?>
     <!-- Not logged in -->
@@ -461,11 +464,13 @@ if (isset($pdo)) {
             <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px;">
                 <?php foreach ($heatProducts as $hp): ?>
                 <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #dbd0e0; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
-                    <div style="width:100%; aspect-ratio:1; background:#f9f0f2; overflow:hidden;">
-                        <img src="images/<?= $hp['id'] ?>.jpg"
+                    <div style="width:100%; aspect-ratio:1; background:#f9f0f2; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
+                        <?php if (!empty($hp['image_url'])): ?>
+                        <img src="<?= htmlspecialchars($hp['image_url']) ?>"
                              alt="<?= htmlspecialchars($hp['name']) ?>"
                              style="width:100%; height:100%; object-fit:cover;"
-                             onerror="this.parentElement.style.background='#f5eff7';this.remove();">
+                             onerror="this.parentElement.innerHTML='💄';">
+                        <?php else: ?>💄<?php endif; ?>
                     </div>
                     <div style="padding:10px 12px;">
                         <div style="font-size:10px; color:#a897b0; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($hp['brand']) ?></div>
@@ -479,84 +484,6 @@ if (isset($pdo)) {
         </div>
     </div>
 
-    <!-- Products -->
-    <div class="section-head">
-        <div>
-            <div class="section-title">💄 為您推薦的底妝</div>
-            <div class="section-sub">
-                依膚質<?= $makeupFinish ? '、'. htmlspecialchars($makeupFinish) .'妝感' : '' ?>
-                <?= $makeupStyle ? '、'. htmlspecialchars($makeupStyle) : '' ?>
-                精選 · 共 <?= count($products) ?> 款
-            </div>
-        </div>
-    </div>
-
-    <?php if (empty($products)): ?>
-        <div style="text-align:center;padding:50px;color:#bbb;">
-            <p>目前沒有找到符合條件的產品，請稍後再試。</p>
-        </div>
-    <?php else: ?>
-    <div class="product-grid">
-    <?php
-    $favorites = $_SESSION['favorite'] ?? [];
-    foreach ($products as $p):
-        $isFav = in_array($p['id'], $favorites);
-    ?>
-        <div class="product-card">
-            <div class="match-badge">★ <?= $p['score'] ?></div>
-
-            <div class="fav-btn">
-                <?php if ($isFav): ?>
-                    <form action="remove_favorite.php" method="POST" style="margin:0;">
-                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                        <button type="submit" class="heart active">❤️</button>
-                    </form>
-                <?php else: ?>
-                    <form action="add_favorite.php" method="POST" style="margin:0;">
-                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                        <button type="submit" class="heart">🤍</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-
-            <img src="images/<?= $p['id'] ?>.jpg"
-                 alt="<?= htmlspecialchars($p['name']) ?>"
-                 onerror="this.style.background='#f5eff7';this.style.minHeight='160px';this.src='';this.onerror=null;">
-
-            <div class="product-card-inner">
-                <h3><?= htmlspecialchars($p['name']) ?></h3>
-                <p><?= htmlspecialchars($p['brand']) ?></p>
-
-                <?php if (!empty($p['reasons'])): ?>
-                <div class="match-reasons">
-                    <?php foreach (array_slice($p['reasons'], 0, 3) as $r): ?>
-                    <span class="match-reason-tag"><?= htmlspecialchars($r) ?></span>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($p['colorHexes'])): ?>
-                <div class="color-swatches">
-                    <?php foreach (array_slice($p['colorHexes'], 0, 6) as $i => $hex): ?>
-                    <span class="color-swatch"
-                          style="background:<?= htmlspecialchars($hex) ?>;"
-                          title="<?= htmlspecialchars($p['colorNames'][$i] ?? '') ?>"></span>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-
-                <div class="product-actions">
-                    <a href="product.php?id=<?= $p['id'] ?>" class="btn btn-primary">查看</a>
-                    <form action="add_compare.php" method="POST" style="flex:1;">
-                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                        <button type="submit" class="btn btn-outline">比較</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
 
 <?php endif; ?>
 </div>

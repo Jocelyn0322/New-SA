@@ -22,7 +22,7 @@ $aiBase = '';
     <style>
     /* ── Page ─────────────────────────────────────────────── */
     body {
-        background: linear-gradient(155deg, #f5f0ea 0%, #ede8f2 100%);
+        background: #f7f6f6;
         min-height: 100vh;
     }
 
@@ -31,26 +31,13 @@ $aiBase = '';
         position: relative;
         overflow: hidden;
         padding: 80px 24px 64px;
-        background: linear-gradient(140deg, #faf5ee 0%, #f5f0f8 55%, #eef4f8 100%);
-        border-bottom: 1px solid #e8e0d8;
+        background: linear-gradient(135deg, #3d1520 0%, #6b2d3e 45%, #c26b7c 100%);
         text-align: center;
     }
     .ail-hero::before {
         content: '';
-        position: absolute;
-        width: 480px; height: 480px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(196,168,192,.45), transparent 70%);
-        top: -180px; right: -100px;
-        pointer-events: none;
-    }
-    .ail-hero::after {
-        content: '';
-        position: absolute;
-        width: 360px; height: 360px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(168,181,162,.4), transparent 70%);
-        bottom: -100px; left: -60px;
+        position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         pointer-events: none;
     }
     .ail-hero__inner {
@@ -60,29 +47,35 @@ $aiBase = '';
         margin: 0 auto;
     }
     .ail-badge {
-        display: inline-block;
-        padding: 5px 16px;
-        border-radius: 999px;
-        background: #b5a8c0;
-        color: #fff;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: .12em;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
         text-transform: uppercase;
-        margin-bottom: 22px;
+        color: rgba(255,255,255,.7);
+        margin-bottom: 20px;
+    }
+    .ail-badge::before {
+        content: '';
+        width: 24px; height: 2px;
+        background: rgba(255,255,255,.5);
+        border-radius: 2px;
     }
     .ail-hero__title {
         font-size: clamp(2rem, 5vw, 3.2rem);
-        font-weight: 800;
+        font-weight: 700;
         line-height: 1.18;
-        color: #47403a;
+        color: white;
         margin: 0 0 20px;
         letter-spacing: -.025em;
     }
+    .ail-hero__title em { color: #f9cfd8; font-style: normal; }
     .ail-hero__sub {
         font-size: 1.04rem;
         line-height: 1.85;
-        color: #787068;
+        color: rgba(255,255,255,.75);
         max-width: 500px;
         margin: 0 auto 36px;
     }
@@ -97,32 +90,32 @@ $aiBase = '';
         display: inline-block;
         padding: 13px 32px;
         border-radius: 999px;
-        background: #b5a8c0;
+        background: #c26b7c;
         color: #fff;
         font-weight: 700;
         font-size: 15px;
         text-decoration: none;
-        box-shadow: 0 8px 22px rgba(181,168,192,.38);
-        transition: transform .2s, box-shadow .2s;
+        box-shadow: 0 8px 22px rgba(194,107,124,.4);
+        transition: transform .2s, box-shadow .2s, background .2s;
     }
     .ail-btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 14px 30px rgba(181,168,192,.50);
-        background: #c4b8d0;
+        box-shadow: 0 14px 30px rgba(194,107,124,.55);
+        background: #b05a6c;
     }
     .ail-btn-secondary {
         display: inline-block;
         padding: 12px 28px;
         border-radius: 999px;
-        background: transparent;
-        border: 1.5px solid #c4a882;
-        color: #8a6840;
+        background: rgba(255,255,255,.15);
+        border: 1.5px solid rgba(255,255,255,.4);
+        color: white;
         font-weight: 600;
         font-size: 15px;
         text-decoration: none;
         transition: background .2s;
     }
-    .ail-btn-secondary:hover { background: #faf5ed; }
+    .ail-btn-secondary:hover { background: rgba(255,255,255,.28); }
 
     /* Colour swatches */
     .ail-swatches {
@@ -135,7 +128,7 @@ $aiBase = '';
         width: 46px; height: 46px;
         border-radius: 50%;
         display: inline-block;
-        box-shadow: 0 4px 12px rgba(0,0,0,.14);
+        box-shadow: 0 4px 12px rgba(0,0,0,.25);
         transition: transform .25s;
     }
     .ail-swatches span:hover { transform: scale(1.18) translateY(-3px); }
@@ -149,7 +142,7 @@ $aiBase = '';
     .ail-section-title {
         font-size: 1.45rem;
         font-weight: 700;
-        color: #47403a;
+        color: #1a1a1a;
         text-align: center;
         margin: 0 0 36px;
         letter-spacing: -.01em;
@@ -163,36 +156,37 @@ $aiBase = '';
         gap: 22px;
     }
     .ail-step {
-        background: #fdfaf6;
-        border: 1px solid #e8e0d8;
+        background: #ffffff;
+        border: 1px solid #e8e8e8;
         border-radius: 22px;
         padding: 36px 26px 30px;
         text-align: center;
-        box-shadow: 0 4px 18px rgba(100,80,60,.07);
+        box-shadow: 0 4px 18px rgba(0,0,0,.06);
         transition: transform .22s, box-shadow .22s;
         position: relative;
     }
     .ail-step:hover {
         transform: translateY(-5px);
-        box-shadow: 0 12px 30px rgba(100,80,60,.13);
+        box-shadow: 0 12px 30px rgba(194,107,124,.15);
+        border-color: #f5c6d0;
     }
     .ail-step--mid::before,
     .ail-step--mid::after {
         content: '';
         position: absolute;
         top: 50%; width: 22px; height: 1px;
-        background: #d8cec8;
+        background: #e8e8e8;
     }
     .ail-step--mid::before { left: -22px; }
     .ail-step--mid::after  { right: -22px; }
     .ail-step__num {
         font-size: 10px; font-weight: 800;
-        letter-spacing: .14em; color: #c4a882;
+        letter-spacing: .14em; color: #c26b7c;
         text-transform: uppercase; margin-bottom: 14px;
     }
     .ail-step__icon { font-size: 2.4rem; line-height: 1; margin-bottom: 14px; }
-    .ail-step h3 { font-size: 1.05rem; font-weight: 700; color: #47403a; margin: 0 0 10px; }
-    .ail-step p  { font-size: .875rem; color: #787068; line-height: 1.72; margin: 0; }
+    .ail-step h3 { font-size: 1.05rem; font-weight: 700; color: #1a1a1a; margin: 0 0 10px; }
+    .ail-step p  { font-size: .875rem; color: #4b5563; line-height: 1.72; margin: 0; }
 
     /* ── Feature Cards ─────────────────────────────────────── */
     .ail-features { padding: 0 0 80px; }
@@ -206,24 +200,22 @@ $aiBase = '';
         border-radius: 22px;
         padding: 30px 24px 24px;
         text-decoration: none;
-        border: 1px solid transparent;
-        transition: transform .22s, box-shadow .22s;
+        border: 1px solid #e8e8e8;
+        background: #ffffff;
+        transition: transform .22s, box-shadow .22s, border-color .22s;
         position: relative;
     }
     .ail-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 14px 32px rgba(100,80,60,.15);
+        box-shadow: 0 14px 32px rgba(194,107,124,.15);
+        border-color: #f5c6d0;
     }
-    .ail-card--rose     { background: #f9f2f2; border-color: #ead5d8; }
-    .ail-card--sage     { background: #f2f7f0; border-color: #cfe2cb; }
-    .ail-card--blue     { background: #f0f4f8; border-color: #ccd9e5; }
-    .ail-card--lavender { background: #f4f0f8; border-color: #d8d0e8; }
     .ail-card__icon { font-size: 2rem; line-height: 1; margin-bottom: 16px; display: block; }
-    .ail-card h3 { font-size: 1rem; font-weight: 700; color: #47403a; margin: 0 0 8px; }
-    .ail-card p  { font-size: .875rem; color: #787068; line-height: 1.68; margin: 0; flex: 1; }
+    .ail-card h3 { font-size: 1rem; font-weight: 700; color: #1a1a1a; margin: 0 0 8px; }
+    .ail-card p  { font-size: .875rem; color: #4b5563; line-height: 1.68; margin: 0; flex: 1; }
     .ail-card__arrow {
         display: inline-block; margin-top: 16px;
-        font-size: 1.1rem; color: #b5a8c0; font-weight: 700;
+        font-size: 1.1rem; color: #c26b7c; font-weight: 700;
         transition: transform .2s;
     }
     .ail-card:hover .ail-card__arrow { transform: translateX(4px); }
@@ -251,8 +243,8 @@ $aiBase = '';
     <!-- ── Hero ── -->
     <section class="ail-hero">
         <div class="ail-hero__inner">
-            <span class="ail-badge">AI Skin Lab</span>
-            <h1 class="ail-hero__title">用 AI 找到<br>最適合你的底妝</h1>
+            <div class="ail-badge">AI 驅動的美妝平台</div>
+            <h1 class="ail-hero__title">用 AI 找到最適合<em>你</em>的<br>底妝與彩妝</h1>
             <p class="ail-hero__sub">
                 透過簡單問答與相機拍照，讓 AI 幫你分析膚色、膚質，<br>
                 精準推薦最匹配的底妝產品與色號。
