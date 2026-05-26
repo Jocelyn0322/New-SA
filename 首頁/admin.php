@@ -1,6 +1,7 @@
 <?php
 session_start();
 require __DIR__ . '/../db.php';
+require_once __DIR__ . '/../notify_helper.php';
 require_once 'send_mail.php';
 
 if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
@@ -15,16 +16,55 @@ $msgType   = '';
 
 // ── POST 處理 ──────────────────────────────────────────────
 
+// 軟性下架影片（從影片管理列表）
+if (isset($_POST['takedown_video'])) {
+    $vid    = (int)$_POST['video_id'];
+    $reason = trim($_POST['removed_reason'] ?? '');
+    $stmt = $pdo->prepare("SELECT title, uploaded_by FROM videos WHERE id = ?");
+    $stmt->execute([$vid]);
+    $vrow = $stmt->fetch();
+    if ($vrow) {
+        try { $pdo->exec("ALTER TABLE videos ADD COLUMN IF NOT EXISTS removed_reason TEXT"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE videos ADD COLUMN IF NOT EXISTS removed_at TIMESTAMP"); } catch (Exception $e) {}
+        $pdo->prepare("UPDATE videos SET is_active = 0, removed_reason = ?, removed_at = NOW() WHERE id = ?")
+            ->execute([$reason ?: '違反社群規範', $vid]);
+        $noteText = $reason ? "，原因：{$reason}" : '';
+        insertNotification($pdo, $vrow['uploaded_by'], 'video_removed',
+            "您的影片「{$vrow['title']}」已被管理員下架{$noteText}。如有異議可至影片交流頁面提出申訴。",
+            $adminUser, $vid, $vrow['title']);
+        $msg = '⬇ 已下架「' . $vrow['title'] . '」，使用者已收到通知'; $msgType = 'success';
+    }
+    $tab = 'videos';
+}
+
+// 復原下架影片
+if (isset($_POST['restore_video'])) {
+    $vid = (int)$_POST['video_id'];
+    $stmt = $pdo->prepare("SELECT title, uploaded_by FROM videos WHERE id = ?");
+    $stmt->execute([$vid]);
+    $vrow = $stmt->fetch();
+    if ($vrow) {
+        $pdo->prepare("UPDATE videos SET is_active = 1, removed_reason = NULL, removed_at = NULL WHERE id = ?")
+            ->execute([$vid]);
+        insertNotification($pdo, $vrow['uploaded_by'], 'appeal_result',
+            "您的影片「{$vrow['title']}」已由管理員恢復上架。", $adminUser);
+        $msg = '✅ 已復原影片「' . $vrow['title'] . '」'; $msgType = 'success';
+    }
+    $tab = 'videos';
+}
+
 // 強制刪除影片
 if (isset($_POST['force_delete_video'])) {
     $vid = (int)$_POST['video_id'];
-    $row = $pdo->prepare("SELECT file_path FROM videos WHERE id = ?");
+    $row = $pdo->prepare("SELECT file_path, title, uploaded_by FROM videos WHERE id = ?");
     $row->execute([$vid]);
     $vrow = $row->fetch();
     if ($vrow) {
         $fp = __DIR__ . '/' . $vrow['file_path'];
         if (file_exists($fp) && is_file($fp)) unlink($fp);
         $pdo->prepare("DELETE FROM videos WHERE id = ?")->execute([$vid]);
+        insertNotification($pdo, $vrow['uploaded_by'], 'video_removed',
+            "您的影片「{$vrow['title']}」已被管理員下架移除。", $adminUser);
         $msg = '已刪除影片'; $msgType = 'success';
     }
     $tab = isset($_POST['from_reports']) ? 'reports' : 'videos';
@@ -68,7 +108,15 @@ if (isset($_POST['restore_user'])) {
 // 刪除留言
 if (isset($_POST['delete_comment'])) {
     $cid = (int)$_POST['comment_id'];
+    $cr = $pdo->prepare("SELECT username, content FROM video_comments WHERE id = ?");
+    $cr->execute([$cid]);
+    $crow = $cr->fetch();
     $pdo->prepare("DELETE FROM video_comments WHERE id = ?")->execute([$cid]);
+    if ($crow) {
+        $preview = mb_strlen($crow['content']) > 20 ? mb_substr($crow['content'], 0, 20) . '…' : $crow['content'];
+        insertNotification($pdo, $crow['username'], 'comment_removed',
+            "您的留言「{$preview}」已被管理員移除，請遵守社群規範。", $adminUser);
+    }
     $msg = '已刪除留言'; $msgType = 'success';
     $tab = 'comments';
 }
@@ -92,32 +140,20 @@ if (isset($_POST['review_submission'])) {
         $pdo->prepare("UPDATE product_submissions SET status = ?, admin_note = ? WHERE id = ?")
             ->execute([$decision, $adminNote, $subId]);
 
-        // 取得申請者資訊以寄送通知
-        $sub = $pdo->prepare("SELECT ps.product_name, ps.username, u.email
-                               FROM product_submissions ps
-                               LEFT JOIN users u ON u.username = ps.username
-                               WHERE ps.id = ?");
+        // 取得申請者資訊以發送站內通知
+        $sub = $pdo->prepare("SELECT ps.product_name, ps.username FROM product_submissions ps WHERE ps.id = ?");
         $sub->execute([$subId]);
         $subRow = $sub->fetch();
 
-        $emailSent = false;
-        if ($subRow && !empty($subRow['email'])) {
-            try {
-                $emailSent = sendProductReviewEmail(
-                    $subRow['email'],
-                    $subRow['username'],
-                    $subRow['product_name'],
-                    $decision,
-                    $adminNote
-                );
-            } catch (Throwable $e) {
-                error_log('商品審核 Email 失敗：' . $e->getMessage());
-            }
+        if ($subRow) {
+            $resultLabel = $decision === 'approved' ? '核准' : '拒絕';
+            $noteText    = $adminNote ? "，備註：{$adminNote}" : '';
+            $notifMsg    = "您提交的商品「{$subRow['product_name']}」審核結果：{$resultLabel}{$noteText}。";
+            insertNotification($pdo, $subRow['username'], 'product_review', $notifMsg, $adminUser);
         }
 
-        $label    = $decision === 'approved' ? '✅ 已核准' : '❌ 已拒絕';
-        $mailNote = $emailSent ? '（通知信已寄出）' : ($subRow && !empty($subRow['email']) ? '（Email 設定未完成，未寄信）' : '（使用者無 Email，未寄信）');
-        $msg      = "{$label}「" . ($subRow['product_name'] ?? '該商品') . "」{$mailNote}";
+        $label = $decision === 'approved' ? '✅ 已核准' : '❌ 已拒絕';
+        $msg   = "{$label}「" . ($subRow['product_name'] ?? '該商品') . "」（已傳送站內通知）";
         $msgType = 'success';
     }
     $tab = 'products';
@@ -131,8 +167,8 @@ if (isset($_POST['save_monthly_ranking'])) {
         $pdo->prepare("DELETE FROM monthly_rankings WHERE month = ?")->execute([$month]);
 
         $types = [
-            'product_views' => "SELECT p_id AS item_id, name AS item_name, view_count AS score FROM products ORDER BY view_count DESC LIMIT 10",
-            'product_favs'  => "SELECT p.p_id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM products p LEFT JOIN product_favorites f ON f.product_id = p.p_id GROUP BY p.p_id, p.name ORDER BY score DESC LIMIT 10",
+            'product_views' => "SELECT id AS item_id, name AS item_name, COALESCE(view_count,0) AS score FROM data ORDER BY view_count DESC NULLS LAST LIMIT 10",
+            'product_favs'  => "SELECT p.id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM data p LEFT JOIN product_favorites f ON f.product_id = p.id GROUP BY p.id, p.name ORDER BY score DESC LIMIT 10",
             'video_views'   => "SELECT id AS item_id, title AS item_name, view_count AS score FROM videos WHERE is_active = 1 ORDER BY view_count DESC LIMIT 10",
             'video_likes'   => "SELECT v.id AS item_id, v.title AS item_name, COUNT(l.id) AS score FROM videos v LEFT JOIN likes l ON l.video_id = v.id WHERE v.is_active = 1 GROUP BY v.id, v.title ORDER BY score DESC LIMIT 10",
         ];
@@ -179,6 +215,38 @@ if (isset($_POST['dismiss_report'])) {
         ->execute([$vid]);
     $msg = '已標記為已處理'; $msgType = 'success';
     $tab = 'reports';
+}
+
+// 審核申訴
+if (isset($_POST['review_appeal'])) {
+    $appealId  = (int)$_POST['appeal_id'];
+    $decision  = $_POST['decision']    ?? '';
+    $adminNote = trim($_POST['admin_note'] ?? '');
+
+    if ($appealId && in_array($decision, ['approved', 'rejected'])) {
+        try { $pdo->exec("ALTER TABLE video_appeals ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP"); } catch (Exception $e) {}
+        $ar = $pdo->prepare("SELECT va.*, v.title AS video_title FROM video_appeals va LEFT JOIN videos v ON v.id = va.video_id WHERE va.id = ?");
+        $ar->execute([$appealId]);
+        $appealRow = $ar->fetch();
+
+        if ($appealRow) {
+            $pdo->prepare("UPDATE video_appeals SET status = ?, admin_note = ?, reviewed_at = NOW() WHERE id = ?")
+                ->execute([$decision, $adminNote, $appealId]);
+
+            if ($decision === 'approved') {
+                $pdo->prepare("UPDATE videos SET is_active = 1, removed_reason = NULL, removed_at = NULL WHERE id = ?")
+                    ->execute([$appealRow['video_id']]);
+                $notifMsg = "您對影片「{$appealRow['video_title']}」的申訴已通過，影片已恢復上架。" . ($adminNote ? " 管理員備註：{$adminNote}" : '');
+            } else {
+                $notifMsg = "您對影片「{$appealRow['video_title']}」的申訴未通過，影片維持下架。" . ($adminNote ? " 管理員備註：{$adminNote}" : '');
+            }
+            insertNotification($pdo, $appealRow['username'], 'appeal_result', $notifMsg, $adminUser);
+
+            $msg = $decision === 'approved' ? '✅ 申訴已核准，影片已恢復' : '❌ 申訴已拒絕';
+            $msgType = 'success';
+        }
+    }
+    $tab = 'appeals';
 }
 
 // ── 資料查詢 ───────────────────────────────────────────────
@@ -242,8 +310,8 @@ if ($tab === 'stats') {
 
     // 排名資料
     try {
-        $rankData['product_views'] = $pdo->query("SELECT p_id AS item_id, name AS item_name, view_count AS score FROM products ORDER BY view_count DESC LIMIT 10")->fetchAll();
-        $rankData['product_favs']  = $pdo->query("SELECT p.p_id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM products p LEFT JOIN product_favorites f ON f.product_id = p.p_id GROUP BY p.p_id, p.name ORDER BY score DESC LIMIT 10")->fetchAll();
+        $rankData['product_views'] = $pdo->query("SELECT id AS item_id, name AS item_name, COALESCE(view_count,0) AS score FROM data ORDER BY view_count DESC NULLS LAST LIMIT 10")->fetchAll();
+        $rankData['product_favs']  = $pdo->query("SELECT p.id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM data p LEFT JOIN product_favorites f ON f.product_id = p.id GROUP BY p.id, p.name ORDER BY score DESC LIMIT 10")->fetchAll();
         $rankData['video_views']   = $pdo->query("SELECT id AS item_id, title AS item_name, view_count AS score FROM videos WHERE is_active = 1 ORDER BY view_count DESC LIMIT 10")->fetchAll();
         $rankData['video_likes']   = $pdo->query("SELECT v.id AS item_id, v.title AS item_name, COUNT(l.id) AS score FROM videos v LEFT JOIN likes l ON l.video_id = v.id WHERE v.is_active = 1 GROUP BY v.id, v.title ORDER BY score DESC LIMIT 10")->fetchAll();
         $lastMonth = date('Y-m', strtotime('first day of last month'));
@@ -318,6 +386,15 @@ if ($tab === 'videos') {
         $allVideos = $pdo->query($baseSql . " {$orderBy} LIMIT {$vPerPage} OFFSET {$vOffset}")->fetchAll();
     }
     $vPages = (int)ceil($vTotal / $vPerPage);
+
+    // 下架中的影片（供復原用）
+    try {
+        $inactiveVideos = $pdo->query("
+            SELECT id, title, uploaded_by, removed_reason, removed_at
+            FROM videos WHERE is_active = 0
+            ORDER BY removed_at DESC NULLS LAST
+        ")->fetchAll();
+    } catch (Throwable $e) { $inactiveVideos = []; }
 }
 
 if ($tab === 'users') {
@@ -376,6 +453,22 @@ if ($tab === 'reports') {
     $detailsByVideo = [];
     foreach ($reportDetails as $d) {
         $detailsByVideo[$d['video_id']][] = $d;
+    }
+}
+
+if ($tab === 'appeals') {
+    try {
+        $pdo->exec("ALTER TABLE video_appeals ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP");
+        $appeals = $pdo->query("
+            SELECT va.id, va.video_id, va.username, va.reason, va.status, va.admin_note,
+                   va.created_at, va.reviewed_at, v.title AS video_title, v.is_active
+            FROM video_appeals va
+            LEFT JOIN videos v ON v.id = va.video_id
+            ORDER BY (va.status = 'pending') DESC, va.created_at DESC
+        ")->fetchAll();
+    } catch (Exception $e) {
+        $appeals = [];
+        $msg = '無法載入申訴資料：' . $e->getMessage(); $msgType = 'error';
     }
 }
 
@@ -623,6 +716,13 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
     <a href="?tab=reports" class="nav-item <?php echo $tab==='reports' ? 'active':''; ?>">
       <span class="nav-icon">🚩</span> 檢舉管理
     </a>
+    <a href="?tab=appeals" class="nav-item <?php echo $tab==='appeals' ? 'active':''; ?>">
+      <span class="nav-icon">📋</span> 申訴管理
+      <?php try {
+        $apCount = $pdo->query("SELECT COUNT(*) FROM video_appeals WHERE status='pending'")->fetchColumn();
+        if ($apCount > 0): ?><span class="nav-badge"><?php echo (int)$apCount; ?></span><?php endif;
+      } catch (Exception $e) {} ?>
+    </a>
 
     <div class="nav-group-label">產品管理</div>
     <a href="/SA/New-SA/產品/report_manage.php" class="nav-item">
@@ -662,7 +762,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
       <?php
         $tabTitles = [
           'stats' => '數據統計', 'videos' => '影片管理', 'comments' => '留言管理',
-          'reports' => '檢舉管理', 'data_products' => '資料庫產品',
+          'reports' => '檢舉管理', 'appeals' => '申訴管理', 'data_products' => '資料庫產品',
           'products' => '商品審核', 'users' => '使用者管理'
         ];
         $currentTitle = $tabTitles[$tab] ?? '管理後台';
@@ -958,9 +1058,11 @@ $medals = ['🥇','🥈','🥉'];
             <td>
               <div class="btn-group">
                 <button class="act-btn neutral" onclick='openVideoModal(<?php echo json_encode($v["file_path"]); ?>, <?php echo json_encode($v["title"]); ?>)'>👁 檢視</button>
-                <form method="post" onsubmit="return confirm('確定刪除「<?php echo htmlspecialchars(addslashes($v['title'])); ?>」？')" style="margin:0;">
+                <form method="post" onsubmit="return adminTakedownPrompt(this)" style="margin:0;">
                   <input type="hidden" name="video_id" value="<?php echo (int)$v['id']; ?>">
-                  <button type="submit" name="force_delete_video" value="1" class="act-btn danger">🗑 刪除</button>
+                  <input type="hidden" name="removed_reason" value="">
+                  <input type="hidden" name="takedown_video" value="1">
+                  <button type="submit" class="act-btn danger">⬇ 下架</button>
                 </form>
               </div>
             </td>
@@ -1017,8 +1119,59 @@ function closeVModal() {
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeVModal(); });
+function adminTakedownPrompt(form) {
+  const r = prompt('請輸入下架原因（可留空，預設為「違反社群規範」）：');
+  if (r === null) return false;
+  form.querySelector('[name="removed_reason"]').value = r;
+  return true;
+}
 </script>
 
+
+<div style="margin-top:36px;border-top:2px solid #f0eef8;padding-top:28px;">
+  <div style="font-size:15px;font-weight:700;color:#c26b7c;margin-bottom:14px;">
+    ⬇ 下架中的影片
+    <span style="font-size:13px;font-weight:400;color:#aaa;margin-left:6px;">共 <?php echo count($inactiveVideos); ?> 部</span>
+  </div>
+  <?php if (empty($inactiveVideos)): ?>
+    <div style="text-align:center;padding:30px 0;color:#ccc;font-size:14px;">目前沒有下架中的影片</div>
+  <?php else: ?>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+    <?php foreach ($inactiveVideos as $iv): ?>
+      <div style="background:#fff8f8;border:1px solid #f5c6c6;border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#333;"><?php echo htmlspecialchars($iv['title']); ?></div>
+          <div style="font-size:12px;color:#aaa;margin-top:3px;">
+            上傳者：<strong style="color:#666;"><?php echo htmlspecialchars($iv['uploaded_by']); ?></strong>
+            <?php if ($iv['removed_at']): ?>
+              &nbsp;·&nbsp;下架時間：<?php echo date('Y/m/d H:i', strtotime($iv['removed_at'])); ?>
+            <?php endif; ?>
+            <?php if (!empty($iv['removed_reason'])): ?>
+              &nbsp;·&nbsp;原因：<?php echo htmlspecialchars($iv['removed_reason']); ?>
+            <?php endif; ?>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <form method="post" onsubmit="return confirm('確定復原此影片上架？')">
+            <input type="hidden" name="video_id" value="<?php echo (int)$iv['id']; ?>">
+            <button type="submit" name="restore_video" value="1"
+              style="padding:7px 14px;background:#eafaf1;border:1.5px solid #a9dfbf;color:#27ae60;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+              🔄 復原上架
+            </button>
+          </form>
+          <form method="post" onsubmit="return confirm('確定永久刪除？此操作無法復原。')">
+            <input type="hidden" name="video_id" value="<?php echo (int)$iv['id']; ?>">
+            <button type="submit" name="force_delete_video" value="1"
+              style="padding:7px 14px;background:#fde8e8;border:1.5px solid #f5c6c6;color:#c0392b;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+              🗑 永久刪除
+            </button>
+          </form>
+        </div>
+      </div>
+    <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+</div>
 
 <?php elseif ($tab === 'comments'): ?>
 <!-- ══════════ 留言管理 ══════════ -->
@@ -1565,6 +1718,58 @@ function closeEdit() {
     document.body.style.overflow = '';
 }
 </script>
+
+<?php elseif ($tab === 'appeals'): ?>
+  <div class="sec-head" style="margin-bottom:20px;">
+    <div class="sec-title">申訴管理</div>
+    <div class="sec-subtitle">使用者對下架影片提出的申訴，審核後請通知當事人</div>
+  </div>
+
+  <?php if (empty($appeals)): ?>
+    <div style="text-align:center;padding:60px 0;color:#bbb;font-size:15px;">目前沒有申訴記錄</div>
+  <?php else: ?>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+    <?php foreach ($appeals as $ap):
+        $isPending = $ap['status'] === 'pending';
+        $statusLabel = ['pending'=>'⏳ 待審核','approved'=>'✅ 已核准','rejected'=>'❌ 已拒絕'][$ap['status']] ?? $ap['status'];
+        $statusColor = ['pending'=>'#856404','approved'=>'#155724','rejected'=>'#721c24'][$ap['status']] ?? '#555';
+        $statusBg    = ['pending'=>'#fff3cd','approved'=>'#d4edda','rejected'=>'#f8d7da'][$ap['status']] ?? '#eee';
+    ?>
+    <div style="background:#fff;border-radius:14px;border:1px solid #ede8ea;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:hidden;<?php echo $isPending ? '' : 'opacity:.7;'; ?>">
+      <div style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:0;">
+        <div style="padding:18px 20px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <span style="font-weight:700;color:#c26b7c;font-size:15px;"><?php echo htmlspecialchars($ap['video_title'] ?? '（影片已刪除）'); ?></span>
+            <span style="padding:3px 10px;border-radius:10px;font-size:12px;font-weight:600;background:<?php echo $statusBg; ?>;color:<?php echo $statusColor; ?>"><?php echo $statusLabel; ?></span>
+          </div>
+          <div style="font-size:13px;color:#555;margin-bottom:6px;">申訴者：<strong><?php echo htmlspecialchars($ap['username']); ?></strong></div>
+          <div style="font-size:13px;color:#333;line-height:1.6;background:#fdf9fb;border-left:3px solid #c26b7c;padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:8px;"><?php echo nl2br(htmlspecialchars($ap['reason'])); ?></div>
+          <div style="font-size:12px;color:#aaa;">提交時間：<?php echo date('Y/m/d H:i', strtotime($ap['created_at'])); ?></div>
+          <?php if ($ap['admin_note']): ?>
+            <div style="font-size:12px;color:#888;margin-top:6px;">管理員備註：<?php echo htmlspecialchars($ap['admin_note']); ?></div>
+          <?php endif; ?>
+        </div>
+        <?php if ($isPending): ?>
+        <div style="padding:16px 18px;border-left:1px solid #f3eef0;min-width:220px;display:flex;flex-direction:column;gap:10px;">
+          <form method="post">
+            <input type="hidden" name="appeal_id" value="<?php echo (int)$ap['id']; ?>">
+            <input type="hidden" name="decision" value="approved">
+            <textarea name="admin_note" placeholder="核准備註（可選）" rows="2" style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:none;margin-bottom:6px;font-family:inherit;"></textarea>
+            <button type="submit" name="review_appeal" value="1" style="width:100%;padding:8px;background:#eafaf1;border:1.5px solid #a9dfbf;color:#27ae60;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✔ 核准申訴（恢復影片）</button>
+          </form>
+          <form method="post" onsubmit="return confirm('確定拒絕此申訴？')">
+            <input type="hidden" name="appeal_id" value="<?php echo (int)$ap['id']; ?>">
+            <input type="hidden" name="decision" value="rejected">
+            <textarea name="admin_note" placeholder="拒絕原因（建議填寫）" rows="2" style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:none;margin-bottom:6px;font-family:inherit;"></textarea>
+            <button type="submit" name="review_appeal" value="1" style="width:100%;padding:8px;background:#fde8e8;border:1.5px solid #f5c6c6;color:#c0392b;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✕ 拒絕申訴</button>
+          </form>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
 
 <?php endif; ?>
   </div><!-- /content -->

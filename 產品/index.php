@@ -53,10 +53,11 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
       font-size: 16px; color: rgba(255,255,255,.75);
       margin-bottom: 36px; max-width: 480px; line-height: 1.7;
     }
-    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
     .hero-stats {
-      display: flex; gap: 40px; margin-top: 56px;
-      padding-top: 40px; border-top: 1px solid rgba(255,255,255,.12);
+      display: flex; gap: 40px; margin-top: 48px;
+      padding-top: 32px; border-top: 1px solid rgba(255,255,255,.12);
+      padding-bottom: 32px;
     }
     .hero-stat-num { font-size: 1.75rem; font-weight: 700; color: white; }
     .hero-stat-label { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 2px; }
@@ -65,7 +66,7 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
     .feature-wrap { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
     .feature-row {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
-      margin-top: -32px; position: relative; z-index: 2;
+      margin-top: -24px; position: relative; z-index: 2;
     }
     .feature-pill {
       background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border);

@@ -19,8 +19,11 @@ $options = [
 try {
     $pdo  = new PDO($dsn, $user, $pass, $options);
     $pdo->exec("SET search_path TO public");
+    $pdo->exec("SET timezone = 'Asia/Taipei'");
     $conn = $pdo;
 } catch (PDOException $e) {
     die('資料庫連線失敗：' . $e->getMessage());
 }
+
+date_default_timezone_set('Asia/Taipei');
 ?>

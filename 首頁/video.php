@@ -6,9 +6,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require __DIR__ . '/../db.php';
+require_once __DIR__ . '/../notify_helper.php';
 
-// 確保 tags 欄位存在
+// 確保欄位存在
 try { $pdo->exec("ALTER TABLE videos ADD COLUMN tags VARCHAR(500) NOT NULL DEFAULT ''"); } catch (Exception $e) {}
+try { $pdo->exec("ALTER TABLE videos ADD COLUMN IF NOT EXISTS removed_reason TEXT"); } catch (Exception $e) {}
+try { $pdo->exec("ALTER TABLE videos ADD COLUMN IF NOT EXISTS removed_at TIMESTAMP"); } catch (Exception $e) {}
+try { $pdo->exec("ALTER TABLE video_appeals ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP"); } catch (Exception $e) {}
 
 // 撈現有標籤（給 autocomplete 用）
 $existingTags = [];
@@ -292,10 +296,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow']) && $
     }
 }
 
+// 管理員：軟性下架影片（保留資料，使用者可申訴）
+if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_takedown'])) {
+    $vid    = (int)$_POST['video_id'];
+    $reason = trim($_POST['removed_reason'] ?? '');
+    $stmt = $pdo->prepare("SELECT title, uploaded_by FROM videos WHERE id = ?");
+    $stmt->execute([$vid]);
+    $vrow = $stmt->fetch();
+    if ($vrow) {
+        $pdo->prepare("UPDATE videos SET is_active = 0, removed_reason = ?, removed_at = NOW() WHERE id = ?")
+            ->execute([$reason ?: '違反社群規範', $vid]);
+        $noteText = $reason ? "，原因：{$reason}" : '';
+        insertNotification($pdo, $vrow['uploaded_by'], 'video_removed',
+            "您的影片「{$vrow['title']}」已被管理員下架{$noteText}。如有異議可至影片交流頁面提出申訴。",
+            $_SESSION['user'], $vid, $vrow['title']);
+        $message     = '已下架影片，使用者已收到通知';
+        $messageType = 'success';
+    }
+}
+
 // 管理員：強制刪除影片
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_force_delete'])) {
     $vid  = (int)$_POST['video_id'];
-    $stmt = $pdo->prepare("SELECT filename FROM videos WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT filename, title, uploaded_by FROM videos WHERE id = ?");
     $stmt->execute([$vid]);
     $vrow = $stmt->fetch();
     if ($vrow) {
@@ -303,6 +326,8 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_for
             deleteVideoFromSupabase($vrow['filename']);
         }
         $pdo->prepare("DELETE FROM videos WHERE id = ?")->execute([$vid]);
+        insertNotification($pdo, $vrow['uploaded_by'], 'video_removed',
+            "您的影片「{$vrow['title']}」已被管理員下架移除。", $_SESSION['user']);
         $message     = '已強制刪除影片';
         $messageType = 'success';
     }
@@ -441,6 +466,80 @@ if ($view === 'following') {
     }
     $videos = $stmt->fetchAll();
 }
+
+// ── 推薦演算法（僅主頁、登入狀態） ──
+$recommended   = [];
+$recReason     = '';   // 'personalized' | 'popular' | ''
+if ($isLoggedIn && $view === 'home' && $activeTag === '') {
+    try {
+        // 1. 使用者已按讚的影片 ID + 標籤
+        $ls = $pdo->prepare("SELECT v.id, v.tags FROM likes l JOIN videos v ON l.video_id = v.id WHERE l.user_id = ?");
+        $ls->execute([$_SESSION['user']]);
+        $likedRows = $ls->fetchAll();
+        $likedIds  = array_column($likedRows, 'id');
+
+        $likedTags = [];
+        foreach ($likedRows as $r) {
+            foreach (explode(',', $r['tags'] ?? '') as $t) {
+                $t = trim($t); if ($t) $likedTags[] = $t;
+            }
+        }
+        $likedTags = array_unique($likedTags);
+
+        // 2. 膚質困擾標籤
+        $ps = $pdo->prepare("SELECT skin_concerns FROM user_profiles WHERE username = ?");
+        $ps->execute([$_SESSION['user']]);
+        $pr = $ps->fetch();
+        $skinTags = [];
+        if ($pr && $pr['skin_concerns']) {
+            foreach (explode(',', $pr['skin_concerns']) as $t) {
+                $t = trim($t); if ($t) $skinTags[] = $t;
+            }
+        }
+
+        // 3. 候選影片（排除自己上傳 + 已按讚）
+        if (!empty($likedIds)) {
+            $ph  = implode(',', array_fill(0, count($likedIds), '?'));
+            $cs  = $pdo->prepare("SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags, 0 AS is_liked FROM videos v WHERE v.is_active = 1 AND v.uploaded_by != ? AND v.id NOT IN ($ph)");
+            $cs->execute(array_merge([$_SESSION['user']], $likedIds));
+        } else {
+            $cs  = $pdo->prepare("SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags, 0 AS is_liked FROM videos v WHERE v.is_active = 1 AND v.uploaded_by != ?");
+            $cs->execute([$_SESSION['user']]);
+        }
+        $candidates = $cs->fetchAll();
+
+        // 4. 計分
+        $hasSignals = !empty($likedTags) || !empty($myFollowings) || !empty($skinTags);
+
+        foreach ($candidates as &$v) {
+            $score = 0;
+            if (in_array($v['uploaded_by'], $myFollowings)) $score += 30;
+            $vTags = $v['tags'] ? array_map('trim', explode(',', $v['tags'])) : [];
+            foreach ($vTags as $tag) {
+                if (!$tag) continue;
+                if (in_array($tag, $likedTags)) $score += 10;
+                if (in_array($tag, $skinTags))  $score += 5;
+            }
+            $score += min((int)$v['likes'], 10);
+            if (strtotime($v['upload_time']) > strtotime('-7 days')) $score += 5;
+            $v['rec_score'] = $score;
+        }
+        unset($v);
+
+        if ($hasSignals) {
+            usort($candidates, fn($a, $b) => $b['rec_score'] <=> $a['rec_score']);
+            $recommended = array_slice($candidates, 0, 6);
+            $recReason   = 'personalized';
+        } else {
+            // 無互動紀錄 → 熱門推薦
+            usort($candidates, fn($a, $b) => $b['likes'] <=> $a['likes']);
+            $recommended = array_slice($candidates, 0, 6);
+            $recReason   = 'popular';
+        }
+    } catch (Exception $e) {
+        $recommended = [];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -453,6 +552,29 @@ if ($view === 'following') {
         /* ─── Layout ─── */
         .video-page { min-height: 100vh; background: #f4f3f8; padding-bottom: 80px; }
         .video-wrapper { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+        /* ─── Recommendation Section ─── */
+        .rec-section { margin: 20px 0 0; }
+        .rec-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+        .rec-title { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+        .rec-sub   { font-size: 12px; color: #aaa; }
+        .rec-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        @media(max-width:900px){ .rec-grid { grid-template-columns: repeat(2,1fr); } }
+        @media(max-width:580px){ .rec-grid { grid-template-columns: 1fr; } }
+        .rec-card  { background: #fff; border-radius: 12px; border: 1px solid #e8e6f0;
+                     overflow: hidden; cursor: pointer; transition: all .18s; display: flex; flex-direction: column; }
+        .rec-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.09); }
+        .rec-thumb { position: relative; aspect-ratio: 16/9; background: linear-gradient(135deg,#3d1520,#c26b7c);
+                     overflow: hidden; }
+        .rec-thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .rec-info  { padding: 10px 12px 12px; flex: 1; }
+        .rec-card-title { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 5px;
+                          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .rec-card-meta  { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        .rec-tag { color: #c26b7c; font-size: 11px; }
+        .rec-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0 16px; }
+        .rec-divider::before, .rec-divider::after { content: ''; flex: 1; height: 1px; background: #e8e6f0; }
+        .rec-divider span { font-size: 12px; color: #aaa; font-weight: 600; white-space: nowrap; }
 
         /* ─── Page Header ─── */
         .vp-header { display: flex; align-items: center; gap: 16px; padding: 32px 0 0; }
@@ -1059,9 +1181,9 @@ if ($view === 'following') {
                          data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>"
                          onclick="openVideoDetail(<?php echo (int)$video['id']; ?>)">
                         <div class="video-player">
-                            <video playsinline muted preload="metadata">
-                                <source src="<?php echo htmlspecialchars($video['file_path']); ?>" type="video/mp4">
-                            </video>
+                            <video playsinline muted preload="metadata"
+                                   src="<?php echo htmlspecialchars($video['file_path']); ?>"
+                                   onloadedmetadata="this.currentTime=0.1"></video>
                             <div class="play-icon"></div>
                         </div>
                         <div class="vc-info">
@@ -1135,9 +1257,14 @@ if ($view === 'following') {
                                             '<?php echo htmlspecialchars(addslashes($rv['title'])); ?>',
                                             '<?php echo htmlspecialchars(addslashes($rv['file_path'])); ?>'
                                         )">▶ 查看影片</button>
-                                    <form method="post" style="display:inline;" onsubmit="return confirm('確定強制刪除？')">
+                                    <form method="post" style="display:inline;" onsubmit="return promptTakedownReason(this)">
                                         <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
-                                        <button type="submit" name="admin_force_delete" value="1" class="btn-force-del">🗑️ 刪除影片</button>
+                                        <input type="hidden" name="removed_reason" value="">
+                                        <button type="submit" name="admin_takedown" value="1" class="btn-dismiss" style="background:#fff3e0;border-color:#e67e22;color:#c0392b;">⬇ 下架</button>
+                                    </form>
+                                    <form method="post" style="display:inline;" onsubmit="return confirm('確定永久刪除？此操作無法復原。')">
+                                        <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
+                                        <button type="submit" name="admin_force_delete" value="1" class="btn-force-del">🗑️ 永久刪除</button>
                                     </form>
                                     <form method="post" style="display:inline;">
                                         <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
@@ -1187,16 +1314,65 @@ if ($view === 'following') {
                     <?php endif; ?>
                 </div>
             </form>
-            <div class="sort-row">
-                <span class="sort-label">排序</span>
-                <a href="?view=home<?php echo $activeTag ? '&tag='.urlencode($activeTag) : ''; ?>" class="sort-btn active">最新</a>
-            </div>
+
 
             <?php if ($activeTag !== ''): ?>
             <div class="tag-filter-bar">
                 篩選標籤：#<?php echo htmlspecialchars($activeTag); ?>
                 &nbsp;·&nbsp; 共 <?php echo count($videos); ?> 部影片
                 <a href="?view=home">× 清除篩選</a>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($recommended)): ?>
+            <div class="rec-section">
+                <div class="rec-header">
+                    <span class="rec-title">
+                        <?= $recReason === 'personalized' ? '✨ 為你推薦' : '🔥 熱門影片' ?>
+                    </span>
+                    <span class="rec-sub">
+                        <?= $recReason === 'personalized' ? '根據你的追蹤與按讚紀錄' : '探索平台熱門內容' ?>
+                    </span>
+                </div>
+                <div class="rec-grid">
+                    <?php foreach ($recommended as $rv):
+                        $rvTags = array_filter(array_map('trim', explode(',', $rv['tags'] ?? '')));
+                    ?>
+                    <div class="rec-card"
+                         data-video-id="<?= $rv['id'] ?>"
+                         data-title="<?= htmlspecialchars($rv['title']) ?>"
+                         data-author="<?= htmlspecialchars($rv['uploaded_by']) ?>"
+                         data-time="<?= date('Y年m月d日', strtotime($rv['upload_time'])) ?>"
+                         data-likes="<?= $rv['likes'] ?>"
+                         data-is-liked="0"
+                         data-description="<?= htmlspecialchars($rv['description'] ?? '') ?>"
+                         data-file-path="<?= htmlspecialchars($rv['file_path']) ?>"
+                         onclick="openVideoDetail(<?= (int)$rv['id'] ?>)">
+                        <div class="rec-thumb">
+                            <video playsinline muted preload="metadata"
+                                   src="<?= htmlspecialchars($rv['file_path']) ?>"
+                                   onloadedmetadata="this.currentTime=0.1"></video>
+                            <div class="play-icon"></div>
+                        </div>
+                        <div class="rec-info">
+                            <div class="rec-card-title"><?= htmlspecialchars($rv['title']) ?></div>
+                            <div class="rec-card-meta">
+                                <span class="vc-avatar" style="width:20px;height:20px;font-size:10px;"><?= mb_strtoupper(mb_substr($rv['uploaded_by'], 0, 1)) ?></span>
+                                <?= htmlspecialchars($rv['uploaded_by']) ?>
+                                <?php if (!empty($rvTags)): ?>
+                                    · <?php foreach (array_slice($rvTags, 0, 2) as $t): ?>
+                                        <span class="rec-tag">#<?= htmlspecialchars($t) ?></span>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="rec-divider">
+                <span>所有影片</span>
             </div>
             <?php endif; ?>
 
@@ -1214,9 +1390,9 @@ if ($view === 'following') {
                          data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>"
                          onclick="openVideoDetail(<?php echo (int)$video['id']; ?>)">
                         <div class="video-player">
-                            <video playsinline muted preload="metadata">
-                                <source src="<?php echo htmlspecialchars($video['file_path']); ?>" type="video/mp4">
-                            </video>
+                            <video playsinline muted preload="metadata"
+                                   src="<?php echo htmlspecialchars($video['file_path']); ?>"
+                                   onloadedmetadata="this.currentTime=0.1"></video>
                             <div class="play-icon"></div>
                         </div>
                         <div class="vc-info">
@@ -1954,6 +2130,13 @@ if ($view === 'following') {
             "'": '&#039;'
         };
         return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function promptTakedownReason(form) {
+        const r = prompt('請輸入下架原因（可留空，預設為「違反社群規範」）：');
+        if (r === null) return false;
+        form.querySelector('[name="removed_reason"]').value = r;
+        return true;
     }
 
     function openReportPreview(title, filePath) {

@@ -14,12 +14,8 @@ $_notifCount = 0;
 if (isset($_SESSION['user'])) {
     try {
         require_once __DIR__ . '/db.php';
-        $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
-            id SERIAL PRIMARY KEY, recipient VARCHAR(100) NOT NULL,
-            actor VARCHAR(100) NOT NULL, type VARCHAR(50) DEFAULT 'new_video',
-            video_id INT, video_title VARCHAR(255),
-            is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW()
-        )");
+        require_once __DIR__ . '/notify_helper.php';
+        ensureNotificationsTable($pdo);
         $ns = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE recipient = ? AND is_read = FALSE");
         $ns->execute([$_SESSION['user']]);
         $_notifCount = (int)$ns->fetchColumn();
@@ -173,11 +169,13 @@ if (isset($_SESSION['user'])) {
 <script>
 (function(){
   function timeAgo(dateStr) {
-    const diff = (Date.now() - new Date(dateStr)) / 1000;
-    if (diff < 60)   return '剛剛';
-    if (diff < 3600) return Math.floor(diff/60) + ' 分鐘前';
-    if (diff < 86400) return Math.floor(diff/3600) + ' 小時前';
-    return Math.floor(diff/86400) + ' 天前';
+    // 統一轉成 ISO+08:00 讓瀏覽器正確解析台灣時間
+    const iso = dateStr.trim().replace(' ', 'T') + '+08:00';
+    const diff = (Date.now() - new Date(iso)) / 1000;
+    if (diff < 60)    return '剛剛';
+    if (diff < 3600)  return Math.floor(diff / 60) + ' 分鐘前';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' 小時前';
+    return Math.floor(diff / 86400) + ' 天前';
   }
 
   window.toggleNotifPanel = function() {
@@ -210,12 +208,30 @@ if (isset($_SESSION['user'])) {
         }
         list.innerHTML = data.notifications.map(n => {
           const initial = n.actor.charAt(0).toUpperCase();
-          const title = n.video_title ? `「${n.video_title}」` : '新影片';
-          const link = '/SA/New-SA/首頁/video.php';
+          let text, link;
+          if (n.message) {
+            text = n.message;
+            if (n.type === 'video_removed' && n.video_id) {
+              link = `/SA/New-SA/首頁/appeal.php?video_id=${n.video_id}`;
+            } else if (n.type === 'appeal_result' || n.type === 'new_video') {
+              link = '/SA/New-SA/首頁/video.php';
+            } else {
+              link = '#';
+            }
+          } else {
+            const title = n.video_title ? `「${n.video_title}」` : '新影片';
+            text = `<strong>${n.actor}</strong> 發布了新影片 ${title}`;
+            link = '/SA/New-SA/首頁/video.php';
+          }
+          const appealedTag = n.has_appealed
+            ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#e8f4fd;color:#2471a3;vertical-align:middle;">已申訴</span>`
+            : (n.type === 'video_removed'
+                ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fff3cd;color:#856404;vertical-align:middle;">可申訴</span>`
+                : '');
           return `<a href="${link}" class="notif-item${n.is_read ? '' : ' unread'}">
             <div class="notif-avatar">${initial}</div>
             <div class="notif-body">
-              <div class="notif-text"><strong>${n.actor}</strong> 發布了新影片 ${title}</div>
+              <div class="notif-text">${text}${appealedTag}</div>
               <div class="notif-time">${timeAgo(n.created_at)}</div>
             </div>
           </a>`;
