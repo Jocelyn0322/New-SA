@@ -149,8 +149,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['video']) && !isset($
                             VALUES (?, ?, ?, ?, ?, ?)
                         ");
                         $stmt->execute([$title, $description, $filename, $publicUrl, $_SESSION['user'], $tags]);
+                        $newVideoId = (int)$pdo->lastInsertId();
                         $message = '影片上傳成功！';
                         $messageType = 'success';
+                        // 通知所有追蹤者
+                        $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+                            id SERIAL PRIMARY KEY, recipient VARCHAR(100) NOT NULL,
+                            actor VARCHAR(100) NOT NULL, type VARCHAR(50) DEFAULT 'new_video',
+                            video_id INT, video_title VARCHAR(255),
+                            is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW()
+                        )");
+                        $fols = $pdo->prepare("SELECT follower FROM follows WHERE following = ?");
+                        $fols->execute([$_SESSION['user']]);
+                        $nStmt = $pdo->prepare("INSERT INTO notifications (recipient, actor, video_id, video_title) VALUES (?, ?, ?, ?)");
+                        foreach ($fols->fetchAll() as $f) {
+                            $nStmt->execute([$f['follower'], $_SESSION['user'], $newVideoId, $title]);
+                        }
                     } catch (PDOException $e) {
                         deleteVideoFromSupabase($filename);
                         $message = '資料庫儲存失敗：' . $e->getMessage();
@@ -232,29 +246,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_video']) && isse
 // 處理按讚/取消按讚
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_like']) && isset($_POST['video_id'])) {
     $videoId = (int)$_POST['video_id'];
-    $userId = $_SESSION['user'];
+    $userId  = $_SESSION['user'];
 
-    // 檢查是否已經按讚
     $stmt = $pdo->prepare("SELECT id FROM likes WHERE user_id = ? AND video_id = ?");
     $stmt->execute([$userId, $videoId]);
     $existingLike = $stmt->fetch();
 
     if ($existingLike) {
-        // 取消按讚
-        $stmt = $pdo->prepare("DELETE FROM likes WHERE id = ?");
-        $stmt->execute([$existingLike['id']]);
-        $stmt = $pdo->prepare("UPDATE videos SET likes = likes - 1 WHERE id = ?");
-        $stmt->execute([$videoId]);
+        $pdo->prepare("DELETE FROM likes WHERE id = ?")->execute([$existingLike['id']]);
+        $pdo->prepare("UPDATE videos SET likes = GREATEST(likes - 1, 0) WHERE id = ?")->execute([$videoId]);
+        $liked = false;
     } else {
-        // 按讚
-        $stmt = $pdo->prepare("INSERT INTO likes (user_id, video_id) VALUES (?, ?)");
-        $stmt->execute([$userId, $videoId]);
-        $stmt = $pdo->prepare("UPDATE videos SET likes = likes + 1 WHERE id = ?");
-        $stmt->execute([$videoId]);
+        $pdo->prepare("INSERT INTO likes (user_id, video_id) VALUES (?, ?)")->execute([$userId, $videoId]);
+        $pdo->prepare("UPDATE videos SET likes = likes + 1 WHERE id = ?")->execute([$videoId]);
+        $liked = true;
     }
 
-    // 重新導向避免重複提交
-    header("Location: " . $_SERVER['REQUEST_URI']);
+    $cnt = $pdo->prepare("SELECT likes FROM videos WHERE id = ?");
+    $cnt->execute([$videoId]);
+    $newCount = (int)$cnt->fetchColumn();
+
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'liked' => $liked, 'likes' => $newCount]);
     exit;
 }
 
@@ -864,7 +877,7 @@ if ($view === 'following') {
 
                             <!-- 即時建議下拉 -->
                             <div style="position:relative;">
-                                <div id="tagSuggestions" style="display:none;position:absolute;top:4px;left:0;right:0;background:white;border:1.5px solid #ffd6de;border-radius:12px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;box-shadow:0 4px 16px rgba(232,62,90,.12);z-index:200;" id="tagSuggestionList"></div>
+                                <div id="tagSuggestionList" style="display:none;position:absolute;top:4px;left:0;right:0;background:white;border:1.5px solid #ffd6de;border-radius:12px;padding:8px 10px;flex-wrap:wrap;gap:6px;box-shadow:0 4px 16px rgba(232,62,90,.12);z-index:200;"></div>
                             </div>
 
                             <input type="hidden" name="tags" id="tagsHidden">
@@ -907,13 +920,10 @@ if ($view === 'following') {
                                     您的瀏覽器不支援影片播放。
                                 </video>
                                 <div class="play-icon"></div>
-                                <form method="post" class="video-like-form">
-                                    <input type="hidden" name="video_id" value="<?php echo $video['id']; ?>">
-                                    <button type="submit" name="toggle_like" class="video-like-btn <?php echo $video['is_liked'] ? 'liked' : ''; ?>">
-                                        <span><?php echo $video['is_liked'] ? '❤️' : '🤍'; ?></span>
-                                        <span><?php echo $video['likes']; ?></span>
-                                    </button>
-                                </form>
+                                <button class="video-like-btn <?php echo $video['is_liked'] ? 'liked' : ''; ?>" onclick="toggleLikeCard(<?php echo (int)$video['id']; ?>, this)">
+                                    <span class="like-icon"><?php echo $video['is_liked'] ? '❤️' : '🤍'; ?></span>
+                                    <span class="like-count"><?php echo (int)$video['likes']; ?></span>
+                                </button>
                             </div>
 
                             <div class="video-info">
@@ -962,13 +972,10 @@ if ($view === 'following') {
                                     您的瀏覽器不支援影片播放。
                                 </video>
                                 <div class="play-icon"></div>
-                                <form method="post" class="video-like-form">
-                                    <input type="hidden" name="video_id" value="<?php echo $video['id']; ?>">
-                                    <button type="submit" name="toggle_like" class="video-like-btn liked">
-                                        <span>❤️</span>
-                                        <span><?php echo $video['likes']; ?></span>
-                                    </button>
-                                </form>
+                                <button class="video-like-btn liked" onclick="toggleLikeCard(<?php echo (int)$video['id']; ?>, this)">
+                                    <span class="like-icon">❤️</span>
+                                    <span class="like-count"><?php echo (int)$video['likes']; ?></span>
+                                </button>
                             </div>
 
                             <div class="video-info">
@@ -1600,23 +1607,40 @@ if ($view === 'following') {
         }
     }
 
-    function toggleLike(videoId) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.style.display = 'none';
-        
-        const videoIdInput = document.createElement('input');
-        videoIdInput.name = 'video_id';
-        videoIdInput.value = videoId;
-        
-        const toggleLikeInput = document.createElement('input');
-        toggleLikeInput.name = 'toggle_like';
-        toggleLikeInput.value = '1';
-        
-        form.appendChild(videoIdInput);
-        form.appendChild(toggleLikeInput);
-        document.body.appendChild(form);
-        form.submit();
+    async function _sendLikeAjax(videoId) {
+        const fd = new FormData();
+        fd.append('video_id', videoId);
+        fd.append('toggle_like', '1');
+        const res = await fetch('', { method: 'POST', body: fd });
+        return res.json();
+    }
+
+    // detail overlay 按讚
+    async function toggleLike(videoId) {
+        try {
+            const data = await _sendLikeAjax(videoId);
+            if (!data.success) return;
+            const overlay = document.getElementById('videoDetailOverlay');
+            const likeBtn = overlay.querySelector('.video-detail-like-btn');
+            likeBtn.className = 'video-detail-like-btn' + (data.liked ? ' liked' : '');
+            likeBtn.innerHTML = data.liked
+                ? '<span style="font-size:13px;">❤️</span> 已讚'
+                : '<span style="font-size:13px;">🤍</span> 讚';
+            overlay.querySelector('.video-detail-likes').textContent = data.likes + ' 讚';
+        } catch(e) { console.error('按讚失敗', e); }
+    }
+
+    // 卡片按讚
+    async function toggleLikeCard(videoId, btn) {
+        btn.disabled = true;
+        try {
+            const data = await _sendLikeAjax(videoId);
+            if (!data.success) return;
+            btn.classList.toggle('liked', data.liked);
+            btn.querySelector('.like-icon').textContent = data.liked ? '❤️' : '🤍';
+            btn.querySelector('.like-count').textContent = data.likes;
+        } catch(e) { console.error('按讚失敗', e); }
+        btn.disabled = false;
     }
 
     // 評論功能
