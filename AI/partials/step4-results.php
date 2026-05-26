@@ -2,31 +2,31 @@
 <div v-if="currentStep === 4" class="space-y-5">
 
     <!-- 膚色座標 -->
-    <div v-if="skinCoordinate" class="p-5 border border-sky-100 rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 shadow-sm">
-        <h3 class="font-extrabold mb-3 text-gray-900">🎯 您的膚色座標</h3>
+    <div v-if="skinCoordinate" class="p-5 rounded-2xl shadow-sm" style="background:linear-gradient(135deg,#6b2d3e,#c26b7c); border:1px solid #c26b7c;">
+        <h3 class="font-extrabold mb-3" style="color:#fff;">🎯 您的膚色座標</h3>
         <div class="grid gap-2 text-sm md:text-base">
-            <p><span class="text-gray-500">類型：</span><span class="font-semibold">{{ skinCoordinate.type }}</span></p>
-            <p><span class="text-gray-500">RGB：</span><span class="font-medium">{{ skinCoordinate.rgb }}</span></p>
+            <p><span style="color:rgba(255,255,255,.55);">類型：</span><span class="font-semibold" style="color:#fff;">{{ skinCoordinate.type }}</span></p>
+            <p><span style="color:rgba(255,255,255,.55);">RGB：</span><span class="font-medium" style="color:#fff;">{{ skinCoordinate.rgb }}</span></p>
             <p class="flex items-center gap-2">
-                <span class="text-gray-500">HEX：</span>
-                <span class="font-medium">{{ skinCoordinate.hex }}</span>
-                <span class="inline-block h-4 w-4 rounded-full border border-white shadow" :style="{ backgroundColor: skinCoordinate.hex }"></span>
+                <span style="color:rgba(255,255,255,.55);">HEX：</span>
+                <span class="font-medium" style="color:#fff;">{{ skinCoordinate.hex }}</span>
+                <span class="inline-block h-4 w-4 rounded-full shadow" :style="{ backgroundColor: skinCoordinate.hex, border: '1.5px solid rgba(255,255,255,.4)' }"></span>
             </p>
-            <p v-if="toneFusionNote" class="text-xs md:text-sm text-sky-700">{{ toneFusionNote }}</p>
+            <p v-if="toneFusionNote" class="text-xs md:text-sm" style="color:#f9cfd8;">{{ toneFusionNote }}</p>
         </div>
     </div>
 
     <!-- 膚質分析結果 -->
-    <div class="p-5 border border-purple-100 rounded-2xl bg-gradient-to-br from-purple-50 to-fuchsia-50 shadow-sm">
-        <h3 class="font-extrabold mb-2 text-gray-900">🧴 膚質分析結果</h3>
-        <p class="text-lg font-bold text-purple-800">{{ skinTypeResult.profile?.displayName || skinTypeResult || manualSkinType || '尚未判定' }}</p>
-        <p class="text-sm text-gray-700 mt-1">膚質：{{ manualSkinType || skinTypeResult || '尚未判定' }}{{ manualSensitiveSkin ? ' + 敏感肌' : '' }}</p>
-        <p class="text-xs text-gray-500 mt-1">若這裡還是空白，請先選擇下方膚質再按「套用這個膚質」。</p>
-        <p v-if="skinTypeSecondary" class="text-sm font-semibold text-rose-700 mt-1">第二結果：{{ skinTypeSecondary }}</p>
-        <p v-if="fusionNote" class="text-xs text-purple-700 mt-1">{{ fusionNote }}</p>
-        <p v-if="makeupPreferenceNote" class="text-xs text-pink-700 mt-1">{{ makeupPreferenceNote }}</p>
-        <p v-if="confidenceScore !== null" class="text-sm text-gray-700 mt-2">信心分數: {{ confidenceScore }}</p>
-        <p v-if="consistencyScoreValue !== null" class="text-xs text-indigo-700 mt-1">一致性分數: {{ consistencyScoreValue }}</p>
+    <div class="p-5 rounded-2xl shadow-sm" style="background:linear-gradient(135deg,#fce8ec,#fdf2f4); border:1px solid #f5c6d0;">
+        <h3 class="font-extrabold mb-2" style="color:#6b2d3e;">🧴 膚質分析結果</h3>
+        <p class="text-lg font-bold" style="color:#3d1520;">{{ skinTypeResult.profile?.displayName || skinTypeResult || manualSkinType || '尚未判定' }}</p>
+        <p class="text-sm mt-1" style="color:#6b2d3e;">膚質：{{ manualSkinType || skinTypeResult || '尚未判定' }}{{ manualSensitiveSkin ? ' + 敏感肌' : '' }}</p>
+        <p class="text-xs mt-1" style="color:#c09aaa;">若這裡還是空白，請先選擇下方膚質再按「套用這個膚質」。</p>
+        <p v-if="skinTypeSecondary" class="text-sm font-semibold mt-1" style="color:#6b2d3e;">第二結果：{{ skinTypeSecondary }}</p>
+        <p v-if="fusionNote" class="text-xs mt-1" style="color:#c26b7c;">{{ fusionNote }}</p>
+        <p v-if="makeupPreferenceNote" class="text-xs mt-1" style="color:#c26b7c;">{{ makeupPreferenceNote }}</p>
+        <p v-if="confidenceScore !== null" class="text-sm mt-2" style="color:#6b2d3e;">信心分數: {{ confidenceScore }}</p>
+        <p v-if="consistencyScoreValue !== null" class="text-xs mt-1" style="color:#c26b7c;">一致性分數: {{ consistencyScoreValue }}</p>
         <div class="mt-4 rounded-2xl border border-purple-100 bg-white/90 p-4 space-y-3">
             <div>
                 <p class="text-sm font-semibold text-gray-800 mb-2">可直接沿用前面判定，或自行修改膚質</p>

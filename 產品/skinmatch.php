@@ -186,16 +186,17 @@ if (isset($pdo)) {
     <style>
         .products-wrap { max-width: var(--max-w); margin: 24px auto 60px; padding: 0 24px; }
         .ai-profile-card {
-            background: linear-gradient(135deg, #f9f0f2 0%, #ede8f0 60%, #edf0f5 100%);
-            border: 1px solid #e3d8e8;
+            background: linear-gradient(135deg, #6b2d3e 0%, #c26b7c 100%);
+            border: 1px solid #c26b7c;
             border-radius: 20px;
             padding: 28px 32px;
             margin-bottom: 32px;
+            box-shadow: 0 4px 20px rgba(107,45,62,.25);
         }
         .ai-profile-card h2 {
             font-size: 20px;
             font-weight: 700;
-            color: #5c4a5a;
+            color: #fff;
             margin-bottom: 18px;
         }
         .profile-tags {
@@ -208,17 +209,17 @@ if (isset($pdo)) {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: white;
-            border: 1.5px solid #dbd0e0;
+            background: rgba(255,255,255,.15);
+            border: 1.5px solid rgba(255,255,255,.3);
             border-radius: 20px;
             padding: 6px 14px;
             font-size: 13px;
-            color: #5c4a5a;
+            color: #fff;
             font-weight: 600;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: none;
         }
         .profile-tag .tag-label {
-            color: #a897b0;
+            color: rgba(255,255,255,.6);
             font-weight: 400;
             font-size: 11px;
         }
@@ -271,8 +272,8 @@ if (isset($pdo)) {
         }
         .ai-cta-btn {
             display: inline-block;
-            background: linear-gradient(135deg, #c4a5a5, #b5a8c0);
-            color: white;
+            background: #fff;
+            color: #6b2d3e;
             padding: 10px 22px;
             border-radius: 24px;
             font-weight: 700;
@@ -342,7 +343,7 @@ if (isset($pdo)) {
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
             <a href="/SA/New-SA/首頁/login.php" class="ai-cta-btn ai-cta-btn-large">前往登入</a>
             <a href="/SA/New-SA/AI/index.php" class="ai-cta-btn ai-cta-btn-large"
-               style="background:linear-gradient(135deg,#a8b5a2,#9db3c5);">去做 AI 分析</a>
+               style="background:linear-gradient(135deg,#6b2d3e,#c26b7c);">去做 AI 分析</a>
         </div>
     </div>
 
@@ -404,14 +405,14 @@ if (isset($pdo)) {
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
             <a href="/SA/New-SA/AI/index.php" class="ai-cta-btn">重新 AI 檢測</a>
             <a href="/SA/New-SA/首頁/profile.php"
-               style="font-size:13px;color:#a897b0;text-decoration:none;">編輯個人資料 →</a>
+               style="font-size:13px;color:rgba(255,255,255,.65);text-decoration:none;">編輯個人資料 →</a>
         </div>
     </div>
 
     <!-- 地區選擇 -->
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; padding:10px 16px; background:#f9f0f2; border:1px solid #e3d8e8; border-radius:14px;">
-        <span style="font-size:12px; color:#7a5c6e; font-weight:600; white-space:nowrap;">天氣地區</span>
-        <select id="city-select" style="flex:1; border:1.5px solid #dbd0e0; border-radius:8px; padding:5px 10px; font-size:13px; color:#5c4a5a; background:white; outline:none; cursor:pointer;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; padding:10px 16px; background:#fdf2f4; border:1px solid #f5c6d0; border-radius:14px;">
+        <span style="font-size:12px; color:#c26b7c; font-weight:600; white-space:nowrap;">天氣地區</span>
+        <select id="city-select" style="flex:1; border:1.5px solid #f5c6d0; border-radius:8px; padding:5px 10px; font-size:13px; color:#6b2d3e; background:white; outline:none; cursor:pointer;">
             <option value="auto">自動偵測位置</option>
             <optgroup label="六都">
                 <option value="25.0330,121.5654">台北市</option>
@@ -436,29 +437,29 @@ if (isset($pdo)) {
                 <option value="23.5654,119.5795">澎湖縣</option>
             </optgroup>
         </select>
-        <span id="weather-status" style="font-size:11px; color:#a897b0; white-space:nowrap;"></span>
+        <span id="weather-status" style="font-size:11px; color:#c09aaa; white-space:nowrap;"></span>
     </div>
 
     <!-- 抗汗指南（氣溫超過門檻時由 JS 顯示） -->
-    <div id="heat-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #dbd0e0; box-shadow:0 2px 12px rgba(0,0,0,.07);">
+    <div id="heat-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #6b2d3e; box-shadow:0 4px 20px rgba(61,21,32,.25);">
 
         <!-- 標題列 -->
-        <div style="background:linear-gradient(135deg,#f9f0f2,#ede8f0); padding:18px 24px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #e3d8e8;">
+        <div style="background:linear-gradient(135deg,#3d1520,#6b2d3e); padding:18px 24px; display:flex; align-items:center; gap:14px;">
             <div style="flex:1;">
-                <div style="font-size:15px; font-weight:700; color:#5c4a5a;">今日高溫提醒</div>
-                <div style="font-size:12px; color:#a897b0; margin-top:3px;">今日最高氣溫 <span id="heat-temp-text" style="font-weight:700; color:#7a5c6e;"></span>，建議加上定妝步驟讓妝感撐一整天</div>
+                <div style="font-size:15px; font-weight:700; color:#fff;">今日高溫提醒</div>
+                <div style="font-size:12px; color:rgba(255,255,255,.7); margin-top:3px;">今日最高氣溫 <span id="heat-temp-text" style="font-weight:700; color:#f9cfd8;"></span>，建議加上定妝步驟讓妝感撐一整天</div>
             </div>
-            <div style="background:white; border:1.5px solid #dbd0e0; border-radius:14px; padding:8px 16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.06);">
-                <div id="heat-temp-num" style="font-size:20px; font-weight:800; color:#5c4a5a; line-height:1;"></div>
-                <div style="font-size:10px; color:#a897b0; margin-top:2px;">今日最高</div>
+            <div style="background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.3); border-radius:14px; padding:8px 16px; text-align:center;">
+                <div id="heat-temp-num" style="font-size:20px; font-weight:800; color:#fff; line-height:1;"></div>
+                <div style="font-size:10px; color:rgba(255,255,255,.6); margin-top:2px;">今日最高</div>
             </div>
         </div>
 
         <!-- 內容區 -->
-        <div style="background:white; padding:20px 24px;">
+        <div style="background:#fdf2f4; padding:20px 24px;">
 
             <!-- 三明治定妝法 -->
-            <div style="font-size:13px; font-weight:700; color:#5c4a5a; margin-bottom:12px;">三明治定妝法（新手 3 步驟）</div>
+            <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:12px;">三明治定妝法（新手 3 步驟）</div>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;">
                 <?php
                 $steps = [
@@ -467,26 +468,26 @@ if (isset($pdo)) {
                     ['num'=>'3','title'=>'再掃一層散粉', 'desc'=>'鎖住噴霧，三明治順序讓持妝效果翻倍'],
                 ];
                 foreach ($steps as $s): ?>
-                <div style="background:#f9f0f2; border-radius:14px; padding:14px 12px; border:1px solid #e3d8e8;">
-                    <div style="width:26px; height:26px; border-radius:50%; background:#efc6cd; color:#5c4a5a; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px;"><?= $s['num'] ?></div>
-                    <div style="font-size:13px; font-weight:700; color:#5c4a5a; margin-bottom:4px;"><?= $s['title'] ?></div>
-                    <div style="font-size:11px; color:#a897b0; line-height:1.6;"><?= $s['desc'] ?></div>
+                <div style="background:#fff; border-radius:14px; padding:14px 12px; border:1px solid #f5c6d0;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#c26b7c; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px;"><?= $s['num'] ?></div>
+                    <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:4px;"><?= $s['title'] ?></div>
+                    <div style="font-size:11px; color:#c09aaa; line-height:1.6;"><?= $s['desc'] ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
 
             <!-- 小提醒 -->
-            <div style="background:#f9f0f2; border:1px solid #e3d8e8; border-radius:12px; padding:10px 16px; font-size:12px; color:#7a5c6e; margin-bottom:20px;">
+            <div style="background:#fff; border:1px solid #f5c6d0; border-radius:12px; padding:10px 16px; font-size:12px; color:#6b2d3e; margin-bottom:20px;">
                 出門前最後一步才噴，隨身帶一瓶定妝噴霧，中午直接噴臉補妝，不用補粉也能維持妝感。
             </div>
 
             <?php if (!empty($heatProducts)): ?>
             <!-- 天氣推薦產品 -->
-            <div style="font-size:13px; font-weight:700; color:#5c4a5a; margin-bottom:12px;">適合今天高溫的持妝產品</div>
+            <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:12px;">適合今天高溫的持妝產品</div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px;">
                 <?php foreach ($heatProducts as $hp): ?>
-                <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #dbd0e0; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
-                    <div style="width:100%; aspect-ratio:1; background:#f9f0f2; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
+                <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:#fff; border-radius:16px; border:1.5px solid #f5c6d0; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                    <div style="width:100%; aspect-ratio:1; background:#fdf2f4; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
                         <?php if (!empty($hp['image_url'])): ?>
                         <img src="<?= htmlspecialchars($hp['image_url']) ?>"
                              alt="<?= htmlspecialchars($hp['name']) ?>"
@@ -495,9 +496,9 @@ if (isset($pdo)) {
                         <?php else: ?>💄<?php endif; ?>
                     </div>
                     <div style="padding:10px 12px;">
-                        <div style="font-size:10px; color:#a897b0; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($hp['brand']) ?></div>
+                        <div style="font-size:10px; color:#c09aaa; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($hp['brand']) ?></div>
                         <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4;"><?= htmlspecialchars($hp['name']) ?></div>
-                        <div style="margin-top:5px; font-size:11px; color:#a897b0; line-height:1.4;"><?= htmlspecialchars(mb_substr($hp['purpose'], 0, 18)) ?>…</div>
+                        <div style="margin-top:5px; font-size:11px; color:#c09aaa; line-height:1.4;"><?= htmlspecialchars(mb_substr($hp['purpose'], 0, 18)) ?>…</div>
                     </div>
                 </a>
                 <?php endforeach; ?>
@@ -507,7 +508,7 @@ if (isset($pdo)) {
     </div>
 
     <!-- 乾冷提醒（氣溫低於門檻時由 JS 顯示） -->
-    <div id="cold-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #dbd0e0; box-shadow:0 2px 12px rgba(0,0,0,.07);">
+    <div id="cold-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #f5c6d0; box-shadow:0 2px 12px rgba(0,0,0,.07);">
 
         <!-- 標題列 -->
         <div style="background:linear-gradient(135deg,#edf3f9,#e8ecf5); padding:18px 24px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #d8e2ed;">

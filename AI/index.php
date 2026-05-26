@@ -2,12 +2,6 @@
 // session 必須在所有 HTML 輸出之前啟動
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// 已登入直接進入分析
-if (isset($_SESSION['user'])) {
-    header("Location: story1.php");
-    exit();
-}
-
 // 告訴 産品/header.php 路徑基底
 $base   = '../產品/';
 $aiBase = '';
@@ -30,9 +24,8 @@ $aiBase = '';
     .ail-hero {
         position: relative;
         overflow: hidden;
-        padding: 80px 24px 64px;
-        background: linear-gradient(135deg, #3d1520 0%, #6b2d3e 45%, #c26b7c 100%);
-        text-align: center;
+        padding: 72px 24px 64px;
+        background: linear-gradient(135deg, #3d1520 0%, #6b2d3e 100%);
     }
     .ail-hero::before {
         content: '';
@@ -43,48 +36,62 @@ $aiBase = '';
     .ail-hero__inner {
         position: relative;
         z-index: 1;
-        max-width: 660px;
+        max-width: 1080px;
         margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 60px;
+        align-items: center;
     }
+    .ail-hero__text { text-align: left; }
     .ail-badge {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2px;
         text-transform: uppercase;
-        color: rgba(255,255,255,.7);
+        color: #f9cfd8;
         margin-bottom: 20px;
-    }
-    .ail-badge::before {
-        content: '';
-        width: 24px; height: 2px;
-        background: rgba(255,255,255,.5);
-        border-radius: 2px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.2);
+        padding: 5px 14px;
+        border-radius: 99px;
     }
     .ail-hero__title {
-        font-size: clamp(2rem, 5vw, 3.2rem);
+        font-size: clamp(1.8rem, 3.5vw, 2.8rem);
         font-weight: 700;
-        line-height: 1.18;
+        line-height: 1.22;
         color: white;
-        margin: 0 0 20px;
+        margin: 0 0 18px;
         letter-spacing: -.025em;
     }
     .ail-hero__title em { color: #f9cfd8; font-style: normal; }
     .ail-hero__sub {
-        font-size: 1.04rem;
+        font-size: 1rem;
         line-height: 1.85;
-        color: rgba(255,255,255,.75);
-        max-width: 500px;
-        margin: 0 auto 36px;
+        color: rgba(255,255,255,.7);
+        margin: 0 0 32px;
     }
     .ail-hero__actions {
         display: flex;
         gap: 14px;
-        justify-content: center;
         flex-wrap: wrap;
-        margin-bottom: 44px;
+        margin-bottom: 36px;
+    }
+    .ail-hero__tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .ail-hero__tag {
+        font-size: 12px;
+        color: rgba(255,255,255,.6);
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.15);
+        padding: 4px 12px;
+        border-radius: 99px;
     }
     .ail-btn-primary {
         display: inline-block;
@@ -107,31 +114,91 @@ $aiBase = '';
         display: inline-block;
         padding: 12px 28px;
         border-radius: 999px;
-        background: rgba(255,255,255,.15);
-        border: 1.5px solid rgba(255,255,255,.4);
+        background: rgba(255,255,255,.12);
+        border: 1.5px solid rgba(255,255,255,.35);
         color: white;
         font-weight: 600;
         font-size: 15px;
         text-decoration: none;
         transition: background .2s;
     }
-    .ail-btn-secondary:hover { background: rgba(255,255,255,.28); }
+    .ail-btn-secondary:hover { background: rgba(255,255,255,.22); }
 
-    /* Colour swatches */
-    .ail-swatches {
+    /* ── Hero visual (camera mockup) ──────────────────────── */
+    .ail-hero__visual {
         display: flex;
-        gap: 12px;
         justify-content: center;
         align-items: center;
     }
-    .ail-swatches span {
-        width: 46px; height: 46px;
-        border-radius: 50%;
-        display: inline-block;
-        box-shadow: 0 4px 12px rgba(0,0,0,.25);
-        transition: transform .25s;
+    .ail-phone {
+        width: 260px;
+        height: 360px;
+        background: rgba(255,255,255,.06);
+        border: 1.5px solid rgba(255,255,255,.2);
+        border-radius: 36px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 24px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.1);
+        backdrop-filter: blur(8px);
     }
-    .ail-swatches span:hover { transform: scale(1.18) translateY(-3px); }
+    .ail-phone__notch {
+        position: absolute;
+        top: 14px;
+        width: 60px; height: 10px;
+        background: rgba(255,255,255,.15);
+        border-radius: 99px;
+    }
+    .ail-scan-ring {
+        width: 140px; height: 140px;
+        border-radius: 50%;
+        border: 2px dashed rgba(249,207,216,.5);
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
+        animation: spin 8s linear infinite;
+    }
+    .ail-scan-ring::before {
+        content: '';
+        position: absolute;
+        width: 120px; height: 120px;
+        border-radius: 50%;
+        background: rgba(194,107,124,.12);
+        border: 1.5px solid rgba(194,107,124,.3);
+    }
+    .ail-scan-face {
+        font-size: 52px;
+        z-index: 1;
+        animation: pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+    .ail-scan-label {
+        margin-top: 18px;
+        font-size: 11px;
+        color: rgba(255,255,255,.5);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+    }
+    .ail-scan-dots {
+        display: flex; gap: 8px; margin-top: 16px;
+    }
+    .ail-scan-dots span {
+        width: 20px; height: 20px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(255,255,255,.2);
+    }
+    .ail-corner {
+        position: absolute;
+        width: 18px; height: 18px;
+        border-color: #c26b7c;
+        border-style: solid;
+    }
+    .ail-corner--tl { top: 18px; left: 18px; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+    .ail-corner--tr { top: 18px; right: 18px; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+    .ail-corner--bl { bottom: 18px; left: 18px; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+    .ail-corner--br { bottom: 18px; right: 18px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
 
     /* ── Shared helpers ────────────────────────────────────── */
     .ail-section-inner {
@@ -224,12 +291,19 @@ $aiBase = '';
     @media (max-width: 900px) {
         .ail-features__grid { grid-template-columns: repeat(2, 1fr); }
     }
+    @media (max-width: 780px) {
+        .ail-hero__inner { grid-template-columns: 1fr; gap: 40px; }
+        .ail-hero__text { text-align: center; }
+        .ail-hero__actions { justify-content: center; }
+        .ail-hero__tags { justify-content: center; }
+        .ail-hero__visual { display: none; }
+    }
     @media (max-width: 680px) {
         .ail-steps__grid { grid-template-columns: 1fr; gap: 16px; }
         .ail-step--mid::before,
         .ail-step--mid::after { display: none; }
         .ail-hero { padding: 60px 20px 48px; }
-        .ail-hero__title { font-size: 2rem; }
+        .ail-hero__title { font-size: 1.8rem; }
     }
     @media (max-width: 480px) {
         .ail-features__grid { grid-template-columns: 1fr; }
@@ -243,22 +317,43 @@ $aiBase = '';
     <!-- ── Hero ── -->
     <section class="ail-hero">
         <div class="ail-hero__inner">
-            <div class="ail-badge">AI 驅動的美妝平台</div>
-            <h1 class="ail-hero__title">用 AI 找到最適合<em>你</em>的<br>底妝與彩妝</h1>
-            <p class="ail-hero__sub">
-                透過簡單問答與相機拍照，讓 AI 幫你分析膚色、膚質，<br>
-                精準推薦最匹配的底妝產品與色號。
-            </p>
-            <div class="ail-hero__actions">
-                <a href="story1.php" class="ail-btn-primary">立即開始測試</a>
-                <a href="../產品/index.php" class="ail-btn-secondary">瀏覽產品</a>
+            <!-- 左側文字 -->
+            <div class="ail-hero__text">
+                <div class="ail-badge">✨ AI 膚質分析系統</div>
+                <h1 class="ail-hero__title">讓 AI 幫你找到<br><em>最適合的底妝色號</em></h1>
+                <p class="ail-hero__sub">
+                    透過問答與即時相機分析，精準讀取你的膚色座標與膚質類型，推薦最匹配的底妝產品。
+                </p>
+                <div class="ail-hero__actions">
+                    <a href="story1.php" class="ail-btn-primary">立即開始分析</a>
+                    <a href="../產品/products.php" class="ail-btn-secondary">瀏覽產品</a>
+                </div>
+                <div class="ail-hero__tags">
+                    <span class="ail-hero__tag">膚色偵測</span>
+                    <span class="ail-hero__tag">活體驗證</span>
+                    <span class="ail-hero__tag">AI 推薦</span>
+                    <span class="ail-hero__tag">成分建議</span>
+                </div>
             </div>
-            <div class="ail-swatches">
-                <span style="background:#c9b89e"></span>
-                <span style="background:#c4a5a5"></span>
-                <span style="background:#b5a8c0"></span>
-                <span style="background:#a8b5a2"></span>
-                <span style="background:#9db3c5"></span>
+            <!-- 右側視覺 -->
+            <div class="ail-hero__visual">
+                <div class="ail-phone">
+                    <div class="ail-phone__notch"></div>
+                    <div class="ail-corner ail-corner--tl"></div>
+                    <div class="ail-corner ail-corner--tr"></div>
+                    <div class="ail-corner ail-corner--bl"></div>
+                    <div class="ail-corner ail-corner--br"></div>
+                    <div class="ail-scan-ring">
+                        <div class="ail-scan-face">🫦</div>
+                    </div>
+                    <div class="ail-scan-label">Analyzing...</div>
+                    <div class="ail-scan-dots">
+                        <span style="background:#c9b89e;"></span>
+                        <span style="background:#c4a5a5;"></span>
+                        <span style="background:#e8c4a0;"></span>
+                        <span style="background:#d4a89a;"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -290,38 +385,6 @@ $aiBase = '';
         </div>
     </section>
 
-    <!-- ── 功能卡片 ── -->
-    <section class="ail-features">
-        <div class="ail-section-inner">
-            <h2 class="ail-section-title">更多功能</h2>
-            <div class="ail-features__grid">
-                <a href="story1.php" class="ail-card ail-card--rose">
-                    <span class="ail-card__icon">🔬</span>
-                    <h3>AI 膚質測試</h3>
-                    <p>問答＋相機雙重分析，準確判定你的膚色與膚質類型。</p>
-                    <span class="ail-card__arrow">→</span>
-                </a>
-                <a href="../產品/skin-match.php" class="ail-card ail-card--sage">
-                    <span class="ail-card__icon">🎨</span>
-                    <h3>膚色配對</h3>
-                    <p>從膚色目錄快速挑選，找到適合色系的底妝與腮紅。</p>
-                    <span class="ail-card__arrow">→</span>
-                </a>
-                <a href="../產品/products.php" class="ail-card ail-card--blue">
-                    <span class="ail-card__icon">🛍️</span>
-                    <h3>產品列表</h3>
-                    <p>瀏覽所有美妝商品，搭配 AI 結果更精準挑選。</p>
-                    <span class="ail-card__arrow">→</span>
-                </a>
-                <a href="../產品/favorite.php" class="ail-card ail-card--lavender">
-                    <span class="ail-card__icon">⭐</span>
-                    <h3>收藏 &amp; 比較</h3>
-                    <p>把候選產品加入收藏，並排比較規格與色號。</p>
-                    <span class="ail-card__arrow">→</span>
-                </a>
-            </div>
-        </div>
-    </section>
 
     <?php include '../產品/footer.php'; ?>
 </body>
