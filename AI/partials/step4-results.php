@@ -203,11 +203,10 @@
         <div class="grid gap-3">
             <div>
                 <p class="text-sm font-semibold text-gray-800 mb-2">妝感</p>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-3 gap-2">
                     <button type="button" @click="setMakeupPreference('finish', '霧面')" :class="makeupOptionClass(makeupFinish, '霧面')">霧面</button>
                     <button type="button" @click="setMakeupPreference('finish', '水光感')" :class="makeupOptionClass(makeupFinish, '水光感')">水光感</button>
-                    <button type="button" @click="setMakeupPreference('finish', '奶油肌')" :class="makeupOptionClass(makeupFinish, '奶油肌')">奶油肌</button>
-                    <button type="button" @click="setMakeupPreference('finish', '自然裸妝')" :class="makeupOptionClass(makeupFinish, '自然裸妝')">自然裸妝</button>
+                    <button type="button" @click="setMakeupPreference('finish', '自然光澤')" :class="makeupOptionClass(makeupFinish, '自然光澤')">自然光澤</button>
                 </div>
             </div>
             <div>
