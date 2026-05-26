@@ -31,7 +31,7 @@ if ($productId === '') {
     exit;
 }
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../db.php';
 
 $stmt = $pdo->prepare(
     'INSERT INTO user_product_clicks (username, product_id, source) VALUES (:username, :product_id, :source)'

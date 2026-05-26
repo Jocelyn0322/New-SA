@@ -8,7 +8,7 @@ if (!isset($_SESSION['user']) || trim((string)$_SESSION['user']) === '') {
 }
 
 $username = trim((string)$_SESSION['user']);
-require __DIR__ . '/db.php';
+require __DIR__ . '/../db.php';
 
 $existsStmt = $pdo->query("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_product_feedback')");
 $tableExists = $existsStmt && $existsStmt->fetchColumn();

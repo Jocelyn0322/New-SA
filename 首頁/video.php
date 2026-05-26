@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 // 確保 tags 欄位存在
 try { $pdo->exec("ALTER TABLE videos ADD COLUMN tags VARCHAR(500) NOT NULL DEFAULT ''"); } catch (Exception $e) {}
@@ -200,6 +200,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_
         $message = '影片不存在';
         $messageType = 'error';
     }
+}
+
+// 處理影片編輯
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_video']) && isset($_POST['video_id'])) {
+    header('Content-Type: application/json');
+    $videoId    = (int)$_POST['video_id'];
+    $title      = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $rawTags    = trim($_POST['tags'] ?? '');
+    $tagsArr    = array_unique(array_filter(array_map(fn($t) => mb_substr(ltrim(trim($t), '#'), 0, 20), explode(',', $rawTags))));
+    $tags       = implode(',', $tagsArr);
+
+    if (empty($title)) {
+        echo json_encode(['success' => false, 'message' => '標題不能為空']);
+        exit;
+    }
+    $stmt = $pdo->prepare("SELECT uploaded_by FROM videos WHERE id = ?");
+    $stmt->execute([$videoId]);
+    $row = $stmt->fetch();
+    if ($row && $row['uploaded_by'] === $_SESSION['user']) {
+        $pdo->prepare("UPDATE videos SET title = ?, description = ?, tags = ? WHERE id = ?")
+            ->execute([$title, $description, $tags, $videoId]);
+        echo json_encode(['success' => true, 'title' => $title, 'description' => $description, 'tags' => $tags]);
+    } else {
+        echo json_encode(['success' => false, 'message' => '沒有權限']);
+    }
+    exit;
 }
 
 // 處理按讚/取消按讚
@@ -606,6 +633,25 @@ if ($view === 'following') {
         .video-actions { display: flex; gap: 8px; margin-top: auto; }
         .delete-btn { flex: 1; background: #dc3545; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background .2s; }
         .delete-btn:hover { background: #c82333; }
+        .edit-btn { flex: 1; background: #c26b7c; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background .2s; }
+        .edit-btn:hover { background: #9d2942; }
+        /* Edit Modal */
+        .edit-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 2000; align-items: center; justify-content: center; }
+        .edit-modal-overlay.active { display: flex; }
+        .edit-modal { background: #fff; border-radius: 18px; padding: 32px; width: 90%; max-width: 520px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+        .edit-modal h3 { font-size: 18px; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; }
+        .edit-modal .form-group { margin-bottom: 16px; }
+        .edit-modal label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px; }
+        .edit-modal input[type=text], .edit-modal textarea { width: 100%; padding: 10px 13px; border: 1.5px solid #e8e6f0; border-radius: 10px; font-size: 14px; font-family: inherit; color: #333; outline: none; transition: border-color .2s; box-sizing: border-box; }
+        .edit-modal input[type=text]:focus, .edit-modal textarea:focus { border-color: #c26b7c; }
+        .edit-modal textarea { resize: vertical; min-height: 90px; }
+        .edit-modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .edit-save-btn { flex: 1; background: #c26b7c; color: #fff; border: none; padding: 11px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .2s; }
+        .edit-save-btn:hover { background: #9d2942; }
+        .edit-cancel-btn { flex: 1; background: #f4f3f8; color: #666; border: none; padding: 11px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s; }
+        .edit-cancel-btn:hover { background: #e8e6f0; }
+        .edit-modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none; font-size: 22px; color: #aaa; cursor: pointer; line-height: 1; }
+        .edit-modal-close:hover { color: #c26b7c; }
         /* Hashtag chip input */
         .hashtag-input-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 42px; padding: 7px 12px; border: 1.5px solid #e8e6f0; border-radius: 10px; background: white; cursor: text; transition: border-color .2s; }
         .hashtag-input-box:focus-within { border-color: #c26b7c; }
@@ -740,7 +786,7 @@ if ($view === 'following') {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <main class="video-page">
     <?php if (!$isLoggedIn): ?>
@@ -805,7 +851,7 @@ if ($view === 'following') {
                             <!-- 建議標籤 -->
                             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
                                 <?php
-                                $presetTags = ['唇妝','眼妝','底妝','腮紅','修容','眉毛','韓系','日系','歐美','裸妝','教學','彩妝','彩妝品','穿搭','護膚'];
+                                $presetTags = ['唇妝','眼妝','底妝','腮紅','修容','眉毛','日系','教學','彩妝','彩妝品','穿搭','日常通勤','歐美立體','韓系清透','約會精緻','霧面','奶油肌','水光感','自然裸妝'];
                                 foreach ($presetTags as $pt): ?>
                                 <button type="button" class="preset-tag-btn" data-tag="<?= htmlspecialchars($pt) ?>">#<?= htmlspecialchars($pt) ?></button>
                                 <?php endforeach; ?>
@@ -890,6 +936,7 @@ if ($view === 'following') {
                                 </div>
 
                                 <div class="video-actions">
+                                    <button class="edit-btn" onclick="openEditModal(<?php echo (int)$video['id']; ?>, <?php echo json_encode($video['title']); ?>, <?php echo json_encode($video['description'] ?? ''); ?>, <?php echo json_encode($video['tags'] ?? ''); ?>)">✏️ 編輯</button>
                                     <button class="delete-btn" onclick="deleteVideoAjax(<?php echo (int)$video['id']; ?>, this)">🗑️ 刪除</button>
                                 </div>
                             </div>
@@ -1264,6 +1311,34 @@ if ($view === 'following') {
         </div>
     </div>
 </main>
+
+<!-- Edit Video Modal -->
+<div class="edit-modal-overlay" id="editModalOverlay" onclick="if(event.target===this)closeEditModal()">
+    <div class="edit-modal">
+        <button class="edit-modal-close" onclick="closeEditModal()">×</button>
+        <h3>✏️ 編輯影片資訊</h3>
+        <div class="form-group">
+            <label for="editTitle">影片標題 *</label>
+            <input type="text" id="editTitle" maxlength="255" placeholder="輸入影片標題…">
+        </div>
+        <div class="form-group">
+            <label for="editDescription">影片內容描述</label>
+            <textarea id="editDescription" rows="4" placeholder="分享這個影片的背景故事…"></textarea>
+        </div>
+        <div class="form-group">
+            <label>標籤</label>
+            <div class="hashtag-input-box" id="editHashtagBox" onclick="document.getElementById('editHashtagTyping').focus()">
+                <input type="text" id="editHashtagTyping" class="hashtag-typing" placeholder="輸入標籤，按 Enter 確認" autocomplete="off">
+            </div>
+            <input type="hidden" id="editTagsHidden">
+            <small style="color:#999;margin-top:5px;display:block;">按 Enter 新增標籤，點 × 刪除</small>
+        </div>
+        <div class="edit-modal-actions">
+            <button class="edit-cancel-btn" onclick="closeEditModal()">取消</button>
+            <button class="edit-save-btn" id="editSaveBtn" onclick="saveEditAjax()">儲存</button>
+        </div>
+    </div>
+</div>
 
 <?php include 'footer.php'; ?>
 
@@ -1936,6 +2011,61 @@ if ($view === 'following') {
         }
     }
 
+    // ── Edit Modal ──────────────────────────────────────────────────
+    let _editVideoId = null;
+
+    function openEditModal(videoId, title, description, tags) {
+        _editVideoId = videoId;
+        document.getElementById('editTitle').value = title;
+        document.getElementById('editDescription').value = description;
+        // init hashtag chips
+        editTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+        renderEditChips();
+        document.getElementById('editModalOverlay').classList.add('active');
+        document.getElementById('editTitle').focus();
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModalOverlay').classList.remove('active');
+        _editVideoId = null;
+    }
+
+    async function saveEditAjax() {
+        const title = document.getElementById('editTitle').value.trim();
+        if (!title) { alert('標題不能為空'); return; }
+        const btn = document.getElementById('editSaveBtn');
+        btn.disabled = true; btn.textContent = '儲存中…';
+        try {
+            const fd = new FormData();
+            fd.append('edit_video', '1');
+            fd.append('video_id', _editVideoId);
+            fd.append('title', title);
+            fd.append('description', document.getElementById('editDescription').value.trim());
+            fd.append('tags', document.getElementById('editTagsHidden').value);
+            const res = await fetch('?view=personal', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.success) {
+                // update the card in DOM
+                const cards = document.querySelectorAll('.video-card');
+                cards.forEach(card => {
+                    const editBtnEl = card.querySelector('.edit-btn');
+                    if (editBtnEl && editBtnEl.getAttribute('onclick').includes('openEditModal(' + _editVideoId + ',')) {
+                        const titleEl = card.querySelector('.video-title');
+                        const descEl  = card.querySelector('.video-description');
+                        if (titleEl) titleEl.textContent = data.title;
+                        if (descEl)  descEl.textContent = data.description ? data.description.substring(0, 100) : '';
+                    }
+                });
+                closeEditModal();
+            } else {
+                alert(data.message || '儲存失敗');
+            }
+        } catch(e) {
+            alert('網路錯誤，請重試');
+        }
+        btn.disabled = false; btn.textContent = '儲存';
+    }
+
     async function toggleFollow(username, btn) {
         var form = new FormData();
         form.append('toggle_follow', '1');
@@ -2074,6 +2204,45 @@ if ($view === 'following') {
         hidden.value = display.value.replace(/^#+/, '').trim();
     });
 })();
+</script>
+
+<script>
+// ── Edit Modal Hashtag Chip ─────────────────────────────────────
+var editTags = [];
+
+function renderEditChips() {
+    const box    = document.getElementById('editHashtagBox');
+    const typing = document.getElementById('editHashtagTyping');
+    // remove existing chips
+    box.querySelectorAll('.hashtag-chip').forEach(c => c.remove());
+    editTags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'hashtag-chip';
+        chip.innerHTML = '#' + tag + ' <span class="hashtag-chip-remove" onclick="removeEditTag(\'' + tag.replace(/'/g,"&#39;") + '\')">×</span>';
+        box.insertBefore(chip, typing);
+    });
+    document.getElementById('editTagsHidden').value = editTags.join(',');
+}
+
+function removeEditTag(tag) {
+    editTags = editTags.filter(t => t !== tag);
+    renderEditChips();
+}
+
+document.getElementById('editHashtagTyping').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const val = this.value.replace(/^#/, '').trim();
+        if (val && !editTags.includes(val) && editTags.length < 10) {
+            editTags.push(val);
+            renderEditChips();
+        }
+        this.value = '';
+    } else if (e.key === 'Backspace' && this.value === '' && editTags.length > 0) {
+        editTags.pop();
+        renderEditChips();
+    }
+});
 </script>
 
 </body>

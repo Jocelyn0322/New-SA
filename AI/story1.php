@@ -10,7 +10,7 @@
     <title>AI Skin Tone Detector</title>
 </head>
 <body>
-    <?php include 'header.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
 
     <div id="app">
         <div v-if="!dataLoaded" class="text-center py-20 text-gray-500">載入中...</div>

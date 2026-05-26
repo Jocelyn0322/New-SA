@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-require 'db.php';
+require __DIR__ . '/../db.php';
 require 'send_mail.php';
 
 if (isset($_SESSION['user'])) {
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <div class="auth-wrap">
   <div class="auth-card">

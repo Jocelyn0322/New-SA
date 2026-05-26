@@ -238,7 +238,7 @@ $aiBase = '';
     </style>
 </head>
 <body>
-    <?php include '../產品/header.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
 
     <!-- ── Hero ── -->
     <section class="ail-hero">

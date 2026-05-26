@@ -23,7 +23,7 @@ if (!isset($data['id'])) {
     exit;
 }
 
-require '../db.php';
+require __DIR__ . '/../db.php';
 
 try {
     // 取得圖片路徑

@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 $sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 6";
 $result = $conn->query($sql);
@@ -83,7 +83,7 @@ $favorites = $_SESSION['favorite'] ?? [];
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <!-- Hero -->
 <section class="hero">
