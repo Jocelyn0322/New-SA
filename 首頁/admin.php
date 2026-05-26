@@ -469,6 +469,7 @@ body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
     <a href="?tab=videos"   class="adm-tab <?php echo $tab==='videos'   ? 'active':''; ?>"> 影片管理</a>
     <a href="?tab=comments" class="adm-tab <?php echo $tab==='comments' ? 'active':''; ?>"> 留言管理</a>
     <a href="?tab=reports"  class="adm-tab <?php echo $tab==='reports'  ? 'active':''; ?>"> 檢舉管理</a>
+    <a href="/SA/New-SA/產品/report_manage.php" class="adm-tab"> 商品回報</a>
     <a href="?tab=users"    class="adm-tab <?php echo $tab==='users'    ? 'active':''; ?>"> 會員管理</a>
     <a href="?tab=data_products" class="adm-tab <?php echo $tab==='data_products' ? 'active':''; ?>"> 產品管理</a>
     <a href="?tab=products" class="adm-tab <?php echo $tab==='products' ? 'active':''; ?>" style="position:relative;">

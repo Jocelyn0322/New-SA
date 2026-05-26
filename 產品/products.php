@@ -31,19 +31,21 @@ if(!empty($wheres)){
 }
 
 $sql .= ") sub ORDER BY CASE sub.category
-    WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2 WHEN '防曬' THEN 3
-    WHEN '唇膏' THEN 4 WHEN '唇彩' THEN 5 WHEN '唇油' THEN 6 WHEN '唇泥' THEN 7
-    WHEN '眼影' THEN 8 WHEN '眼線' THEN 9 WHEN '睫毛膏' THEN 10
-    WHEN '腮紅' THEN 11 WHEN '修容' THEN 12 WHEN '打亮' THEN 13 WHEN '護膚' THEN 14
-    ELSE 99 END, sub.id";
+    WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2
+    WHEN '眼影' THEN 3 WHEN '眼線' THEN 4 WHEN '睫毛膏' THEN 5
+    WHEN '腮紅' THEN 6 WHEN '修容' THEN 7 WHEN '打亮' THEN 8
+    WHEN '唇彩' THEN 9
+    WHEN '護膚' THEN 10 WHEN '護唇' THEN 11 WHEN '防曬' THEN 12
+    ELSE 99 END, sub.brand, sub.id";
 $result = $conn->query($sql);
 
 // 取所有分類（用於篩選按鈕）
 $categories_sql = "SELECT category FROM (SELECT DISTINCT category FROM data) sub ORDER BY CASE category
-    WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2 WHEN '防曬' THEN 3
-    WHEN '唇膏' THEN 4 WHEN '唇彩' THEN 5 WHEN '唇油' THEN 6 WHEN '唇泥' THEN 7
-    WHEN '眼影' THEN 8 WHEN '眼線' THEN 9 WHEN '睫毛膏' THEN 10
-    WHEN '腮紅' THEN 11 WHEN '修容' THEN 12 WHEN '打亮' THEN 13 WHEN '護膚' THEN 14
+    WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2
+    WHEN '眼影' THEN 3 WHEN '眼線' THEN 4 WHEN '睫毛膏' THEN 5
+    WHEN '腮紅' THEN 6 WHEN '修容' THEN 7 WHEN '打亮' THEN 8
+    WHEN '唇彩' THEN 9
+    WHEN '護膚' THEN 10 WHEN '護唇' THEN 11 WHEN '防曬' THEN 12
     ELSE 99 END";
 $categories_result = $conn->query($categories_sql);
 ?>
@@ -81,19 +83,6 @@ $categories_result = $conn->query($categories_sql);
     </div>
 </div>
 
-<!-- 在搜尋下方加 -->
-<div class="filter-section">
-    <div class="filter-bar">
-        <a class="filter-btn" href="products.php">全部色號</a>
-
-        <?php
-        $colors = $conn->query("SELECT DISTINCT color_name FROM product_colors LIMIT 5");
-        while($color = $colors->fetch()){
-            echo '<a class="filter-btn" href="?color=' . $color['color_name'] . '">' . $color['color_name'] . '</a>';
-        }
-        ?>
-    </div>
-</div>
 
 <div class="products">
     <div class="product-grid">

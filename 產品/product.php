@@ -10,6 +10,8 @@ $attributeMap = [
     '口紅'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
     '唇釉'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
     '唇膏'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
+    '唇彩'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
+    '護唇'   => ['保濕度', '滋潤度', '吸收速度', '持久度'],
     '眼影'   => ['顯色度', '延展性', '持久度', '不易暈染'],
     '眼線'   => ['顯色度', '持久度', '不易暈染', '易上色'],
     '睫毛膏' => ['拉長效果', '增量效果', '持久度', '不易暈染'],
@@ -28,6 +30,32 @@ $defaultAttributes = ['顯色度', '持久度', '易上色', '延展性'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css?v=2">
     <title>產品詳情</title>
+    <style>
+    /* 管理員上傳色號照片的浮窗 */
+    .color-upload-panel {
+        display:none; position:fixed; bottom:24px; right:24px; z-index:999;
+        background:#fff; border-radius:16px; padding:20px;
+        box-shadow:0 8px 32px rgba(0,0,0,.18); width:280px;
+        border:1px solid #f0d5dc;
+    }
+    .color-upload-panel.show { display:block; }
+    .color-swatch {
+        display:flex; flex-direction:column; align-items:center; gap:6px;
+        cursor:pointer; padding:8px; border-radius:12px;
+        border:2px solid transparent; transition:all .2s; position:relative;
+    }
+    .color-swatch:hover { background:#fff0f3; border-color:#efc6cd; }
+    .color-swatch.active { border-color:#c97b8a; background:#fff0f3; }
+    .color-circle-lg {
+        width:40px; height:40px; border-radius:50%;
+        border:2px solid rgba(0,0,0,.1); flex-shrink:0;
+    }
+    .color-label { font-size:11px; color:#888; text-align:center; max-width:60px; line-height:1.3; }
+    .color-has-img::after {
+        content:'📷'; position:absolute; top:2px; right:2px; font-size:9px;
+    }
+    .colors-flex { display:flex; flex-wrap:wrap; gap:8px; }
+    </style>
 </head>
 
 <body>
@@ -157,7 +185,7 @@ if (empty($_SESSION[$viewedKey])) {
             <div>
                 <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">分類</label>
                 <select id="ep_category" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;">
-                    <?php foreach(['底妝','遮瑕','防曬','唇膏','唇彩','唇油','唇泥','眼影','眼線','睫毛膏','腮紅','修容','打亮','護膚'] as $cat): ?>
+                    <?php foreach(['底妝','遮瑕','眼影','眼線','睫毛膏','腮紅','修容','打亮','唇彩','護膚','護唇','防曬'] as $cat): ?>
                     <option value="<?php echo $cat; ?>" <?php echo ($row['category']??'')===$cat?'selected':''; ?>><?php echo $cat; ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -190,33 +218,6 @@ if (empty($_SESSION[$viewedKey])) {
     } elseif ($result2->rowCount() > 0) {
         $colors = $result2->fetchAll();
     ?>
-    <style>
-    .color-swatch {
-        display:flex; flex-direction:column; align-items:center; gap:6px;
-        cursor:pointer; padding:8px; border-radius:12px;
-        border:2px solid transparent; transition:all .2s; position:relative;
-    }
-    .color-swatch:hover { background:#fff0f3; border-color:#efc6cd; }
-    .color-swatch.active { border-color:#c97b8a; background:#fff0f3; }
-    .color-circle-lg {
-        width:40px; height:40px; border-radius:50%;
-        border:2px solid rgba(0,0,0,.1); flex-shrink:0;
-    }
-    .color-label { font-size:11px; color:#888; text-align:center; max-width:60px; line-height:1.3; }
-    .color-has-img::after {
-        content:'📷'; position:absolute; top:2px; right:2px; font-size:9px;
-    }
-    .colors-flex { display:flex; flex-wrap:wrap; gap:8px; }
-
-    /* 管理員上傳色號照片的浮窗 */
-    .color-upload-panel {
-        display:none; position:fixed; bottom:24px; right:24px; z-index:999;
-        background:#fff; border-radius:16px; padding:20px;
-        box-shadow:0 8px 32px rgba(0,0,0,.18); width:280px;
-        border:1px solid #f0d5dc;
-    }
-    .color-upload-panel.show { display:block; }
-    </style>
 
     <div class="colors-flex">
     <?php foreach ($colors as $color): ?>
@@ -678,7 +679,6 @@ async function saveEditProduct(pid) {
         var res  = await fetch('update_product.php', { method:'POST', body:form });
         var data = await res.json();
         if (data.success) {
-            msg.style.color='#27ae60'; msg.textContent='✓ 已儲存';
             window._epData.name        = document.getElementById('ep_name').value.trim();
             window._epData.brand       = document.getElementById('ep_brand').value.trim();
             window._epData.category    = document.getElementById('ep_category').value;
@@ -688,6 +688,7 @@ async function saveEditProduct(pid) {
             window._epData.precautions = document.getElementById('ep_precautions').value.trim();
             // 更新頁面上顯示的名稱
             document.querySelector('.product-info h1').textContent = window._epData.name;
+            closeEditProduct();
         } else {
             msg.style.color='#e05'; msg.textContent='失敗：' + data.message;
         }
@@ -713,8 +714,8 @@ async function uploadImage(productId) {
         const data = await res.json();
         if (data.success) {
             msg.style.color = '#27ae60';
-            msg.textContent = '✓ 上傳成功，重新整理頁面即可看到新照片';
-            document.getElementById('mainProductImg').src = data.url;
+            msg.textContent = '✓ 上傳成功';
+            document.getElementById('mainProductImg').src = data.url + '?t=' + Date.now();
         } else {
             msg.style.color = '#e05';
             msg.textContent = '失敗：' + data.message;
