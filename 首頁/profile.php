@@ -34,15 +34,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $age          = $_POST['age'] ?? null;
     $allergies    = $_POST['allergies'] ?? '';
 
-    if ($profile) {
-        $stmt = $pdo->prepare("UPDATE user_profiles SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=? WHERE username=?");
-        $stmt->execute([$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$_SESSION['user']]);
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO user_profiles (username,gender,skin_type,skin_tone,skin_concerns,age,allergies) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$_SESSION['user'],$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies]);
+    try {
+        if ($profile) {
+            $stmt = $pdo->prepare("UPDATE user_profiles SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=? WHERE username=?");
+            $stmt->execute([$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$_SESSION['user']]);
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO user_profiles (username,gender,skin_type,skin_tone,skin_concerns,age,allergies) VALUES (?,?,?,?,?,?,?)");
+            $stmt->execute([$_SESSION['user'],$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies]);
+        }
+        $message = '個人資料儲存成功！';
+        $messageType = 'success';
+    } catch (Exception $e) {
+        $message = '儲存失敗，請稍後再試';
+        $messageType = 'error';
     }
-    $message = '個人資料儲存成功！';
-    $messageType = 'success';
+
+    if (!empty($_POST['_ajax'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => $messageType === 'success', 'message' => $message]);
+        exit;
+    }
+
     $stmt = $pdo->prepare("SELECT * FROM user_profiles WHERE username = ?");
     $stmt->execute([$_SESSION['user']]);
     $profile = $stmt->fetch();
@@ -272,7 +284,8 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
     <!-- Skin Data -->
     <div class="setting-card">
       <h3>肌膚資料</h3>
-      <form method="post">
+      <form id="skinForm" method="post" onsubmit="saveSkinForm(event)">
+        <input type="hidden" name="_ajax" value="1">
         <div class="ai-tip">
           <p><strong>💡 不知道自己的膚質或膚色？</strong><br>使用 AI 智慧檢測工具，快速精準分析。</p>
           <button type="button" onclick="openAITest()" class="btn btn-primary btn-sm">🤖 AI 膚色膚質檢測</button>
@@ -330,6 +343,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
           <textarea class="form-input" name="allergies" placeholder="請列出您過敏的成分或產品（如：酒精、香精）"><?= htmlspecialchars($profile['allergies'] ?? '') ?></textarea>
         </div>
         <button type="submit" name="save_profile" class="btn btn-primary" style="width:100%;">儲存肌膚資料</button>
+        <div id="skinSaveMsg" style="display:none;margin-top:12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;text-align:center;"></div>
       </form>
     </div>
 
@@ -447,6 +461,35 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
 <?php include 'footer.php'; ?>
 
 <script>
+/* ── Skin form AJAX save ── */
+async function saveSkinForm(e) {
+  e.preventDefault();
+  const btn = e.submitter;
+  const msg = document.getElementById('skinSaveMsg');
+  btn.disabled = true;
+  btn.textContent = '儲存中…';
+  msg.style.display = 'none';
+  try {
+    const data = new FormData(document.getElementById('skinForm'));
+    data.append('save_profile', '1');
+    const res  = await fetch('profile.php', { method: 'POST', body: data });
+    const json = await res.json();
+    msg.style.display = '';
+    if (json.success) {
+      msg.style.background = '#eef7f1'; msg.style.color = '#2d7a50'; msg.style.border = '1px solid #b2dfcc';
+    } else {
+      msg.style.background = '#fdf0f0'; msg.style.color = '#a05050'; msg.style.border = '1px solid #d08888';
+    }
+    msg.textContent = json.message;
+  } catch(err) {
+    msg.style.display = '';
+    msg.style.background = '#fdf0f0'; msg.style.color = '#a05050'; msg.style.border = '1px solid #d08888';
+    msg.textContent = '網路錯誤，請稍後再試';
+  }
+  btn.disabled = false;
+  btn.textContent = '儲存肌膚資料';
+}
+
 /* ── Tabs ── */
 const tabs = [document.getElementById('tab0'), document.getElementById('tab1'), document.getElementById('tab2')];
 function switchTab(i, el) {
