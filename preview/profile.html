@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COSMETIC — 個人資料</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.profile-wrap { max-width: 820px; margin: 40px auto 80px; padding: 0 24px; }
+.profile-header { display: flex; align-items: flex-start; gap: 28px; margin-bottom: 32px; flex-wrap: wrap; }
+.profile-avatar-wrap { position: relative; }
+.profile-avatar {
+  width: 96px; height: 96px; background: var(--rose-100); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; font-weight: 700; color: var(--rose); flex-shrink: 0;
+  border: 3px solid var(--rose-200);
+}
+.avatar-edit {
+  position: absolute; bottom: 2px; right: 2px;
+  width: 28px; height: 28px; background: var(--rose); color: white;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer; border: 2px solid white;
+}
+.profile-name { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+.profile-meta { font-size: 13px; color: var(--text-3); margin-bottom: 12px; }
+.profile-stats { display: flex; gap: 24px; }
+.profile-stat { text-align: center; }
+.profile-stat-num { font-size: 1.25rem; font-weight: 700; color: var(--rose); }
+.profile-stat-label { font-size: 12px; color: var(--text-3); }
+.profile-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+.profile-tab { padding: 12px 16px; font-size: 14px; font-weight: 500; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; transition: all var(--t); background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+.profile-tab:hover { color: var(--text); }
+.profile-tab.active { color: var(--rose); border-bottom-color: var(--rose); font-weight: 600; }
+.setting-card { background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border); padding: 28px; margin-bottom: 16px; }
+.setting-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 20px; }
+.setting-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media(max-width:600px){ .setting-row { grid-template-columns: 1fr; } }
+.danger-zone { border-color: var(--red-border); background: var(--red-bg); }
+.danger-zone h3 { color: var(--red); }
+
+/* ── Video Favorites ── */
+.vid-fav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.vid-fav-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; transition: all var(--t); }
+.vid-fav-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.vid-thumb {
+  width: 100%; aspect-ratio: 16/9;
+  position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.vid-thumb-emoji { font-size: 44px; }
+.vid-play-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.28); opacity: 0; transition: opacity var(--t);
+}
+.vid-fav-card:hover .vid-play-overlay { opacity: 1; }
+.vid-play-icon { width: 46px; height: 46px; background: rgba(255,255,255,.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.vid-duration { position: absolute; bottom: 8px; right: 10px; background: rgba(0,0,0,.72); color: white; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+.vid-body { padding: 12px 14px 14px; }
+.vid-title { font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vid-meta { font-size: 12px; color: var(--text-3); margin-bottom: 12px; }
+.vid-author { font-weight: 500; color: var(--text-2); }
+.vid-fav-actions { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo"><div class="logo-mark">💄</div>COSMETIC</a>
+    <nav class="nav">
+      <a href="index.html" class="nav-link">首頁</a>
+      <a href="products.html" class="nav-link">產品</a>
+      <a href="ai.html" class="nav-link">AI 檢測</a>
+      <a href="video.html" class="nav-link">影片交流</a>
+    </nav>
+    <div class="header-actions">
+      <a href="favorite.html" class="icon-btn">♡<span class="count">3</span></a>
+      <a href="compare.html" class="icon-btn">⚖</a>
+      <a href="profile.html" class="user-chip" style="border-color:var(--rose-200);">
+        <div class="user-avatar">A</div><span>alice</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<div class="profile-wrap">
+  <!-- Profile Header -->
+  <div class="profile-header">
+    <div class="profile-avatar-wrap">
+      <div class="profile-avatar">A</div>
+      <div class="avatar-edit">✎</div>
+    </div>
+    <div>
+      <div class="profile-name">alice</div>
+      <div class="profile-meta">alice@email.com · 加入於 2024/01/15</div>
+      <div class="profile-stats">
+        <div class="profile-stat"><div class="profile-stat-num">3</div><div class="profile-stat-label">影片收藏</div></div>
+        <div class="profile-stat"><div class="profile-stat-num">2</div><div class="profile-stat-label">影片</div></div>
+        <div class="profile-stat"><div class="profile-stat-num">12</div><div class="profile-stat-label">評分</div></div>
+      </div>
+    </div>
+    <div style="margin-left:auto;">
+      <a href="index.html" class="btn btn-outline btn-sm">登出</a>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="profile-tabs">
+    <button class="profile-tab active" onclick="switchTab(0,this)">帳號設定</button>
+    <button class="profile-tab" onclick="switchTab(1,this)">我的收藏</button>
+    <button class="profile-tab" onclick="switchTab(2,this)">我的影片</button>
+  </div>
+
+  <!-- Tab: Settings -->
+  <div id="tab0">
+    <div class="setting-card">
+      <h3>基本資料</h3>
+      <div class="setting-row">
+        <div class="form-group"><label class="form-label">帳號</label><input class="form-input" value="alice" readonly style="background:var(--bg);color:var(--text-3);"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="alice@email.com"></div>
+      </div>
+      <button class="btn btn-primary btn-sm">儲存變更</button>
+    </div>
+    <div class="setting-card">
+      <h3>修改密碼</h3>
+      <div class="setting-row">
+        <div class="form-group"><label class="form-label">目前密碼</label><input class="form-input" type="password" placeholder="輸入目前密碼"></div>
+        <div class="form-group"><label class="form-label">新密碼</label><input class="form-input" type="password" placeholder="至少 8 個字元"></div>
+      </div>
+      <button class="btn btn-primary btn-sm">更新密碼</button>
+    </div>
+    <div class="setting-card danger-zone">
+      <h3>危險區域</h3>
+      <p style="font-size:13px;color:var(--red);margin-bottom:16px;">刪除帳號後，所有資料將永久移除，此操作無法復原。</p>
+      <button class="btn btn-danger btn-sm">刪除帳號</button>
+    </div>
+  </div>
+
+  <!-- Tab: Favorites (Videos) -->
+  <div id="tab1" style="display:none;">
+    <div class="vid-fav-grid">
+
+      <div class="vid-fav-card">
+        <div class="vid-thumb" style="background:linear-gradient(135deg,#3d1520,#c26b7c);">
+          <span class="vid-thumb-emoji">💄</span>
+          <div class="vid-play-overlay"><div class="vid-play-icon">▶</div></div>
+          <div class="vid-duration">08:32</div>
+        </div>
+        <div class="vid-body">
+          <div class="vid-title">秋冬必備！大地色系眼影教學，打造霧感迷人眼妝</div>
+          <div class="vid-meta"><span class="vid-author">beautyMia</span> · 1.2萬 次觀看</div>
+          <div class="vid-fav-actions">
+            <a href="video.html" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">觀看</a>
+            <button class="btn btn-outline btn-sm" onclick="removeFav(this)">移除</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="vid-fav-card">
+        <div class="vid-thumb" style="background:linear-gradient(135deg,#1a1a3d,#4a4a9a);">
+          <span class="vid-thumb-emoji">✨</span>
+          <div class="vid-play-overlay"><div class="vid-play-icon">▶</div></div>
+          <div class="vid-duration">05:18</div>
+        </div>
+        <div class="vid-body">
+          <div class="vid-title">零失誤底妝！乾性肌粉底選擇與上妝手法分享</div>
+          <div class="vid-meta"><span class="vid-author">SkinCareJudy</span> · 8,400 次觀看</div>
+          <div class="vid-fav-actions">
+            <a href="video.html" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">觀看</a>
+            <button class="btn btn-outline btn-sm" onclick="removeFav(this)">移除</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="vid-fav-card">
+        <div class="vid-thumb" style="background:linear-gradient(135deg,#1a3d1a,#4a9a4a);">
+          <span class="vid-thumb-emoji">🌿</span>
+          <div class="vid-play-overlay"><div class="vid-play-icon">▶</div></div>
+          <div class="vid-duration">12:05</div>
+        </div>
+        <div class="vid-body">
+          <div class="vid-title">敏感肌救星！天然成分彩妝品 Top 5 推薦</div>
+          <div class="vid-meta"><span class="vid-author">GreenBeauty</span> · 2.3萬 次觀看</div>
+          <div class="vid-fav-actions">
+            <a href="video.html" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">觀看</a>
+            <button class="btn btn-outline btn-sm" onclick="removeFav(this)">移除</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Tab: Videos -->
+  <div id="tab2" style="display:none;">
+    <div class="empty">
+      <div class="empty-icon">🎬</div>
+      <h3>還沒有上傳影片</h3>
+      <p>分享你的彩妝心得和教學影片</p>
+      <a href="video.html" class="btn btn-primary">上傳影片</a>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><p>© 2025 COSMETIC</p></footer>
+<script>
+const tabs = [document.getElementById('tab0'), document.getElementById('tab1'), document.getElementById('tab2')];
+function switchTab(i, el) {
+  document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  tabs.forEach((t,j) => t.style.display = j === i ? '' : 'none');
+}
+function removeFav(btn) {
+  const card = btn.closest('.vid-fav-card');
+  card.style.transition = 'opacity .3s, transform .3s';
+  card.style.opacity = '0';
+  card.style.transform = 'scale(.95)';
+  setTimeout(() => {
+    card.remove();
+    const count = document.querySelectorAll('.vid-fav-card').length;
+    document.querySelector('.profile-stat-num').textContent = count;
+  }, 300);
+}
+</script>
+</body>
+</html>

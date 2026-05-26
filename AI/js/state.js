@@ -20,6 +20,57 @@ const toneQuizAnswers       = ref({ t1: '', t2: '', t3: '' });
 const toneGuess             = ref('');
 const toneFusionNote        = ref('');
 const quizAnswers           = ref({ q1: '', q2: '', q3: '', q4: '' });
+
+// ── Chat quiz step state ─────────────────────────────────────────
+const toneQuizStep    = ref(1);   // 1=Q1visible, 2=Q2, 3=Q3, 4=done
+const skinQuizStep    = ref(1);   // 1=Q1, 2=Q2, 3=Q3, 4=Q4, 5=done
+const toneQuizTyping  = ref(false);
+const skinQuizTyping  = ref(false);
+
+const toneQuizData = [
+    { key: 't1', q: '手腕內側的血管，看起來偏什麼顏色？', opts: [
+        { val: 'A', label: '藍色或紫色' },
+        { val: 'B', label: '綠色' },
+        { val: 'C', label: '兩種都有，或看不太出來' }
+    ]},
+    { key: 't2', q: '曬太陽後，你的皮膚通常會？', opts: [
+        { val: 'A', label: '先紅後黑，容易曬傷' },
+        { val: 'B', label: '直接變黑，不太會紅' },
+        { val: 'C', label: '看情況，兩者都會' }
+    ]},
+    { key: 't3', q: '戴哪種金屬飾品，比較顯氣色？', opts: [
+        { val: 'A', label: '銀色、白金' },
+        { val: 'B', label: '金色、玫瑰金' },
+        { val: 'C', label: '兩種都好看' }
+    ]},
+];
+
+const skinQuizData = [
+    { key: 'q1', q: '洗臉後 30 分鐘，不擦任何保養品，臉的感覺？', opts: [
+        { val: 'A', label: '全臉緊繃，甚至脫皮' },
+        { val: 'B', label: 'T 區微出油，兩頰緊繃' },
+        { val: 'C', label: 'T 區出油明顯，兩頰還好' },
+        { val: 'D', label: '全臉都有明顯油光' },
+        { val: 'E', label: '不緊繃也不油，很舒適' }
+    ]},
+    { key: 'q2', q: '觀察日常毛孔和膚質狀態？', opts: [
+        { val: 'A', label: '毛孔細緻，但容易有乾紋' },
+        { val: 'B', label: 'T 區毛孔大，兩頰細緻' },
+        { val: 'C', label: '全臉毛孔粗大，常有黑頭' },
+        { val: 'D', label: '皮膚平滑均勻' }
+    ]},
+    { key: 'q3', q: '下午 3–4 點，上了妝的臉通常是？', opts: [
+        { val: 'A', label: '嚴重浮粉、起皮，妝吸不住' },
+        { val: 'B', label: '鼻翼脫妝掉粉，兩頰很乾' },
+        { val: 'C', label: 'T 區油光滿面，妝色暗沉' },
+        { val: 'D', label: '妝感完整，只有微出油' }
+    ]},
+    { key: 'q4', q: '皮膚對外界刺激的耐受度？', hint: '敏感肌可以和其他膚質重疊，這個問題單獨評估你的耐受度', opts: [
+        { val: 'A', label: '換季、新品容易泛紅刺痛' },
+        { val: 'B', label: '偶爾起疹，但很快恢復' },
+        { val: 'C', label: '很少不適，皮膚像城牆' }
+    ]},
+];
 const skinCoordinate        = ref(null);
 const skinTypeResult        = ref('');
 const skinTypeSecondary     = ref('');

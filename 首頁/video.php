@@ -231,6 +231,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_like']) && iss
     exit;
 }
 
+// 追蹤 / 取消追蹤
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow']) && $isLoggedIn) {
+    $targetUser = trim($_POST['target_user'] ?? '');
+    if ($targetUser && $targetUser !== $_SESSION['user']) {
+        $check = $pdo->prepare("SELECT id FROM follows WHERE follower = ? AND following = ?");
+        $check->execute([$_SESSION['user'], $targetUser]);
+        if ($check->fetch()) {
+            $pdo->prepare("DELETE FROM follows WHERE follower = ? AND following = ?")
+                ->execute([$_SESSION['user'], $targetUser]);
+            $followResult = 'unfollowed';
+        } else {
+            $pdo->prepare("INSERT INTO follows (follower, following) VALUES (?, ?) ON CONFLICT DO NOTHING")
+                ->execute([$_SESSION['user'], $targetUser]);
+            $followResult = 'followed';
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'action' => $followResult]);
+        exit;
+    }
+}
+
 // 管理員：強制刪除影片
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_force_delete'])) {
     $vid  = (int)$_POST['video_id'];
@@ -259,9 +280,41 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_dis
 // 獲取影片列表
 $view = $_GET['view'] ?? 'home';
 if ($view === 'admin' && !$isAdmin) $view = 'home';
+if ($view === 'following' && !$isLoggedIn) $view = 'home';
 $activeTag = ltrim(trim($_GET['tag'] ?? ''), '#');
 
-if ($view === 'personal') {
+// 目前使用者追蹤的人（陣列，供 JS 判斷按鈕狀態）
+$myFollowings = [];
+if ($isLoggedIn) {
+    $fStmt = $pdo->prepare("SELECT following FROM follows WHERE follower = ?");
+    $fStmt->execute([$_SESSION['user']]);
+    $myFollowings = $fStmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+if ($view === 'following') {
+    // 追蹤中：只顯示我追蹤的人的影片
+    $stmt = $pdo->prepare("
+        SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags,
+               CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
+        FROM videos v
+        LEFT JOIN likes l ON v.id = l.video_id AND l.user_id = ?
+        INNER JOIN follows f ON f.following = v.uploaded_by AND f.follower = ?
+        WHERE v.is_active = 1
+        ORDER BY v.upload_time DESC
+    ");
+    $stmt->execute([$_SESSION['user'], $_SESSION['user']]);
+    $videos = $stmt->fetchAll();
+
+    // 我追蹤的人（含追蹤時間）
+    $followingList = $pdo->prepare("
+        SELECT f.following, f.created_at,
+               (SELECT COUNT(*) FROM videos v WHERE v.uploaded_by = f.following AND v.is_active = 1) AS video_count
+        FROM follows f WHERE f.follower = ? ORDER BY f.created_at DESC
+    ");
+    $followingList->execute([$_SESSION['user']]);
+    $followingUsers = $followingList->fetchAll();
+
+} elseif ($view === 'personal') {
     // 個人頁面：獲取用戶上傳的影片和按讚的影片
     $stmt = $pdo->prepare("
         SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags,
@@ -354,15 +407,10 @@ if ($view === 'personal') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>影片交流</title>
-    <link rel="stylesheet" href="style.css?v=2">
-    <link rel="stylesheet" href="/SA/New-SA/產品/style.css?v=2">
+    <title>COSMETIC — 影片交流</title>
+    <link rel="stylesheet" href="style.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* Bridge: map old class names to new design tokens */
 
         .video-page {
             min-height: 100vh;
@@ -1525,7 +1573,7 @@ if ($view === 'personal') {
 </head>
 <body>
 
-<?php include '../產品/header.php'; ?>
+<?php include 'header.php'; ?>
 
 <main class="video-page">
     <?php if (!$isLoggedIn): ?>
@@ -1541,6 +1589,16 @@ if ($view === 'personal') {
 
         <div class="nav-tabs">
             <a href="?view=home" class="nav-tab <?php echo ($view === 'home') ? 'active' : ''; ?>">🏠 主頁</a>
+            <?php if ($isLoggedIn): ?>
+            <a href="?view=following" class="nav-tab <?php echo ($view === 'following') ? 'active' : ''; ?>" style="position:relative;">
+                追蹤中
+                <?php
+                $followingCount = count($myFollowings);
+                if ($followingCount > 0): ?>
+                    <span style="position:absolute;top:8px;right:2px;background:#e83e5a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;"><?php echo $followingCount; ?></span>
+                <?php endif; ?>
+            </a>
+            <?php endif; ?>
             <a href="?view=personal" class="nav-tab <?php echo ($view === 'personal') ? 'active' : ''; ?>">👤 個人</a>
             <?php if ($isAdmin): ?>
                 <a href="?view=admin" class="nav-tab <?php echo ($view === 'admin') ? 'active' : ''; ?>" style="background:<?php echo ($view === 'admin') ? '#c82333' : '#6c757d'; ?>;color:#fff;">🛡️ 檢舉管理</a>
@@ -1724,6 +1782,107 @@ if ($view === 'personal') {
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+        <?php elseif ($view === 'following'): ?>
+        <!-- ── 追蹤中 ── -->
+        <style>
+        .following-user-card {
+            display:flex; align-items:center; gap:14px;
+            background:#fff; border-radius:14px; padding:14px 18px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:10px;
+        }
+        .following-avatar {
+            width:44px; height:44px; border-radius:50%;
+            background:linear-gradient(135deg,#ff5a7e,#ff3a6f);
+            display:flex; align-items:center; justify-content:center;
+            color:#fff; font-weight:700; font-size:18px; flex-shrink:0;
+        }
+        .follow-btn {
+            margin-left:auto; padding:6px 16px; border-radius:20px;
+            border:none; font-size:13px; font-weight:600; cursor:pointer;
+            transition:all .2s;
+        }
+        .follow-btn.following { background:#f0e8e8; color:#c47a8a; }
+        .follow-btn.following:hover { background:#e83e5a; color:#fff; }
+        .follow-btn.not-following { background:#e83e5a; color:#fff; }
+        .follow-btn.not-following:hover { background:#c82333; }
+        </style>
+
+        <!-- 追蹤的人列表 -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+            <h2 style="font-size:18px;font-weight:700;color:#1c1c1e;margin:0;">👥 我追蹤的人</h2>
+            <span style="font-size:13px;color:#8e8e93;"><?php echo count($followingUsers); ?> 人</span>
+        </div>
+
+        <?php if (empty($followingUsers)): ?>
+            <div class="empty-state" style="margin-bottom:36px;">
+                <div class="empty-icon">👤</div>
+                <div class="empty-text">還沒有追蹤任何人</div>
+                <p style="color:#aaa;">去主頁點擊影片作者的「追蹤」按鈕吧！</p>
+            </div>
+        <?php else: ?>
+            <div style="margin-bottom:32px;">
+                <?php foreach ($followingUsers as $fu): ?>
+                <div class="following-user-card">
+                    <div class="following-avatar"><?php echo mb_strtoupper(mb_substr($fu['following'],0,1)); ?></div>
+                    <div>
+                        <div style="font-weight:700;font-size:14px;color:#1c1c1e;"><?php echo htmlspecialchars($fu['following']); ?></div>
+                        <div style="font-size:12px;color:#8e8e93;">共 <?php echo (int)$fu['video_count']; ?> 支影片 · 追蹤於 <?php echo date('m/d', strtotime($fu['created_at'])); ?></div>
+                    </div>
+                    <button class="follow-btn following"
+                            onclick="toggleFollow('<?php echo htmlspecialchars(addslashes($fu['following'])); ?>', this)">
+                        ✓ 追蹤中
+                    </button>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- 追蹤的人的影片 -->
+        <h2 style="font-size:18px;font-weight:700;color:#1c1c1e;margin-bottom:16px;">🎬 追蹤的人的影片</h2>
+        <?php if (empty($videos)): ?>
+            <div class="empty-state">
+                <div class="empty-icon">📹</div>
+                <div class="empty-text">追蹤的人還沒有上傳影片</div>
+            </div>
+        <?php else: ?>
+            <div class="video-grid">
+                <?php foreach ($videos as $video): ?>
+                    <div class="video-card"
+                         data-video-id="<?php echo $video['id']; ?>"
+                         data-title="<?php echo htmlspecialchars($video['title']); ?>"
+                         data-author="<?php echo htmlspecialchars($video['uploaded_by']); ?>"
+                         data-time="<?php echo date('Y年m月d日', strtotime($video['upload_time'])); ?>"
+                         data-likes="<?php echo $video['likes']; ?>"
+                         data-is-liked="<?php echo $video['is_liked']; ?>"
+                         data-description="<?php echo htmlspecialchars($video['description'] ?? ''); ?>"
+                         data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>"
+                         onclick="openVideoDetail(<?php echo (int)$video['id']; ?>)">
+                        <div class="video-player">
+                            <video playsinline muted preload="metadata">
+                                <source src="<?php echo htmlspecialchars($video['file_path']); ?>" type="video/mp4">
+                            </video>
+                            <div class="play-icon"></div>
+                        </div>
+                        <div class="vc-info">
+                            <div class="vc-title"><?php echo htmlspecialchars($video['title']); ?></div>
+                            <?php if (!empty($video['tags'])): ?>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+                                <?php foreach(array_slice(explode(',', $video['tags']), 0, 3) as $tag): $tag=trim($tag); if(!$tag) continue; ?>
+                                <a href="?view=home&tag=<?php echo urlencode($tag);?>" onclick="event.stopPropagation();"
+                                   style="font-size:11px;background:#fdeaee;color:#e83e5a;border-radius:10px;padding:2px 8px;text-decoration:none;">#<?php echo htmlspecialchars($tag);?></a>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+                            <div class="vc-footer">
+                                <span class="vc-author"><?php echo htmlspecialchars($video['uploaded_by']); ?></span>
+                                <span class="vc-likes">❤️ <?php echo (int)$video['likes']; ?></span>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
         <?php elseif ($view === 'admin' && $isAdmin): ?>
             <style>
                 .report-mgr-table { width:100%; border-collapse:collapse; font-size:14px; }
@@ -1841,7 +2000,7 @@ if ($view === 'personal') {
                            value="<?php echo $activeTag ? '#'.htmlspecialchars($activeTag) : ''; ?>"
                            style="flex:1;border:1.5px solid #ffd6de;border-radius:20px;padding:7px 14px;font-size:13px;outline:none;color:#333;"
                            onfocus="this.style.borderColor='#e83e5a'" onblur="this.style.borderColor='#ffd6de'">
-                    <button type="submit" style="background:#e83e5a;color:white;border:none;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">搜尋</button>
+                    <button type="submit" style="background:#e83e5a;color:white;border:none;border-radius:20px;padding:7px 24px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">搜尋</button>
                 </form>
                 <a href="?view=personal" style="display:inline-flex;align-items:center;gap:6px;background:#e83e5a;color:#fff;padding:9px 18px;border-radius:20px;text-decoration:none;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(232,62,90,0.3);">
                     + 上傳影片
@@ -1919,14 +2078,19 @@ if ($view === 'personal') {
             <div class="video-detail-info">
                 <div class="video-detail-title"></div>
                 <div class="video-detail-meta">
-                    <div class="video-detail-author"></div>
+                    <div class="video-detail-author" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:8px;"></div>
+                        <?php if ($isLoggedIn): ?>
+                        <button id="detailFollowBtn" class="follow-btn" style="display:none;" onclick="toggleFollow('', this)">+ 追蹤</button>
+                        <?php endif; ?>
+                    </div>
                     <div class="video-detail-time"></div>
                     <div class="video-detail-likes"></div>
                 </div>
                 <div class="video-detail-actions">
                     <button class="video-detail-like-btn" onclick="toggleLike()">🤍 讚</button>
-                    <button class="share-btn" onclick="shareVideo()">🔗 分享</button>
-                    <button class="report-trigger-btn" onclick="toggleReportForm()">🚩 檢舉</button>
+                    <button class="share-btn" onclick="shareVideo()"><span style="font-size:13px;">🔗</span> 分享</button>
+                    <button class="report-trigger-btn" onclick="toggleReportForm()"><span style="font-size:13px;">🚩</span> 檢舉</button>
                 </div>
                 <div id="reportForm" class="report-form">
                     <div>
@@ -2083,17 +2247,30 @@ if ($view === 'personal') {
 
                 const overlay = document.getElementById('videoDetailOverlay');
                 overlay.querySelector('.video-detail-title').textContent = title;
-                overlay.querySelector('.video-detail-author').innerHTML = `
-                    <div class="video-detail-avatar">${author.charAt(0).toUpperCase()}</div>
-                    <span>${author}</span>
-                `;
+                const authorMeta = overlay.querySelector('.video-detail-author');
+                const authorInner = authorMeta.querySelector('div');
+                authorInner.innerHTML = `<div class="video-detail-avatar">${author.charAt(0).toUpperCase()}</div><span>${author}</span>`;
+                const followBtn = document.getElementById('detailFollowBtn');
+                if (followBtn) {
+                    const currentUser = <?php echo json_encode($_SESSION['user'] ?? null); ?>;
+                    if (author && author !== currentUser) {
+                        const myFollowings = <?php echo json_encode(array_values($myFollowings)); ?>;
+                        const isFollowing = myFollowings.includes(author);
+                        followBtn.style.display = '';
+                        followBtn.textContent = isFollowing ? '✓ 追蹤中' : '+ 追蹤';
+                        followBtn.className = 'follow-btn ' + (isFollowing ? 'following' : 'not-following');
+                        followBtn.onclick = function() { toggleFollow(author, this); };
+                    } else {
+                        followBtn.style.display = 'none';
+                    }
+                }
                 overlay.querySelector('.video-detail-time').textContent = time;
                 overlay.querySelector('.video-detail-likes').textContent = likes + ' 讚';
                 overlay.querySelector('.video-detail-description').textContent = description || '無描述';
                 
                 const likeBtn = overlay.querySelector('.video-detail-like-btn');
                 likeBtn.className = 'video-detail-like-btn' + (isLiked ? ' liked' : '');
-                likeBtn.innerHTML = isLiked ? '❤️ 已讚' : '🤍 讚';
+                likeBtn.innerHTML = isLiked ? '<span style="font-size:13px;">❤️</span> 已讚' : '<span style="font-size:13px;">🤍</span> 讚';
                 likeBtn.onclick = function() { toggleLike(videoId); };
 
                 const video = overlay.querySelector('.video-detail-player video');
@@ -2376,15 +2553,34 @@ if ($view === 'personal') {
         .then(data => {
             if (data.success) {
                 input.value = '';
+                showCommentError('');
                 loadComments();
             } else {
-                alert(data.message || '發表評論失敗');
+                showCommentError(data.message || '發表評論失敗', data.blocked);
             }
         })
         .catch(error => {
             console.error('提交評論失敗:', error);
-            alert('網路連線失敗');
+            showCommentError('網路連線失敗');
         });
+    }
+
+    function showCommentError(msg, isBlocked) {
+        var el = document.getElementById('commentErrorMsg');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'commentErrorMsg';
+            el.style.cssText = 'font-size:12px;padding:7px 12px;border-radius:8px;margin-top:6px;display:none;';
+            var form = document.querySelector('.comment-form');
+            if (form) form.insertAdjacentElement('afterend', el);
+        }
+        if (!msg) { el.style.display = 'none'; return; }
+        el.style.display = 'block';
+        el.style.background = isBlocked ? 'rgba(220,53,69,0.15)' : 'rgba(255,200,0,0.15)';
+        el.style.color      = isBlocked ? '#ff6b7a' : '#ffc107';
+        el.style.border     = isBlocked ? '1px solid rgba(220,53,69,0.35)' : '1px solid rgba(255,200,0,0.35)';
+        el.textContent = isBlocked ? '🚫 ' + msg : '⚠️ ' + msg;
+        setTimeout(function(){ el.style.display = 'none'; }, 4000);
     }
 
     function submitReply(parentId) {
@@ -2417,12 +2613,26 @@ if ($view === 'personal') {
                 loadComments();
                 toggleReplyForm(parentId);
             } else {
-                alert(data.message || '發表回覆失敗');
+                // 顯示在回覆輸入框下方
+                var replyForm = document.getElementById(`replyForm-${parentId}`);
+                var errEl = replyForm ? replyForm.querySelector('.reply-err') : null;
+                if (replyForm && !errEl) {
+                    errEl = document.createElement('div');
+                    errEl.className = 'reply-err';
+                    errEl.style.cssText = 'font-size:11px;padding:5px 8px;border-radius:6px;margin-top:4px;';
+                    replyForm.appendChild(errEl);
+                }
+                if (errEl) {
+                    var isBlocked = data.blocked;
+                    errEl.style.background = isBlocked ? 'rgba(220,53,69,0.15)' : 'rgba(255,200,0,0.15)';
+                    errEl.style.color      = isBlocked ? '#ff6b7a' : '#ffc107';
+                    errEl.textContent      = (isBlocked ? '🚫 ' : '⚠️ ') + (data.message || '發表回覆失敗');
+                    setTimeout(function(){ errEl.textContent = ''; }, 4000);
+                }
             }
         })
         .catch(error => {
             console.error('提交回覆失敗:', error);
-            alert('網路連線失敗');
         });
     }
 
@@ -2563,6 +2773,29 @@ if ($view === 'personal') {
             nextVideo();
         }
     });
+
+    async function toggleFollow(username, btn) {
+        var form = new FormData();
+        form.append('toggle_follow', '1');
+        form.append('target_user', username);
+        try {
+            var res = await fetch('video.php', { method: 'POST', body: form });
+            var data = await res.json();
+            if (data.success) {
+                if (data.action === 'unfollowed') {
+                    btn.textContent = '+ 追蹤';
+                    btn.className = 'follow-btn not-following';
+                    btn.onclick = function() { toggleFollow(username, this); };
+                } else {
+                    btn.textContent = '✓ 追蹤中';
+                    btn.className = 'follow-btn following';
+                    btn.onclick = function() { toggleFollow(username, this); };
+                }
+            }
+        } catch(e) {
+            console.error('追蹤操作失敗', e);
+        }
+    }
 </script>
 
 <script>

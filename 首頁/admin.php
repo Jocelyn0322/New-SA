@@ -259,23 +259,65 @@ if ($tab === 'stats') {
 }
 
 if ($tab === 'videos') {
-    $search = trim($_GET['q'] ?? '');
-    $sql = "
-        SELECT v.id, v.title, v.uploaded_by, v.upload_time,
+    $search    = trim($_GET['q']    ?? '');
+    $catFilter = trim($_GET['cat']  ?? '');
+    $sortMode  = trim($_GET['sort'] ?? '');
+    $vPage     = max(1, (int)($_GET['p'] ?? 1));
+    $vPerPage  = 5;
+    $vOffset   = ($vPage - 1) * $vPerPage;
+
+    try {
+        $vCategories = $pdo->query("SELECT DISTINCT tags FROM videos WHERE is_active = 1 AND tags IS NOT NULL AND tags != '' ORDER BY tags")->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) { $vCategories = []; }
+
+    $where  = "WHERE v.is_active = 1";
+    $params = [];
+    if ($search !== '') {
+        $where .= " AND (v.title ILIKE ? OR v.uploaded_by ILIKE ?)";
+        $params[] = "%{$search}%";
+        $params[] = "%{$search}%";
+    }
+    if ($catFilter !== '') {
+        $where .= " AND v.tags = ?";
+        $params[] = $catFilter;
+    }
+    if ($sortMode === 'week') {
+        $where .= " AND v.upload_time >= NOW() - INTERVAL '7 days'";
+    }
+    $orderBy = $sortMode === 'views'
+        ? "ORDER BY v.view_count DESC, v.upload_time DESC"
+        : "ORDER BY v.upload_time DESC";
+
+    $baseSql = "
+        SELECT v.id, v.title, v.uploaded_by, v.upload_time, v.file_path,
+               COALESCE(v.view_count, 0) AS view_count,
+               COALESCE(v.tags, '')      AS category,
                COUNT(DISTINCT r.id) AS report_count,
                COUNT(DISTINCT c.id) AS comment_count
         FROM videos v
         LEFT JOIN video_reports r ON v.id = r.video_id AND r.status = 'pending'
         LEFT JOIN video_comments c ON v.id = c.video_id
-        WHERE v.is_active = 1
+        {$where}
+        GROUP BY v.id
     ";
-    if ($search !== '') {
-        $s = $pdo->prepare($sql . " AND (v.title LIKE ? OR v.uploaded_by LIKE ?) GROUP BY v.id ORDER BY v.upload_time DESC");
-        $s->execute(["%{$search}%", "%{$search}%"]);
+    $cntSql = "SELECT COUNT(*) FROM (
+        SELECT v.id FROM videos v
+        LEFT JOIN video_reports r ON v.id = r.video_id AND r.status = 'pending'
+        LEFT JOIN video_comments c ON v.id = c.video_id
+        {$where} GROUP BY v.id
+    ) _cnt";
+
+    if ($params) {
+        $cntStmt = $pdo->prepare($cntSql); $cntStmt->execute($params);
+        $vTotal  = (int)$cntStmt->fetchColumn();
+        $mainStmt = $pdo->prepare($baseSql . " {$orderBy} LIMIT {$vPerPage} OFFSET {$vOffset}");
+        $mainStmt->execute($params);
+        $allVideos = $mainStmt->fetchAll();
     } else {
-        $s = $pdo->query($sql . " GROUP BY v.id ORDER BY v.upload_time DESC");
+        $vTotal    = (int)$pdo->query($cntSql)->fetchColumn();
+        $allVideos = $pdo->query($baseSql . " {$orderBy} LIMIT {$vPerPage} OFFSET {$vOffset}")->fetchAll();
     }
-    $allVideos = $s->fetchAll();
+    $vPages = (int)ceil($vTotal / $vPerPage);
 }
 
 if ($tab === 'users') {
@@ -360,129 +402,280 @@ if ($tab === 'comments') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>管理後台</title>
-@import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-tc-webfont@latest/style.css');
+<title>COSMETIC — 管理後台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif; background: #f5f0f0; color: #3a2a2a; font-size: 15px; }
+:root {
+  --sidebar-w: 220px;
+  --topbar-h: 58px;
+  --sidebar-bg: #1e1b2e;
+  --sidebar-hover: #2a2640;
+  --sidebar-active: #3d3660;
+  --accent: #c26b7c;
+  --accent-light: #f9cfd8;
+  --text-main: #1a1a2e;
+  --text-2: #555;
+  --text-3: #888;
+  --bg: #f4f3f8;
+  --card: #fff;
+  --border: #e8e6f0;
+  --r: 10px;
+  --r-lg: 14px;
+  --shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text-main); font-size: 14px; display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--sidebar-bg); position: fixed; top: 0; left: 0; z-index: 100; display: flex; flex-direction: column; box-shadow: 4px 0 20px rgba(0,0,0,.25); }
+.sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.sidebar-logo-main { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+.sidebar-logo-sub { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; }
+.sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+.nav-group-label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,.3); padding: 12px 20px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; transition: background .15s; color: rgba(255,255,255,.65); font-size: 13.5px; text-decoration: none; position: relative; }
+.nav-item:hover { background: var(--sidebar-hover); color: #fff; }
+.nav-item.active { background: var(--sidebar-active); color: #fff; }
+.nav-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); border-radius: 0 2px 2px 0; }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; min-width: 20px; text-align: center; }
+.nav-badge.warn { background: #f0a500; }
+.sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 10px; }
+.sidebar-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; font-weight: 700; flex-shrink: 0; }
+.sidebar-user-name { font-size: 13px; font-weight: 600; color: #fff; }
+.sidebar-user-role { font-size: 11px; color: rgba(255,255,255,.4); }
+
+/* ── Main ── */
+.main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
 
 /* ── Topbar ── */
-.adm-topbar {
-    background: #fff;
-    border-bottom: 1px solid #f0e8e8;
-    padding: 0 32px; height: 60px;
-    display: flex; align-items: center; justify-content: space-between;
-    box-shadow: 0 1px 6px rgba(180,100,110,0.07);
-}
-.adm-topbar-logo { font-size: 17px; font-weight: 700; color: #c47a8a; letter-spacing: .5px; }
-.adm-topbar-right { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9a8080; }
-.adm-topbar-right a { color: #7a6060; text-decoration: none; padding: 7px 14px; border-radius: 8px; transition: background 0.2s; font-weight: 500; }
-.adm-topbar-right a:hover { background: #f5eeee; color: #c47a8a; }
-.logout-btn { color: #c47a8a !important; border: 1px solid #ecd8da !important; }
-.logout-btn:hover { background: #fdf0f1 !important; }
-
-/* ── Tabs ── */
-.adm-tabs { background: #fff; border-bottom: 1px solid #f0e8e8; padding: 0 32px; display: flex; gap: 2px; }
-.adm-tab { display: inline-block; padding: 15px 18px; text-decoration: none; color: #9a8080; font-size: 13px; font-weight: 600; border-bottom: 2.5px solid transparent; transition: all 0.2s; letter-spacing: .2px; }
-.adm-tab:hover { color: #c47a8a; }
-.adm-tab.active { color: #c47a8a; border-bottom-color: #c47a8a; }
+.topbar { height: var(--topbar-h); background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; display: flex; align-items: center; padding: 0 28px; box-shadow: 0 1px 4px rgba(0,0,0,.06); gap: 16px; }
+.topbar-title { font-size: 17px; font-weight: 700; }
+.topbar-breadcrumb { font-size: 13px; color: var(--text-3); }
+.topbar-spacer { flex: 1; }
+.topbar-btn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); font-size: 13px; cursor: pointer; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: background .15s; }
+.topbar-btn:hover { background: var(--bg); }
+.topbar-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.topbar-btn.primary:hover { background: #b05c6c; }
 
 /* ── Content ── */
-.adm-content { max-width: 1160px; margin: 28px auto; padding: 0 24px; }
-.adm-msg { padding: 13px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; font-weight: 500; }
+.content { padding: 28px; flex: 1; }
+
+/* ── Flash message ── */
+.adm-msg { padding: 13px 18px; border-radius: var(--r); margin-bottom: 20px; font-size: 13px; font-weight: 500; }
 .adm-msg.success { background: #eef7f1; color: #4a8a62; border-left: 3px solid #7aba96; }
 .adm-msg.error   { background: #fdf0f0; color: #a05050; border-left: 3px solid #d08888; }
 
 /* ── Stat cards ── */
-.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-@media(max-width:800px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
-.stat-card { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 2px 10px rgba(180,100,110,0.07); display: flex; align-items: center; gap: 16px; border: 1px solid #f5eeee; }
-.stat-icon { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+@media(max-width:900px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
+.stat-card { background: var(--card); border-radius: var(--r-lg); padding: 20px 22px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 16px; border: 1px solid var(--border); }
+.stat-icon { width: 44px; height: 44px; border-radius: var(--r); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
 .stat-body { min-width: 0; }
-.stat-num { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-.stat-label { font-size: 12px; color: #b09090; font-weight: 500; letter-spacing: .2px; white-space: nowrap; }
+.stat-num { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.stat-label { font-size: 12px; color: var(--text-3); font-weight: 500; white-space: nowrap; }
 
 /* ── Section title ── */
-.section-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #3a2a2a; letter-spacing: .3px; }
+.section-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; letter-spacing: .2px; }
 
 /* ── Table ── */
-.adm-table-wrap { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(180,100,110,0.06); overflow: hidden; border: 1px solid #f5eeee; }
+.adm-table-wrap { background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow); overflow: hidden; border: 1px solid var(--border); }
 .adm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.adm-table th { background: #fdf8f8; padding: 12px 16px; text-align: left; font-weight: 600; color: #9a7878; border-bottom: 1px solid #f0e8e8; font-size: 12px; letter-spacing: .3px; }
-.adm-table td { padding: 12px 16px; border-bottom: 1px solid #f8f0f0; vertical-align: middle; color: #4a3535; }
+.adm-table th { background: #faf9fc; padding: 11px 16px; text-align: left; font-weight: 600; color: var(--text-3); border-bottom: 1px solid var(--border); font-size: 12px; letter-spacing: .4px; text-transform: uppercase; }
+.adm-table td { padding: 12px 16px; border-bottom: 1px solid #f0eef8; vertical-align: middle; }
 .adm-table tbody tr:last-child td { border-bottom: none; }
-.adm-table tbody tr:hover { background: #fdf8f8; }
+.adm-table tbody tr:hover td { background: #fdf9fb; }
 
 /* ── Buttons ── */
-.btn-del  { background: #f0e0e0; color: #a05050; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
-.btn-del:hover { background: #c47878; color: #fff; }
-.btn-role { background: #ece8f0; color: #6a5a80; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
-.btn-role:hover { background: #8a78a8; color: #fff; }
-.btn-role.is-admin { background: #dceaf8; color: #3a6a9a; }
-.btn-role.is-admin:hover { background: #5a8ab8; color: #fff; }
-.btn-ok { background: #e0f0e8; color: #4a8060; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
-.btn-ok:hover { background: #6aaa84; color: #fff; }
+.btn-del  { background: #fee2e2; color: #991b1b; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+.btn-del:hover  { background: #dc2626; color: #fff; }
+.btn-role { background: #ede9fe; color: #5b21b6; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+.btn-role:hover { background: #7c3aed; color: #fff; }
+.btn-role.is-admin { background: #dbeafe; color: #1d4ed8; }
+.btn-role.is-admin:hover { background: #2563eb; color: #fff; }
+.btn-ok { background: #d1fae5; color: #065f46; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+.btn-ok:hover { background: #059669; color: #fff; }
+.btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* ── Search ── */
 .search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
-.search-bar input { flex: 1; padding: 10px 14px; border: 1.5px solid #f0e4e4; border-radius: 10px; font-size: 13px; font-family: inherit; color: #4a3535; outline: none; transition: border .2s; background: #fff; }
-.search-bar input:focus { border-color: #d4a0a8; }
-.search-bar button { padding: 10px 22px; background: #c47a8a; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: background .2s; }
-.search-bar button:hover { background: #a85e70; }
+.search-bar input { flex: 1; padding: 9px 14px; border: 1px solid var(--border); border-radius: var(--r); font-size: 13px; font-family: inherit; color: var(--text-main); outline: none; transition: border .15s; background: var(--card); }
+.search-bar input:focus { border-color: var(--accent); }
+.search-bar button { padding: 9px 22px; background: var(--accent); color: #fff; border: none; border-radius: var(--r); cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: opacity .15s; }
+.search-bar button:hover { opacity: .88; }
 
 /* ── Badges ── */
-.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .2px; }
-.badge-admin { background: #dceaf8; color: #3a6090; }
-.badge-user  { background: #f0ecec; color: #7a6060; }
-.badge-ok    { background: #e0f0e8; color: #4a8060; }
-.badge-no    { background: #f8e8e8; color: #a05050; }
-.badge-warn  { background: #fdf3e0; color: #9a7030; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .2px; }
+.badge-admin { background: #dbeafe; color: #1d4ed8; }
+.badge-user  { background: #f1f5f9; color: #475569; border: 1px solid var(--border); }
+.badge-ok    { background: #d1fae5; color: #065f46; }
+.badge-no    { background: #fee2e2; color: #991b1b; }
+.badge-warn  { background: #ffedd5; color: #9a3412; }
 
 /* ── Empty state ── */
-.adm-empty { text-align: center; padding: 50px 20px; color: #c8b0b0; }
-.adm-empty-icon { font-size: 38px; margin-bottom: 12px; }
+.adm-empty { text-align: center; padding: 60px 20px; color: var(--text-3); }
+.adm-empty-icon { font-size: 42px; margin-bottom: 12px; }
 
 /* ── Report detail ── */
-.report-detail { background: #fdf8f8; padding: 14px 16px; margin-top: 8px; border-radius: 10px; border: 1px solid #f0e4e4; font-size: 13px; }
-.report-detail-item { padding: 8px 0; border-bottom: 1px solid #f5eaea; }
+.report-detail { background: #faf9fc; padding: 14px 16px; margin-top: 8px; border-radius: var(--r); border: 1px solid var(--border); font-size: 13px; }
+.report-detail-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .report-detail-item:last-child { border-bottom: none; }
 
 /* ── Comment ── */
 .comment-content { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+/* ── Section Header ── */
+.sec-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.sec-title { font-size: 20px; font-weight: 700; }
+.sec-subtitle { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+.sec-header-spacer { flex: 1; }
+
+/* ── Card ── */
+.card { background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+.card-header { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.card-header-title { font-size: 15px; font-weight: 700; }
+.card-header-spacer { flex: 1; }
+
+/* ── Filter Bar ── */
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 22px; border-bottom: 1px solid var(--border); background: #faf9fc; }
+.filter-input { height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: var(--card); color: var(--text-main); min-width: 180px; font-family: inherit; }
+.filter-input:focus { border-color: var(--accent); }
+.filter-select { height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: var(--card); color: var(--text-main); cursor: pointer; }
+.filter-btn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); font-size: 13px; cursor: pointer; color: var(--text-2); transition: background .15s; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; }
+.filter-btn:hover { background: var(--bg); }
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Table wrap inside card ── */
+.table-wrap { overflow-x: auto; }
+
+/* ── Pagination ── */
+.pagination { display: flex; align-items: center; gap: 6px; padding: 14px 22px; border-top: 1px solid var(--border); }
+.page-info { font-size: 13px; color: var(--text-3); margin-right: auto; }
+.page-btn { width: 32px; height: 32px; border-radius: 7px; border: 1px solid var(--border); background: var(--card); font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; text-decoration: none; color: var(--text-main); font-family: inherit; }
+.page-btn:hover { background: var(--bg); }
+.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Summary Row ── */
+.summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.summary-mini { background: var(--card); border-radius: var(--r); border: 1px solid var(--border); padding: 16px 20px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow); }
+.summary-mini-icon { font-size: 24px; }
+.summary-mini-num { font-size: 22px; font-weight: 700; }
+.summary-mini-label { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+/* ── Report Cards (video reports) ── */
+.report-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.report-card { background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+.report-card-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.report-card-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.report-card-meta { font-size: 12px; color: var(--text-3); }
+.report-card-details { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; }
+.report-detail-row { background: #faf9fc; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+.report-card-actions { padding: 12px 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Act Buttons ── */
+.act-btn { height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); font-size: 12px; cursor: pointer; color: var(--text-2); transition: all .15s; display: inline-flex; align-items: center; gap: 5px; font-family: inherit; text-decoration: none; white-space: nowrap; }
+.act-btn:hover { background: var(--bg); }
+.act-btn.danger { border-color: #fca5a5; color: #dc2626; }
+.act-btn.danger:hover { background: #fee2e2; }
+.act-btn.success { border-color: #6ee7b7; color: #059669; }
+.act-btn.success:hover { background: #d1fae5; }
+.act-btn.neutral { border-color: #93c5fd; color: #2563eb; }
+.act-btn.neutral:hover { background: #dbeafe; }
+
+/* ── User avatar in table ── */
+.td-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-light); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+.td-user { display: flex; align-items: center; gap: 10px; }
+
+/* ── Extra badges ── */
+.badge-rose { background: #fce7ec; color: #9d2942; }
+.badge-blue { background: #dbeafe; color: #1d4ed8; }
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-orange { background: #ffedd5; color: #9a3412; }
+.badge-gray { background: #f1f5f9; color: #475569; }
+.badge-purple { background: #f3e8ff; color: #6b21a8; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+.badge-suspended { background: #fee2e2; color: #991b1b; }
 </style>
 </head>
 <body>
 
-<div class="adm-topbar">
-    <div class="adm-topbar-logo">Cosmetic後台</div>
-    <div class="adm-topbar-right">
-        <span>管理員：<?php echo htmlspecialchars($adminUser); ?></span>
-        <a href="/SA/New-SA/產品/index.php">← 返回網站</a>
-        <a href="logout.php" class="logout-btn">登出</a>
-    </div>
-</div>
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-main">💄 COSMETIC</div>
+    <div class="sidebar-logo-sub">管理後台</div>
+  </div>
 
-<div class="adm-tabs">
-    <a href="?tab=stats"    class="adm-tab <?php echo $tab==='stats'    ? 'active':''; ?>"> 數據總覽</a>
-    <a href="?tab=videos"   class="adm-tab <?php echo $tab==='videos'   ? 'active':''; ?>"> 影片管理</a>
-    <a href="?tab=comments" class="adm-tab <?php echo $tab==='comments' ? 'active':''; ?>"> 留言管理</a>
-    <a href="?tab=reports"  class="adm-tab <?php echo $tab==='reports'  ? 'active':''; ?>"> 檢舉管理</a>
-    <a href="/SA/New-SA/產品/report_manage.php" class="adm-tab"> 商品回報</a>
-    <a href="?tab=users"    class="adm-tab <?php echo $tab==='users'    ? 'active':''; ?>"> 會員管理</a>
-    <a href="?tab=data_products" class="adm-tab <?php echo $tab==='data_products' ? 'active':''; ?>"> 產品管理</a>
-    <a href="?tab=products" class="adm-tab <?php echo $tab==='products' ? 'active':''; ?>" style="position:relative;">
-        商品審核
-        <?php
-        $badgeCount = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status='pending'")->fetchColumn();
-        if ($badgeCount > 0): ?>
-            <span style="position:absolute;top:8px;right:4px;background:#e83e5a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;"><?php echo (int)$badgeCount; ?></span>
-        <?php endif; ?>
+  <nav class="sidebar-nav">
+    <div class="nav-group-label">概覽</div>
+    <a href="?tab=stats" class="nav-item <?php echo $tab==='stats' ? 'active':''; ?>">
+      <span class="nav-icon">📊</span> 數據統計
     </a>
-</div>
 
-<div class="adm-content">
+    <div class="nav-group-label">內容管理</div>
+    <a href="?tab=videos" class="nav-item <?php echo $tab==='videos' ? 'active':''; ?>">
+      <span class="nav-icon">🎬</span> 影片管理
+    </a>
+    <a href="?tab=comments" class="nav-item <?php echo $tab==='comments' ? 'active':''; ?>">
+      <span class="nav-icon">💬</span> 留言管理
+    </a>
+    <a href="?tab=reports" class="nav-item <?php echo $tab==='reports' ? 'active':''; ?>">
+      <span class="nav-icon">🚩</span> 檢舉管理
+    </a>
+
+    <div class="nav-group-label">產品管理</div>
+    <a href="/SA/New-SA/產品/report_manage.php" class="nav-item">
+      <span class="nav-icon">⚠️</span> 商品回報
+    </a>
+    <a href="?tab=data_products" class="nav-item <?php echo $tab==='data_products' ? 'active':''; ?>">
+      <span class="nav-icon">🗄️</span> 資料庫產品
+    </a>
+    <a href="?tab=products" class="nav-item <?php echo $tab==='products' ? 'active':''; ?>">
+      <span class="nav-icon">🛍️</span> 商品審核
+      <?php
+      $badgeCount = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status='pending'")->fetchColumn();
+      if ($badgeCount > 0): ?>
+        <span class="nav-badge warn"><?php echo (int)$badgeCount; ?></span>
+      <?php endif; ?>
+    </a>
+
+    <div class="nav-group-label">會員</div>
+    <a href="?tab=users" class="nav-item <?php echo $tab==='users' ? 'active':''; ?>">
+      <span class="nav-icon">👥</span> 使用者管理
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-avatar"><?php echo strtoupper(substr($adminUser, 0, 1)); ?></div>
+    <div>
+      <div class="sidebar-user-name"><?php echo htmlspecialchars($adminUser); ?></div>
+      <div class="sidebar-user-role">超級管理員</div>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <?php
+        $tabTitles = [
+          'stats' => '數據統計', 'videos' => '影片管理', 'comments' => '留言管理',
+          'reports' => '檢舉管理', 'data_products' => '資料庫產品',
+          'products' => '商品審核', 'users' => '使用者管理'
+        ];
+        $currentTitle = $tabTitles[$tab] ?? '管理後台';
+      ?>
+      <div class="topbar-title"><?php echo $currentTitle; ?></div>
+      <div class="topbar-breadcrumb">後台管理 / <?php echo $currentTitle; ?></div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <a href="/SA/New-SA/產品/index.php" class="topbar-btn">← 返回網站</a>
+    <a href="logout.php" class="topbar-btn primary">登出</a>
+  </div>
+
+  <div class="content">
 
 <?php if ($msg): ?>
     <div class="adm-msg <?php echo htmlspecialchars($msgType); ?>"><?php echo htmlspecialchars($msg); ?></div>
@@ -490,6 +683,16 @@ body { font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
 
 <?php if ($tab === 'stats'): ?>
 <!-- ══════════ 數據總覽 ══════════ -->
+<div class="sec-header">
+  <div>
+    <div class="sec-title">數據統計</div>
+    <div class="sec-subtitle">平台整體概覽與排名統計</div>
+  </div>
+  <div class="sec-header-spacer"></div>
+  <form method="post" onsubmit="return confirm('存入 <?php echo date('Y-m'); ?> 的排名快照？');" style="margin:0;">
+    <button type="submit" name="save_monthly_ranking" value="1" class="act-btn neutral" style="height:36px;padding:0 16px;font-size:13px;">📸 存入本月快照</button>
+  </form>
+</div>
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon" style="background:#fdeaed;">👥</div>
@@ -579,9 +782,6 @@ $medals = ['🥇','🥈','🥉'];
 
 <div class="rank-section-header">
     <div class="section-title" style="margin:0;">🏆 排名統計</div>
-    <form method="post" onsubmit="return confirm('存入 <?php echo date('Y-m'); ?> 的排名快照？');">
-        <button type="submit" name="save_monthly_ranking" value="1" class="snap-btn">📸 存入本月快照</button>
-    </form>
 </div>
 
 <div class="rank-grid">
@@ -663,261 +863,391 @@ $medals = ['🥇','🥈','🥉'];
 
 <?php elseif ($tab === 'videos'): ?>
 <!-- ══════════ 影片管理 ══════════ -->
-<form class="search-bar" method="get">
-    <input type="hidden" name="tab" value="videos">
-    <input type="text" name="q" placeholder="搜尋影片標題或上傳者..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
-    <button type="submit">搜尋</button>
-</form>
+<?php
+  $qVal  = htmlspecialchars($_GET['q']   ?? '');
+  $catVal= htmlspecialchars($_GET['cat'] ?? '');
+  $sVal  = htmlspecialchars($sortMode    ?? '');
+  function vLink($extra=''){return '?tab=videos'.$extra;}
+?>
+<div class="sec-header">
+  <div>
+    <div class="sec-title">影片管理</div>
+    <div class="sec-subtitle">管理所有使用者上傳的影片</div>
+  </div>
+</div>
 
-<?php if (empty($allVideos)): ?>
-    <div class="adm-empty"><div class="adm-empty-icon">🎬</div>找不到影片</div>
-<?php else: ?>
-    <div class="adm-table-wrap">
-        <table class="adm-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>標題</th>
-                    <th>上傳者</th>
-                    <th>上傳時間</th>
-                    <th style="text-align:center;">留言</th>
-                    <th style="text-align:center;">檢舉</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($allVideos as $v): ?>
-                    <tr>
-                        <td style="color:#aaa;">#<?php echo (int)$v['id']; ?></td>
-                        <td><?php echo htmlspecialchars($v['title']); ?></td>
-                        <td><?php echo htmlspecialchars($v['uploaded_by']); ?></td>
-                        <td><?php echo date('Y/m/d H:i', strtotime($v['upload_time'])); ?></td>
-                        <td style="text-align:center;">💬 <?php echo (int)$v['comment_count']; ?></td>
-                        <td style="text-align:center;">
-                            <?php if ($v['report_count'] > 0): ?>
-                                <span class="badge badge-warn">⚠️ <?php echo (int)$v['report_count']; ?></span>
-                            <?php else: ?>
-                                <span style="color:#ccc;">—</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <form method="post" onsubmit="return confirm('確定刪除「<?php echo htmlspecialchars(addslashes($v['title'])); ?>」？')">
-                                <input type="hidden" name="video_id" value="<?php echo (int)$v['id']; ?>">
-                                <button type="submit" name="force_delete_video" value="1" class="btn-del">🗑️ 刪除</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-title">全部影片</div>
+    <span class="badge badge-blue"><?php echo $vTotal ?? 0; ?> 部</span>
+    <div class="card-header-spacer"></div>
+  </div>
+
+  <form method="get">
+    <input type="hidden" name="tab" value="videos">
+    <?php if ($sortMode): ?><input type="hidden" name="sort" value="<?php echo $sVal; ?>"><?php endif; ?>
+    <div class="filter-bar">
+      <input class="filter-input" type="text" name="q" placeholder="🔍 搜尋影片標題或作者..." value="<?php echo $qVal; ?>" style="min-width:200px;">
+      <?php if (!empty($vCategories)): ?>
+        <select name="cat" class="filter-select" onchange="this.form.submit()">
+          <option value="">全部分類</option>
+          <?php foreach ($vCategories as $cat): ?>
+            <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo ($catFilter===$cat)?'selected':''; ?>><?php echo htmlspecialchars($cat); ?></option>
+          <?php endforeach; ?>
+        </select>
+      <?php endif; ?>
+      <button type="submit" class="filter-btn active">搜尋</button>
+      <?php if ($qVal || $catVal): ?>
+        <a href="?tab=videos<?php echo $sVal?'&sort='.$sVal:''; ?>" class="filter-btn">✕ 清除</a>
+      <?php endif; ?>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <?php $baseQ = ($qVal?'&q='.$qVal:'').($catVal?'&cat='.$catVal:''); ?>
+        <a href="?tab=videos<?php echo $baseQ; ?>" class="filter-btn <?php echo !$sortMode?'active':''; ?>">全部</a>
+        <a href="?tab=videos&sort=week<?php echo $baseQ; ?>" class="filter-btn <?php echo $sortMode==='week'?'active':''; ?>">本週新增</a>
+        <a href="?tab=videos&sort=views<?php echo $baseQ; ?>" class="filter-btn <?php echo $sortMode==='views'?'active':''; ?>">最多讀</a>
+      </div>
     </div>
-    <p style="color:#aaa;font-size:13px;margin-top:10px;">共 <?php echo count($allVideos); ?> 筆</p>
-<?php endif; ?>
+  </form>
+
+  <?php if (empty($allVideos)): ?>
+    <div class="adm-empty"><div class="adm-empty-icon">🎬</div><div>找不到影片</div></div>
+  <?php else: ?>
+    <div class="table-wrap">
+      <table class="adm-table">
+        <thead>
+          <tr>
+            <th style="width:40px;">#</th>
+            <th style="width:52px;">縮圖</th>
+            <th>標題</th>
+            <th>作者</th>
+            <th>分類</th>
+            <th style="text-align:right;">讀數</th>
+            <th style="text-align:center;">留言</th>
+            <th>上傳時間</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($allVideos as $vi => $v): ?>
+          <tr>
+            <td style="color:var(--text-3);font-size:12px;"><?php echo $vOffset + $vi + 1; ?></td>
+            <td>
+              <video width="48" height="48"
+                style="border-radius:8px;object-fit:cover;cursor:pointer;background:#f0eef8;display:block;"
+                preload="metadata" muted playsinline
+                onloadedmetadata="this.currentTime=0.1"
+                onclick='openVideoModal(<?php echo json_encode($v["file_path"]); ?>, <?php echo json_encode($v["title"]); ?>)'>
+                <source src="<?php echo htmlspecialchars($v['file_path']); ?>" type="video/mp4">
+              </video>
+            </td>
+            <td>
+              <strong><?php echo htmlspecialchars($v['title']); ?></strong>
+              <?php if ($v['report_count'] > 0): ?>
+                <span class="badge badge-orange" style="margin-left:6px;font-size:10px;">⚠️ <?php echo (int)$v['report_count']; ?></span>
+              <?php endif; ?>
+            </td>
+            <td style="color:var(--text-2);"><?php echo htmlspecialchars($v['uploaded_by']); ?></td>
+            <td>
+              <?php if ($v['category']): ?>
+                <span class="badge badge-rose"><?php echo htmlspecialchars($v['category']); ?></span>
+              <?php else: ?><span style="color:#ccc;">—</span><?php endif; ?>
+            </td>
+            <td style="text-align:right;color:var(--text-2);font-size:13px;"><?php echo number_format((int)$v['view_count']); ?></td>
+            <td style="text-align:center;color:var(--text-3);">💬 <?php echo (int)$v['comment_count']; ?></td>
+            <td style="color:var(--text-3);font-size:12px;"><?php echo date('Y-m-d', strtotime($v['upload_time'])); ?></td>
+            <td>
+              <div class="btn-group">
+                <button class="act-btn neutral" onclick='openVideoModal(<?php echo json_encode($v["file_path"]); ?>, <?php echo json_encode($v["title"]); ?>)'>👁 檢視</button>
+                <form method="post" onsubmit="return confirm('確定刪除「<?php echo htmlspecialchars(addslashes($v['title'])); ?>」？')" style="margin:0;">
+                  <input type="hidden" name="video_id" value="<?php echo (int)$v['id']; ?>">
+                  <button type="submit" name="force_delete_video" value="1" class="act-btn danger">🗑 刪除</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <?php
+      $pageQ = ($qVal?'&q='.$qVal:'').($catVal?'&cat='.$catVal:'').($sVal?'&sort='.$sVal:'');
+    ?>
+    <div class="pagination">
+      <div class="page-info">共 <?php echo $vTotal; ?> 筆，顯示第 <?php echo $vOffset+1; ?>–<?php echo min($vOffset+$vPerPage,$vTotal); ?> 筆</div>
+      <?php if ($vPage > 1): ?>
+        <a href="?tab=videos&p=<?php echo $vPage-1; ?><?php echo $pageQ; ?>" class="page-btn">‹</a>
+      <?php endif; ?>
+      <?php for ($pi=1; $pi<=$vPages; $pi++): ?>
+        <a href="?tab=videos&p=<?php echo $pi; ?><?php echo $pageQ; ?>" class="page-btn <?php echo $pi===$vPage?'active':''; ?>"><?php echo $pi; ?></a>
+      <?php endfor; ?>
+      <?php if ($vPage < $vPages): ?>
+        <a href="?tab=videos&p=<?php echo $vPage+1; ?><?php echo $pageQ; ?>" class="page-btn">›</a>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
+</div>
+
+<!-- ── 影片播放 Modal ── -->
+<div id="vModalBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:3000;align-items:center;justify-content:center;" onclick="if(event.target===this)closeVModal()">
+  <div style="background:#1a1a2e;border-radius:16px;width:92%;max-width:920px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.6);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;">
+      <div id="vModalTitle" style="font-size:15px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%;"></div>
+      <button onclick="closeVModal()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0;">✕</button>
+    </div>
+    <video id="vModalPlayer" controls style="width:100%;max-height:72vh;background:#000;display:block;">
+      <source id="vModalSrc" src="" type="video/mp4">
+    </video>
+  </div>
+</div>
+<script>
+function openVideoModal(src, title) {
+  document.getElementById('vModalSrc').src = src;
+  document.getElementById('vModalTitle').textContent = title;
+  document.getElementById('vModalPlayer').load();
+  var bg = document.getElementById('vModalBg');
+  bg.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeVModal() {
+  document.getElementById('vModalBg').style.display = 'none';
+  var p = document.getElementById('vModalPlayer');
+  p.pause();
+  document.getElementById('vModalSrc').src = '';
+  p.load();
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeVModal(); });
+</script>
 
 
 <?php elseif ($tab === 'comments'): ?>
 <!-- ══════════ 留言管理 ══════════ -->
-<form class="search-bar" method="get">
-    <input type="hidden" name="tab" value="comments">
-    <input type="text" name="q" placeholder="搜尋留言者或留言內容..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
-    <button type="submit">搜尋</button>
-</form>
+<div class="sec-header">
+  <div>
+    <div class="sec-title">留言管理</div>
+    <div class="sec-subtitle">管理影片的使用者留言，含檢舉標記</div>
+  </div>
+</div>
 
-<?php if (empty($allComments)): ?>
-    <div class="adm-empty"><div class="adm-empty-icon">💬</div>目前沒有留言</div>
-<?php else: ?>
-    <div class="adm-table-wrap">
-        <table class="adm-table">
-            <thead>
-                <tr>
-                    <th>留言者</th>
-                    <th>所屬影片</th>
-                    <th>留言內容</th>
-                    <th style="text-align:center;">檢舉</th>
-                    <th>時間</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($allComments as $c): ?>
-                    <tr <?php echo $c['report_count'] > 0 ? 'style="background:#fffbf0;"' : ''; ?>>
-                        <td><strong><?php echo htmlspecialchars($c['username']); ?></strong></td>
-                        <td style="color:#888;font-size:12px;"><?php echo htmlspecialchars($c['video_title'] ?? '（已刪除）'); ?></td>
-                        <td>
-                            <div class="comment-content" title="<?php echo htmlspecialchars($c['content']); ?>">
-                                <?php echo htmlspecialchars($c['content']); ?>
-                            </div>
-                        </td>
-                        <td style="text-align:center;">
-                            <?php if ($c['report_count'] > 0): ?>
-                                <span class="badge badge-warn">⚠️ <?php echo (int)$c['report_count']; ?></span>
-                            <?php else: ?>
-                                <span style="color:#ccc;">—</span>
-                            <?php endif; ?>
-                        </td>
-                        <td style="color:#aaa;font-size:12px;"><?php echo date('m/d H:i', strtotime($c['created_at'])); ?></td>
-                        <td>
-                            <div class="btn-group">
-                                <?php if ($c['report_count'] > 0): ?>
-                                    <form method="post">
-                                        <input type="hidden" name="comment_id" value="<?php echo (int)$c['id']; ?>">
-                                        <button type="submit" name="dismiss_comment_report" value="1" class="btn-ok">✓ 已處理</button>
-                                    </form>
-                                <?php endif; ?>
-                                <form method="post" onsubmit="return confirm('確定刪除這則留言？')">
-                                    <input type="hidden" name="comment_id" value="<?php echo (int)$c['id']; ?>">
-                                    <button type="submit" name="delete_comment" value="1" class="btn-del">🗑️ 刪除</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-title">全部留言</div>
+    <span class="badge badge-blue"><?php echo count($allComments ?? []); ?> 則</span>
+    <div class="card-header-spacer"></div>
+  </div>
+  <form method="get">
+    <input type="hidden" name="tab" value="comments">
+    <div class="filter-bar">
+      <input class="filter-input" type="text" name="q" placeholder="🔍 搜尋留言者或留言內容..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
+      <button type="submit" class="filter-btn active">搜尋</button>
+      <?php if (!empty($_GET['q'])): ?><a href="?tab=comments" class="filter-btn">✕ 清除</a><?php endif; ?>
     </div>
-    <p style="color:#aaa;font-size:13px;margin-top:10px;">共 <?php echo count($allComments); ?> 則留言</p>
-<?php endif; ?>
+  </form>
+  <?php if (empty($allComments)): ?>
+    <div class="adm-empty"><div class="adm-empty-icon">💬</div><div>目前沒有留言</div></div>
+  <?php else: ?>
+    <div class="table-wrap">
+      <table class="adm-table">
+        <thead>
+          <tr><th>留言者</th><th>所屬影片</th><th>留言內容</th><th style="text-align:center;">檢舉</th><th>時間</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          <?php foreach ($allComments as $c): ?>
+          <tr>
+            <td>
+              <div class="td-user">
+                <div class="td-avatar"><?php echo strtoupper(substr($c['username'], 0, 1)); ?></div>
+                <strong><?php echo htmlspecialchars($c['username']); ?></strong>
+              </div>
+            </td>
+            <td style="color:var(--text-3);font-size:12px;"><?php echo htmlspecialchars($c['video_title'] ?? '（已刪除）'); ?></td>
+            <td><div class="comment-content" title="<?php echo htmlspecialchars($c['content']); ?>"><?php echo htmlspecialchars($c['content']); ?></div></td>
+            <td style="text-align:center;">
+              <?php if ($c['report_count'] > 0): ?>
+                <span class="badge badge-orange">⚠️ <?php echo (int)$c['report_count']; ?></span>
+              <?php else: ?><span style="color:#ccc;">—</span><?php endif; ?>
+            </td>
+            <td style="color:var(--text-3);font-size:12px;"><?php echo date('m/d H:i', strtotime($c['created_at'])); ?></td>
+            <td>
+              <div class="btn-group">
+                <?php if ($c['report_count'] > 0): ?>
+                  <form method="post" style="margin:0;">
+                    <input type="hidden" name="comment_id" value="<?php echo (int)$c['id']; ?>">
+                    <button type="submit" name="dismiss_comment_report" value="1" class="act-btn success">✓ 已處理</button>
+                  </form>
+                <?php endif; ?>
+                <form method="post" onsubmit="return confirm('確定刪除這則留言？')" style="margin:0;">
+                  <input type="hidden" name="comment_id" value="<?php echo (int)$c['id']; ?>">
+                  <button type="submit" name="delete_comment" value="1" class="act-btn danger">🗑 刪除</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <div class="page-info">共 <?php echo count($allComments); ?> 則留言</div>
+    </div>
+  <?php endif; ?>
+</div>
 
 
 <?php elseif ($tab === 'reports'): ?>
 <!-- ══════════ 檢舉管理 ══════════ -->
+<?php $totalReportCount = array_sum(array_column($reportedVideos ?? [], 'report_count')); ?>
+<div class="sec-header">
+  <div>
+    <div class="sec-title">檢舉管理</div>
+    <div class="sec-subtitle">使用者檢舉的影片，請審核並決定處置</div>
+  </div>
+  <div class="sec-header-spacer"></div>
+  <?php if (!empty($reportedVideos)): ?>
+    <span class="badge badge-orange" style="font-size:13px;padding:6px 14px;align-self:center;">⚠️ <?php echo count($reportedVideos); ?> 部影片待審核</span>
+  <?php endif; ?>
+</div>
+
+<div class="summary-row">
+  <div class="summary-mini"><div class="summary-mini-icon">⏳</div><div><div class="summary-mini-num"><?php echo count($reportedVideos ?? []); ?></div><div class="summary-mini-label">待審核影片</div></div></div>
+  <div class="summary-mini"><div class="summary-mini-icon">🚩</div><div><div class="summary-mini-num"><?php echo $totalReportCount; ?></div><div class="summary-mini-label">總檢舉件數</div></div></div>
+  <div class="summary-mini"><div class="summary-mini-icon">📋</div><div><div class="summary-mini-num"><?php echo max(0, count($reportedVideos ?? []) > 0 ? $totalReportCount : 0); ?></div><div class="summary-mini-label">需要關注</div></div></div>
+</div>
+
 <?php if (empty($reportedVideos)): ?>
-    <div class="adm-empty"><div class="adm-empty-icon">✅</div>目前沒有待處理的檢舉</div>
+  <div class="adm-empty"><div class="adm-empty-icon">✅</div><div style="font-size:15px;font-weight:600;margin-bottom:6px;">目前沒有待處理的檢舉</div></div>
 <?php else: ?>
-    <?php foreach ($reportedVideos as $rv): ?>
-        <div class="adm-table-wrap" style="margin-bottom:20px;">
-            <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                <div>
-                    <div style="font-weight:700;font-size:15px;">
-                        <?php echo htmlspecialchars($rv['title']); ?>
-                        <span class="badge badge-warn" style="margin-left:8px;">⚠️ <?php echo (int)$rv['report_count']; ?> 件檢舉</span>
-                    </div>
-                    <div style="color:#888;font-size:12px;margin-top:4px;">
-                        上傳者：<?php echo htmlspecialchars($rv['uploaded_by']); ?> &nbsp;·&nbsp;
-                        最後檢舉：<?php echo date('m/d H:i', strtotime($rv['last_reported_at'])); ?>
-                    </div>
-                </div>
-                <div class="btn-group">
-                    <a href="video.php?video=<?php echo (int)$rv['id']; ?>" target="_blank" style="background:#6c757d;color:#fff;border-radius:6px;padding:7px 12px;font-size:12px;text-decoration:none;">▶ 查看影片</a>
-                    <form method="post" style="display:inline;">
-                        <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
-                        <button type="submit" name="dismiss_report" value="1" class="btn-ok">✓ 標記已處理</button>
-                    </form>
-                    <form method="post" style="display:inline;" onsubmit="return confirm('確定強制刪除這部影片？')">
-                        <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
-                        <input type="hidden" name="from_reports" value="1">
-                        <button type="submit" name="force_delete_video" value="1" class="btn-del">🗑️ 強制刪除</button>
-                    </form>
-                </div>
-            </div>
-            <?php if (!empty($detailsByVideo[$rv['id']])): ?>
-                <div style="padding:12px 20px;">
-                    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:10px;">檢舉明細</div>
-                    <?php foreach ($detailsByVideo[$rv['id']] as $d): ?>
-                        <div class="report-detail-item">
-                            <span style="font-weight:600;color:#333;"><?php echo htmlspecialchars($d['reported_by']); ?></span>
-                            <span class="badge badge-warn" style="margin:0 8px;"><?php echo htmlspecialchars($d['reason']); ?></span>
-                            <span style="color:#555;"><?php echo htmlspecialchars($d['description']); ?></span>
-                            <span style="color:#bbb;font-size:11px;margin-left:8px;"><?php echo date('m/d H:i', strtotime($d['created_at'])); ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+  <div class="report-card-grid">
+  <?php foreach ($reportedVideos as $rv): ?>
+    <div class="report-card">
+      <div class="report-card-head">
+        <div style="flex:1;min-width:0;">
+          <div class="report-card-title"><?php echo htmlspecialchars($rv['title']); ?></div>
+          <div class="report-card-meta">上傳者：<?php echo htmlspecialchars($rv['uploaded_by']); ?> · 最後檢舉：<?php echo date('m/d H:i', strtotime($rv['last_reported_at'])); ?></div>
         </div>
-    <?php endforeach; ?>
+        <span class="badge badge-orange" style="flex-shrink:0;"><?php echo (int)$rv['report_count']; ?> 件</span>
+      </div>
+      <?php if (!empty($detailsByVideo[$rv['id']])): ?>
+        <div class="report-card-details">
+          <?php foreach ($detailsByVideo[$rv['id']] as $d): ?>
+            <div class="report-detail-row">
+              <strong><?php echo htmlspecialchars($d['reported_by']); ?></strong>
+              <span class="badge badge-orange" style="margin:0 6px;"><?php echo htmlspecialchars($d['reason']); ?></span>
+              <?php if ($d['description']): ?><span style="color:var(--text-2);"><?php echo htmlspecialchars($d['description']); ?></span><?php endif; ?>
+              <span style="color:var(--text-3);font-size:11px;float:right;"><?php echo date('m/d H:i', strtotime($d['created_at'])); ?></span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+      <div class="report-card-actions">
+        <a href="video.php?video=<?php echo (int)$rv['id']; ?>" target="_blank" class="act-btn neutral">▶ 查看</a>
+        <form method="post" style="margin:0;">
+          <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
+          <button type="submit" name="dismiss_report" value="1" class="act-btn success">✓ 標記已處理</button>
+        </form>
+        <form method="post" onsubmit="return confirm('確定強制刪除這部影片？')" style="margin:0;">
+          <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
+          <input type="hidden" name="from_reports" value="1">
+          <button type="submit" name="force_delete_video" value="1" class="act-btn danger">🗑 強制刪除</button>
+        </form>
+      </div>
+    </div>
+  <?php endforeach; ?>
+  </div>
 <?php endif; ?>
 
 
 <?php elseif ($tab === 'products'): ?>
 <!-- ══════════ 商品審核 ══════════ -->
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-    <div class="section-title" style="margin:0;">🛍️ 商品申請審核</div>
-    <div style="display:flex;gap:6px;margin-left:auto;">
-        <?php foreach(['pending'=>'待審核','approved'=>'已通過','rejected'=>'已拒絕','all'=>'全部'] as $s=>$label): ?>
-            <a href="?tab=products&status=<?php echo $s; ?>"
-               style="padding:5px 14px;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none;
-                      <?php echo ($filterStatus===$s) ? 'background:#e83e5a;color:#fff;' : 'background:#f0f0f0;color:#555;'; ?>">
-                <?php echo $label; ?>
-            </a>
-        <?php endforeach; ?>
-    </div>
+<div class="sec-header">
+  <div>
+    <div class="sec-title">商品審核</div>
+    <div class="sec-subtitle">審核使用者提交的商品申請</div>
+  </div>
+  <div class="sec-header-spacer"></div>
+  <?php if ($pendingCount > 0): ?>
+    <span class="badge badge-orange" style="font-size:13px;padding:6px 14px;align-self:center;">⏳ <?php echo (int)$pendingCount; ?> 件待審核</span>
+  <?php endif; ?>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <div class="card-header-title">申請清單</div>
+    <span class="badge badge-blue"><?php echo count($submissions ?? []); ?> 筆</span>
+    <div class="card-header-spacer"></div>
+  </div>
+  <div class="filter-bar">
+    <?php foreach(['pending'=>'待審核','approved'=>'已通過','rejected'=>'已拒絕','all'=>'全部'] as $s=>$label): ?>
+      <a href="?tab=products&status=<?php echo $s; ?>" class="filter-btn <?php echo ($filterStatus===$s)?'active':''; ?>"><?php echo $label; ?></a>
+    <?php endforeach; ?>
+  </div>
 </div>
 
 <?php if (empty($submissions)): ?>
-    <div class="adm-empty"><div class="adm-empty-icon">🛍️</div>目前沒有<?php echo $filterStatus==='pending'?'待審核的':($filterStatus==='all'?'':($filterStatus==='approved'?'已通過的':'已拒絕的')); ?>商品申請</div>
+  <div class="adm-empty"><div class="adm-empty-icon">🛍️</div>目前沒有<?php echo $filterStatus==='pending'?'待審核的':($filterStatus==='all'?'':($filterStatus==='approved'?'已通過的':'已拒絕的')); ?>商品申請</div>
 <?php else: ?>
-    <?php foreach ($submissions as $sub): ?>
-        <?php
-            $statusBadge = match($sub['status']) {
-                'pending'  => '<span class="badge badge-warn">⏳ 待審核</span>',
-                'approved' => '<span class="badge badge-ok">✅ 已通過</span>',
-                'rejected' => '<span class="badge badge-no">❌ 已拒絕</span>',
-                default    => ''
-            };
-        ?>
-        <div class="adm-table-wrap" style="margin-bottom:16px;">
-            <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-                <div style="flex:1;min-width:240px;">
-                    <div style="font-size:16px;font-weight:700;color:#222;margin-bottom:4px;">
-                        <?php echo htmlspecialchars($sub['product_name']); ?>
-                        <?php echo $statusBadge; ?>
-                    </div>
-                    <div style="font-size:13px;color:#888;line-height:1.8;">
-                        <?php if ($sub['brand']): ?>品牌：<?php echo htmlspecialchars($sub['brand']); ?> &nbsp;·&nbsp; <?php endif; ?>
-                        <?php if ($sub['category']): ?>分類：<?php echo htmlspecialchars($sub['category']); ?> &nbsp;·&nbsp; <?php endif; ?>
-                        <?php if ($sub['price']): ?>售價：<?php echo htmlspecialchars($sub['price']); ?> &nbsp;·&nbsp; <?php endif; ?>
-                        申請者：<strong><?php echo htmlspecialchars($sub['username']); ?></strong>
-                        （<?php echo $sub['email'] ? htmlspecialchars($sub['email']) : '無 Email'; ?>）<br>
-                        申請時間：<?php echo date('Y/m/d H:i', strtotime($sub['created_at'])); ?>
-                    </div>
-                    <?php if ($sub['description']): ?>
-                        <div style="margin-top:8px;font-size:13px;color:#555;background:#f8f8f8;border-radius:6px;padding:10px 12px;">
-                            <?php echo nl2br(htmlspecialchars($sub['description'])); ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if ($sub['purchase_link']): ?>
-                        <div style="margin-top:6px;font-size:12px;">
-                            <a href="<?php echo htmlspecialchars($sub['purchase_link']); ?>" target="_blank" rel="noopener"
-                               style="color:#0069d9;">🔗 查看購買連結</a>
-                        </div>
-                    <?php endif; ?>
-                    <?php if ($sub['admin_note'] && $sub['status'] !== 'pending'): ?>
-                        <div style="margin-top:8px;font-size:12px;color:#777;border-left:3px solid #ddd;padding-left:10px;">
-                            管理員備註：<?php echo htmlspecialchars($sub['admin_note']); ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <?php if ($sub['status'] === 'pending'): ?>
-                <div style="min-width:260px;">
-                    <form method="post">
-                        <input type="hidden" name="submission_id" value="<?php echo (int)$sub['id']; ?>">
-                        <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">管理員備註（寄信時顯示）</label>
-                        <textarea name="admin_note" rows="3" placeholder="可填入核准原因、建議修改內容等..."
-                            style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;"></textarea>
-                        <div class="btn-group">
-                            <button type="submit" name="review_submission" value="1"
-                                onclick="this.form.querySelector('[name=decision]').value='approved';return confirm('確定核准「<?php echo htmlspecialchars(addslashes($sub['product_name'])); ?>」？');"
-                                class="btn-ok" style="flex:1;padding:8px 0;">✅ 核准</button>
-                            <input type="hidden" name="decision" value="">
-                            <button type="submit" name="review_submission" value="1"
-                                onclick="this.form.querySelector('[name=decision]').value='rejected';return confirm('確定拒絕「<?php echo htmlspecialchars(addslashes($sub['product_name'])); ?>」？');"
-                                class="btn-del" style="flex:1;padding:8px 0;">❌ 拒絕</button>
-                        </div>
-                    </form>
-                </div>
-                <?php endif; ?>
-            </div>
+  <?php foreach ($submissions as $sub): ?>
+    <?php
+      $statusBadge = match($sub['status']) {
+        'pending'  => '<span class="badge badge-orange">⏳ 待審核</span>',
+        'approved' => '<span class="badge badge-green">✅ 已通過</span>',
+        'rejected' => '<span class="badge badge-red">❌ 已拒絕</span>',
+        default    => ''
+      };
+    ?>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-header">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;margin-bottom:3px;"><?php echo htmlspecialchars($sub['product_name']); ?> <?php echo $statusBadge; ?></div>
+          <div style="font-size:12px;color:var(--text-3);line-height:1.8;">
+            <?php if ($sub['brand']): ?>品牌：<?php echo htmlspecialchars($sub['brand']); ?> &nbsp;·&nbsp; <?php endif; ?>
+            <?php if ($sub['category']): ?>分類：<?php echo htmlspecialchars($sub['category']); ?> &nbsp;·&nbsp; <?php endif; ?>
+            <?php if ($sub['price']): ?>售價：<?php echo htmlspecialchars($sub['price']); ?> &nbsp;·&nbsp; <?php endif; ?>
+            申請者：<strong><?php echo htmlspecialchars($sub['username']); ?></strong>
+            （<?php echo $sub['email'] ? htmlspecialchars($sub['email']) : '無 Email'; ?>）&nbsp;·&nbsp;
+            <?php echo date('Y/m/d H:i', strtotime($sub['created_at'])); ?>
+          </div>
         </div>
-    <?php endforeach; ?>
-    <p style="color:#aaa;font-size:13px;margin-top:4px;">共 <?php echo count($submissions); ?> 筆</p>
+      </div>
+      <div style="padding:14px 22px;">
+        <?php if ($sub['description']): ?>
+          <div style="font-size:13px;color:var(--text-2);background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:10px;"><?php echo nl2br(htmlspecialchars($sub['description'])); ?></div>
+        <?php endif; ?>
+        <?php if ($sub['purchase_link']): ?>
+          <div style="font-size:12px;margin-bottom:8px;"><a href="<?php echo htmlspecialchars($sub['purchase_link']); ?>" target="_blank" rel="noopener" style="color:#2563eb;">🔗 查看購買連結</a></div>
+        <?php endif; ?>
+        <?php if ($sub['admin_note'] && $sub['status'] !== 'pending'): ?>
+          <div style="font-size:12px;color:var(--text-3);border-left:3px solid var(--border);padding-left:10px;margin-bottom:8px;">管理員備註：<?php echo htmlspecialchars($sub['admin_note']); ?></div>
+        <?php endif; ?>
+        <?php if ($sub['status'] === 'pending'): ?>
+        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:12px;">
+          <form method="post">
+            <input type="hidden" name="submission_id" value="<?php echo (int)$sub['id']; ?>">
+            <label style="font-size:12px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">管理員備註（寄信時顯示）</label>
+            <textarea name="admin_note" rows="2" placeholder="可填入核准原因、建議修改內容等..."
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;outline:none;resize:vertical;"></textarea>
+            <div class="btn-group">
+              <button type="submit" name="review_submission" value="1"
+                onclick="this.form.querySelector('[name=decision]').value='approved';return confirm('確定核准「<?php echo htmlspecialchars(addslashes($sub['product_name'])); ?>」？');"
+                class="act-btn success" style="height:34px;padding:0 16px;">✅ 核准</button>
+              <input type="hidden" name="decision" value="">
+              <button type="submit" name="review_submission" value="1"
+                onclick="this.form.querySelector('[name=decision]').value='rejected';return confirm('確定拒絕「<?php echo htmlspecialchars(addslashes($sub['product_name'])); ?>」？');"
+                class="act-btn danger" style="height:34px;padding:0 16px;">❌ 拒絕</button>
+            </div>
+          </form>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  <?php endforeach; ?>
+  <p style="color:var(--text-3);font-size:13px;margin-top:4px;">共 <?php echo count($submissions); ?> 筆</p>
 <?php endif; ?>
 
 
 <?php elseif ($tab === 'users'): ?>
 <!-- ══════════ 會員管理 ══════════ -->
 <style>
-.badge-suspended { background:#f0e0e0; color:#a05050; }
 .vio-bar { display:inline-flex; gap:3px; vertical-align:middle; }
 .vio-dot { width:10px; height:10px; border-radius:50%; }
 .vio-dot.filled { background:#e05050; }
@@ -930,156 +1260,152 @@ $suspendedCount = count(array_filter($allUsers, fn($u) => ($u['status'] ?? 'acti
 $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violations'] ?? 0) >= 3 && ($u['status'] ?? 'active') !== 'suspended'));
 ?>
 
-<!-- 狀態摘要 -->
-<div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
-    <div style="background:#fff;border-radius:10px;padding:12px 20px;border:1px solid #f0e8e8;font-size:13px;">
-        👥 總會員 <strong><?php echo count($allUsers); ?></strong>
-    </div>
-    <?php if ($warningCount > 0): ?>
-    <div style="background:#fff8e8;border-radius:10px;padding:12px 20px;border:1px solid #f0d890;font-size:13px;color:#8a6020;">
-        ⚠️ 違規警告中 <strong><?php echo $warningCount; ?></strong> 人（3次以上）
-    </div>
-    <?php endif; ?>
-    <?php if ($suspendedCount > 0): ?>
-    <div style="background:#fff0f0;border-radius:10px;padding:12px 20px;border:1px solid #f0c0c0;font-size:13px;color:#a05050;">
-        🚫 已停用 <strong><?php echo $suspendedCount; ?></strong> 人
-    </div>
-    <?php endif; ?>
-    <div style="background:#f0fff8;border-radius:10px;padding:12px 20px;border:1px solid #a0d8b0;font-size:13px;color:#406050;">
-        ℹ️ 違規定義：30天內留言被管理員標記「已處理」達 <strong>5</strong> 次即自動停用
-    </div>
+<div class="sec-header">
+  <div>
+    <div class="sec-title">使用者管理</div>
+    <div class="sec-subtitle">管理會員帳號、身份與違規狀態</div>
+  </div>
 </div>
 
-<?php if (empty($allUsers)): ?>
-    <div class="adm-empty"><div class="adm-empty-icon">👥</div>沒有使用者資料</div>
-<?php else: ?>
-    <div class="adm-table-wrap">
-        <table class="adm-table">
-            <thead>
-                <tr>
-                    <th>帳號</th>
-                    <th>Email</th>
-                    <th>身份</th>
-                    <th>信箱驗證</th>
-                    <th style="text-align:center;">本月違規</th>
-                    <th>狀態</th>
-                    <th>加入時間</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($allUsers as $u):
-                    $isSuspended = ($u['status'] ?? 'active') === 'suspended';
-                    $violations  = (int)($u['monthly_violations'] ?? 0);
-                    $isWarning   = $violations >= 3 && !$isSuspended;
-                ?>
-                    <tr class="<?php echo $isSuspended ? 'tr-suspended' : ''; ?>">
-                        <td>
-                            <strong><?php echo htmlspecialchars($u['username']); ?></strong>
-                            <?php if ($isSuspended): ?>
-                                <div style="font-size:11px;color:#c05050;margin-top:2px;">
-                                    停用於 <?php echo $u['suspended_at'] ? date('m/d H:i', strtotime($u['suspended_at'])) : '—'; ?>
-                                </div>
-                            <?php endif; ?>
-                        </td>
-                        <td style="color:#888;font-size:12px;"><?php echo htmlspecialchars($u['email'] ?: '—'); ?></td>
-                        <td>
-                            <span class="badge <?php echo $u['role']==='admin' ? 'badge-admin' : 'badge-user'; ?>">
-                                <?php echo $u['role']==='admin' ? '管理員' : '一般'; ?>
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge <?php echo $u['email_verified'] ? 'badge-ok' : 'badge-no'; ?>">
-                                <?php echo $u['email_verified'] ? '已驗證' : '未驗證'; ?>
-                            </span>
-                        </td>
-                        <td style="text-align:center;">
-                            <?php if ($u['role'] === 'admin'): ?>
-                                <span style="color:#ccc;font-size:12px;">—</span>
-                            <?php else: ?>
-                                <!-- 5格圓點視覺化 -->
-                                <div class="vio-bar" title="本月違規 <?php echo $violations; ?>/5 次">
-                                    <?php for ($vi = 1; $vi <= 5; $vi++): ?>
-                                        <div class="vio-dot <?php echo $vi <= $violations ? 'filled' : 'empty'; ?>"></div>
-                                    <?php endfor; ?>
-                                </div>
-                                <span style="font-size:11px;color:<?php echo $violations>=5?'#c05050':($isWarning?'#c08020':'#aaa'); ?>;margin-left:4px;">
-                                    <?php echo $violations; ?>/5
-                                    <?php if ($violations >= 5): ?> 已達上限<?php elseif ($isWarning): ?> ⚠️<?php endif; ?>
-                                </span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($isSuspended): ?>
-                                <span class="badge badge-suspended">🚫 已停用</span>
-                            <?php elseif ($isWarning): ?>
-                                <span class="badge badge-warn">⚠️ 警告</span>
-                            <?php else: ?>
-                                <span class="badge badge-ok">正常</span>
-                            <?php endif; ?>
-                        </td>
-                        <td style="color:#aaa;font-size:12px;"><?php echo $u['created_at'] ? date('Y/m/d', strtotime($u['created_at'])) : '—'; ?></td>
-                        <td>
-                            <?php if ($u['username'] !== $adminUser): ?>
-                                <div class="btn-group">
-                                    <?php if ($u['role'] !== 'admin'): ?>
-                                        <!-- 身份切換 -->
-                                        <form method="post" onsubmit="return confirm('確定變更「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的身份？')">
-                                            <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
-                                            <input type="hidden" name="current_role" value="<?php echo htmlspecialchars($u['role']); ?>">
-                                            <button type="submit" name="toggle_role" value="1" class="btn-role">升為管理員</button>
-                                        </form>
-                                    <?php else: ?>
-                                        <form method="post" onsubmit="return confirm('確定降級「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」？')">
-                                            <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
-                                            <input type="hidden" name="current_role" value="admin">
-                                            <button type="submit" name="toggle_role" value="1" class="btn-role is-admin">降為一般</button>
-                                        </form>
-                                    <?php endif; ?>
+<div class="summary-row" style="margin-bottom:20px;">
+  <div class="summary-mini">
+    <div class="summary-mini-icon">👥</div>
+    <div><div class="summary-mini-num"><?php echo count($allUsers); ?></div><div class="summary-mini-label">總會員數</div></div>
+  </div>
+  <div class="summary-mini">
+    <div class="summary-mini-icon">⚠️</div>
+    <div><div class="summary-mini-num" style="color:<?php echo $warningCount>0?'#c08020':'inherit'; ?>"><?php echo $warningCount; ?></div><div class="summary-mini-label">違規警告中（3次以上）</div></div>
+  </div>
+  <div class="summary-mini">
+    <div class="summary-mini-icon">🚫</div>
+    <div><div class="summary-mini-num" style="color:<?php echo $suspendedCount>0?'#c05050':'inherit'; ?>"><?php echo $suspendedCount; ?></div><div class="summary-mini-label">已停用帳號</div></div>
+  </div>
+</div>
 
-                                    <?php if ($isSuspended): ?>
-                                        <!-- 恢復帳號 -->
-                                        <form method="post" onsubmit="return confirm('確定恢復「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的帳號？')">
-                                            <input type="hidden" name="target_user" value="<?php echo htmlspecialchars($u['username']); ?>">
-                                            <button type="submit" name="restore_user" value="1" class="btn-ok">✓ 恢復</button>
-                                        </form>
-                                    <?php elseif ($u['role'] !== 'admin'): ?>
-                                        <!-- 停用帳號 -->
-                                        <form method="post" onsubmit="return confirm('確定停用「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」帳號？')">
-                                            <input type="hidden" name="target_user" value="<?php echo htmlspecialchars($u['username']); ?>">
-                                            <button type="submit" name="suspend_user" value="1" class="btn-del">🚫 停用</button>
-                                        </form>
-                                    <?php endif; ?>
-                                </div>
-                            <?php else: ?>
-                                <span style="color:#aaa;font-size:12px;">（目前帳號）</span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-    <p style="color:#aaa;font-size:13px;margin-top:10px;">共 <?php echo count($allUsers); ?> 位使用者</p>
+<div class="card" style="margin-bottom:10px;">
+  <div class="card-header">
+    <div class="card-header-title">會員清單</div>
+    <span class="badge badge-blue"><?php echo count($allUsers); ?> 位</span>
+    <div class="card-header-spacer"></div>
+    <span style="font-size:12px;color:var(--text-3);">ℹ️ 30天內留言被標記達 5 次即自動停用</span>
+  </div>
+
+<?php if (empty($allUsers)): ?>
+  <div class="adm-empty"><div class="adm-empty-icon">👥</div>沒有使用者資料</div>
+<?php else: ?>
+  <div class="table-wrap">
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>帳號</th>
+          <th>Email</th>
+          <th>身份</th>
+          <th>信箱驗證</th>
+          <th style="text-align:center;">本月違規</th>
+          <th>狀態</th>
+          <th>加入時間</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($allUsers as $u):
+          $isSuspended = ($u['status'] ?? 'active') === 'suspended';
+          $violations  = (int)($u['monthly_violations'] ?? 0);
+          $isWarning   = $violations >= 3 && !$isSuspended;
+        ?>
+        <tr class="<?php echo $isSuspended ? 'tr-suspended' : ''; ?>">
+          <td>
+            <div class="td-user">
+              <div class="td-avatar"><?php echo strtoupper(substr($u['username'], 0, 1)); ?></div>
+              <div>
+                <strong><?php echo htmlspecialchars($u['username']); ?></strong>
+                <?php if ($isSuspended): ?>
+                  <div style="font-size:11px;color:#c05050;margin-top:1px;">停用於 <?php echo $u['suspended_at'] ? date('m/d H:i', strtotime($u['suspended_at'])) : '—'; ?></div>
+                <?php endif; ?>
+              </div>
+            </div>
+          </td>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo htmlspecialchars($u['email'] ?: '—'); ?></td>
+          <td>
+            <span class="badge <?php echo $u['role']==='admin' ? 'badge-blue' : 'badge-gray'; ?>">
+              <?php echo $u['role']==='admin' ? '管理員' : '一般'; ?>
+            </span>
+          </td>
+          <td>
+            <span class="badge <?php echo $u['email_verified'] ? 'badge-green' : 'badge-red'; ?>">
+              <?php echo $u['email_verified'] ? '已驗證' : '未驗證'; ?>
+            </span>
+          </td>
+          <td style="text-align:center;">
+            <?php if ($u['role'] === 'admin'): ?>
+              <span style="color:var(--text-3);font-size:12px;">—</span>
+            <?php else: ?>
+              <div class="vio-bar" title="本月違規 <?php echo $violations; ?>/5 次">
+                <?php for ($vi = 1; $vi <= 5; $vi++): ?>
+                  <div class="vio-dot <?php echo $vi <= $violations ? 'filled' : 'empty'; ?>"></div>
+                <?php endfor; ?>
+              </div>
+              <span style="font-size:11px;color:<?php echo $violations>=5?'#c05050':($isWarning?'#c08020':'var(--text-3)'); ?>;margin-left:4px;">
+                <?php echo $violations; ?>/5<?php if ($violations>=5): ?> 已達上限<?php elseif ($isWarning): ?> ⚠️<?php endif; ?>
+              </span>
+            <?php endif; ?>
+          </td>
+          <td>
+            <?php if ($isSuspended): ?>
+              <span class="badge badge-suspended">🚫 已停用</span>
+            <?php elseif ($isWarning): ?>
+              <span class="badge badge-orange">⚠️ 警告</span>
+            <?php else: ?>
+              <span class="badge badge-green">正常</span>
+            <?php endif; ?>
+          </td>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo $u['created_at'] ? date('Y/m/d', strtotime($u['created_at'])) : '—'; ?></td>
+          <td>
+            <?php if ($u['username'] !== $adminUser): ?>
+              <div class="btn-group">
+                <?php if ($u['role'] !== 'admin'): ?>
+                  <form method="post" onsubmit="return confirm('確定變更「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的身份？')">
+                    <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
+                    <input type="hidden" name="current_role" value="<?php echo htmlspecialchars($u['role']); ?>">
+                    <button type="submit" name="toggle_role" value="1" class="act-btn neutral">升為管理員</button>
+                  </form>
+                <?php else: ?>
+                  <form method="post" onsubmit="return confirm('確定降級「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」？')">
+                    <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
+                    <input type="hidden" name="current_role" value="admin">
+                    <button type="submit" name="toggle_role" value="1" class="act-btn neutral">降為一般</button>
+                  </form>
+                <?php endif; ?>
+                <?php if ($isSuspended): ?>
+                  <form method="post" onsubmit="return confirm('確定恢復「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的帳號？')">
+                    <input type="hidden" name="target_user" value="<?php echo htmlspecialchars($u['username']); ?>">
+                    <button type="submit" name="restore_user" value="1" class="act-btn success">✓ 恢復</button>
+                  </form>
+                <?php elseif ($u['role'] !== 'admin'): ?>
+                  <form method="post" onsubmit="return confirm('確定停用「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」帳號？')">
+                    <input type="hidden" name="target_user" value="<?php echo htmlspecialchars($u['username']); ?>">
+                    <button type="submit" name="suspend_user" value="1" class="act-btn danger">🚫 停用</button>
+                  </form>
+                <?php endif; ?>
+              </div>
+            <?php else: ?>
+              <span style="color:var(--text-3);font-size:12px;">（目前帳號）</span>
+            <?php endif; ?>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <div class="page-info">共 <?php echo count($allUsers); ?> 位使用者</div>
+  </div>
 <?php endif; ?>
+</div>
 
 <?php elseif ($tab === 'data_products'): ?>
 <!-- ══════════ 產品管理 ══════════ -->
 <style>
-.dp-search-bar { display:flex; gap:10px; margin-bottom:18px; align-items:center; flex-wrap:wrap; }
-.dp-search-bar input { flex:1; min-width:200px; padding:9px 14px; border:1.5px solid #f0d5dc; border-radius:10px; font-size:14px; outline:none; }
-.dp-search-bar input:focus { border-color:#c47a8a; }
-.dp-search-bar button { padding:9px 18px; background:#c47a8a; color:#fff; border:none; border-radius:10px; font-size:14px; cursor:pointer; font-weight:600; }
-.dp-table { width:100%; border-collapse:collapse; font-size:13px; }
-.dp-table th { background:#fdf8f8; padding:10px 14px; text-align:left; font-weight:600; color:#9a7878; border-bottom:1px solid #f0e8e8; font-size:12px; }
-.dp-table td { padding:10px 14px; border-bottom:1px solid #f8f0f0; vertical-align:middle; color:#4a3535; }
-.dp-table tbody tr:hover { background:#fdf8f8; }
-.dp-edit-btn { padding:5px 14px; background:#efc6cd; color:#7a3040; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:background .15s; }
-.dp-edit-btn:hover { background:#e4a0b0; }
-.dp-pagination { display:flex; gap:6px; margin-top:18px; flex-wrap:wrap; }
-.dp-pagination a { padding:6px 14px; border-radius:8px; font-size:13px; text-decoration:none; background:#f0e8e8; color:#7a3040; }
-.dp-pagination a.active { background:#c47a8a; color:#fff; }
-
 /* 編輯 Modal */
 .dp-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:2000; align-items:center; justify-content:center; }
 .dp-modal-bg.open { display:flex; }
@@ -1087,10 +1413,7 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
 .dp-modal h3 { margin:0 0 20px; font-size:17px; color:#3a2a2a; }
 .dp-field { margin-bottom:14px; }
 .dp-field label { display:block; font-size:12px; font-weight:600; color:#9a7878; margin-bottom:4px; }
-.dp-field input, .dp-field textarea, .dp-field select {
-    width:100%; padding:9px 12px; border:1.5px solid #f0d5dc; border-radius:9px;
-    font-size:14px; font-family:inherit; box-sizing:border-box; outline:none;
-}
+.dp-field input, .dp-field textarea, .dp-field select { width:100%; padding:9px 12px; border:1.5px solid #f0d5dc; border-radius:9px; font-size:14px; font-family:inherit; box-sizing:border-box; outline:none; }
 .dp-field input:focus, .dp-field textarea:focus, .dp-field select:focus { border-color:#c47a8a; }
 .dp-field textarea { resize:vertical; min-height:72px; }
 .dp-modal-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -1100,67 +1423,78 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
 .dp-modal-cancel { padding:10px 20px; background:#f0e8e8; color:#7a3040; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
 </style>
 
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-    <div class="section-title" style="margin:0;">📦 產品管理</div>
-    <span style="font-size:13px;color:#aaa;">共 <?php echo $dpTotal; ?> 筆產品</span>
+<div class="sec-header">
+  <div>
+    <div class="sec-title">資料庫產品</div>
+    <div class="sec-subtitle">管理系統產品資料庫，共 <?php echo $dpTotal; ?> 筆產品</div>
+  </div>
 </div>
 
-<form method="get" class="dp-search-bar">
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-title">產品列表</div>
+    <span class="badge badge-blue"><?php echo $dpTotal; ?> 筆</span>
+    <div class="card-header-spacer"></div>
+  </div>
+  <form method="get">
     <input type="hidden" name="tab" value="data_products">
-    <input type="text" name="q" value="<?php echo htmlspecialchars($dpSearch); ?>" placeholder="搜尋名稱、品牌、分類…">
-    <button type="submit">搜尋</button>
-    <?php if ($dpSearch): ?>
-        <a href="?tab=data_products" style="font-size:13px;color:#aaa;text-decoration:none;">✕ 清除</a>
-    <?php endif; ?>
-</form>
-
-<div class="adm-table-wrap">
-<table class="dp-table">
-    <thead>
+    <div class="filter-bar">
+      <input class="filter-input" type="text" name="q" value="<?php echo htmlspecialchars($dpSearch); ?>" placeholder="🔍 搜尋名稱、品牌、分類…">
+      <button type="submit" class="filter-btn active">搜尋</button>
+      <?php if ($dpSearch): ?><a href="?tab=data_products" class="filter-btn">✕ 清除</a><?php endif; ?>
+    </div>
+  </form>
+  <div class="table-wrap">
+    <table class="adm-table">
+      <thead>
         <tr>
-            <th>#</th>
-            <th>品牌</th>
-            <th>名稱</th>
-            <th>分類</th>
-            <th>產地</th>
-            <th></th>
+          <th>#</th>
+          <th>品牌</th>
+          <th>名稱</th>
+          <th>分類</th>
+          <th>產地</th>
+          <th></th>
         </tr>
-    </thead>
-    <tbody>
-    <?php foreach ($dpProducts as $p): ?>
+      </thead>
+      <tbody>
+      <?php foreach ($dpProducts as $p): ?>
         <tr>
-            <td style="color:#bbb;"><?php echo $p['id']; ?></td>
-            <td><?php echo htmlspecialchars($p['brand'] ?? ''); ?></td>
-            <td style="font-weight:600;"><?php echo htmlspecialchars($p['name']); ?></td>
-            <td><span style="background:#f9eef0;color:#b06070;padding:2px 8px;border-radius:10px;font-size:11px;"><?php echo htmlspecialchars($p['category'] ?? ''); ?></span></td>
-            <td style="color:#aaa;"><?php echo htmlspecialchars($p['origin'] ?? ''); ?></td>
-            <td>
-                <button class="dp-edit-btn" onclick='openEdit(<?php echo htmlspecialchars(json_encode([
-                    "id"           => $p["id"],
-                    "name"         => $p["name"]         ?? "",
-                    "brand"        => $p["brand"]        ?? "",
-                    "category"     => $p["category"]     ?? "",
-                    "origin"       => $p["origin"]       ?? "",
-                    "purpose"      => $p["purpose"]      ?? "",
-                    "ingredients"  => $p["ingredients"]  ?? "",
-                    "precautions"  => $p["precautions"]  ?? "",
-                ], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>)'>編輯</button>
-            </td>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo $p['id']; ?></td>
+          <td><?php echo htmlspecialchars($p['brand'] ?? ''); ?></td>
+          <td style="font-weight:600;"><?php echo htmlspecialchars($p['name']); ?></td>
+          <td><span class="badge badge-rose" style="font-size:11px;"><?php echo htmlspecialchars($p['category'] ?? ''); ?></span></td>
+          <td style="color:var(--text-3);"><?php echo htmlspecialchars($p['origin'] ?? ''); ?></td>
+          <td>
+            <button class="act-btn neutral" onclick='openEdit(<?php echo htmlspecialchars(json_encode([
+              "id"           => $p["id"],
+              "name"         => $p["name"]         ?? "",
+              "brand"        => $p["brand"]        ?? "",
+              "category"     => $p["category"]     ?? "",
+              "origin"       => $p["origin"]       ?? "",
+              "purpose"      => $p["purpose"]      ?? "",
+              "ingredients"  => $p["ingredients"]  ?? "",
+              "precautions"  => $p["precautions"]  ?? "",
+            ], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>)'>✏️ 編輯</button>
+          </td>
         </tr>
-    <?php endforeach; ?>
-    </tbody>
-</table>
-</div>
-
-<!-- 分頁 -->
-<?php if ($dpPages > 1): ?>
-<div class="dp-pagination">
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+  <?php if ($dpPages > 1): ?>
+  <div class="pagination">
+    <div class="page-info">第 <?php echo $dpPage; ?> / <?php echo $dpPages; ?> 頁，共 <?php echo $dpTotal; ?> 筆</div>
     <?php for ($i = 1; $i <= $dpPages; $i++): ?>
-        <a href="?tab=data_products&p=<?php echo $i; ?>&q=<?php echo urlencode($dpSearch); ?>"
-           class="<?php echo $i === $dpPage ? 'active' : ''; ?>"><?php echo $i; ?></a>
+      <a href="?tab=data_products&p=<?php echo $i; ?>&q=<?php echo urlencode($dpSearch); ?>"
+         class="page-btn <?php echo $i === $dpPage ? 'active' : ''; ?>"><?php echo $i; ?></a>
     <?php endfor; ?>
+  </div>
+  <?php else: ?>
+  <div class="pagination">
+    <div class="page-info">共 <?php echo $dpTotal; ?> 筆產品</div>
+  </div>
+  <?php endif; ?>
 </div>
-<?php endif; ?>
 
 <!-- 編輯 Modal -->
 <div id="dpModalBg" class="dp-modal-bg" onclick="if(event.target===this)closeEdit()">
@@ -1233,7 +1567,9 @@ function closeEdit() {
 </script>
 
 <?php endif; ?>
-</div>
+  </div><!-- /content -->
+</div><!-- /main -->
+
 <script>
 function toggleRank(group, btn) {
     var rows = document.querySelectorAll('[data-group="' + group + '"].rank-more');

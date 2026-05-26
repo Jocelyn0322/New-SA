@@ -16,26 +16,34 @@ require 'db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['verify_code'])) {
-        $code = trim($_POST['verify_code']);
+        $inputCode      = trim($_POST['verify_code']);
+        $sessionCode    = $_SESSION['pending_code']   ?? '';
+        $sessionExpiry  = $_SESSION['pending_expiry'] ?? '';
+        $sessionPwd     = $_SESSION['pending_password'] ?? '';
 
-        $stmt = $pdo->prepare("SELECT id, role, verification_code, verification_expiry FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $userRow = $stmt->fetch();
-
-        if (!$userRow) {
-            $error = "找不到使用者資料";
-        } elseif ($userRow['verification_code'] !== $code) {
+        if (!$sessionCode) {
+            $error = "驗證資料已失效，請重新註冊";
+        } elseif ($inputCode !== $sessionCode) {
             $error = "驗證碼錯誤";
-        } elseif ($userRow['verification_expiry'] < date("Y-m-d H:i:s")) {
-            $error = "驗證碼已過期，請重新產生";
+        } elseif ($sessionExpiry < date("Y-m-d H:i:s")) {
+            $error = "驗證碼已過期，請點「重新寄送」";
         } else {
-            $pdo->prepare("UPDATE users SET email_verified = 1, verification_code = NULL, verification_expiry = NULL WHERE id = ?")
-                ->execute([$userRow['id']]);
+            // 驗證成功，才寫入資料庫
+            $pdo->prepare("
+                INSERT INTO users (username, email, password, role, email_verified)
+                VALUES (?, ?, ?, 'user', 1)
+            ")->execute([$username, $email, $sessionPwd]);
+
+            $stmt = $pdo->prepare("SELECT role FROM users WHERE username = ?");
+            $stmt->execute([$username]);
+            $newUser = $stmt->fetch();
 
             $_SESSION['user'] = $username;
-            $_SESSION['role'] = $userRow['role'];
+            $_SESSION['role'] = $newUser['role'] ?? 'user';
 
-            unset($_SESSION['pending_user'], $_SESSION['pending_email']);
+            unset($_SESSION['pending_user'], $_SESSION['pending_email'],
+                  $_SESSION['pending_password'], $_SESSION['pending_code'],
+                  $_SESSION['pending_expiry'], $_SESSION['email_send_failed']);
 
             header("Location: /SA/New-SA/產品/index.php");
             exit();
@@ -48,8 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newCode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiry  = date("Y-m-d H:i:s", strtotime("+15 minutes"));
 
-        $pdo->prepare("UPDATE users SET verification_code = ?, verification_expiry = ? WHERE username = ?")
-            ->execute([$newCode, $expiry, $username]);
+        // 更新 Session，不碰資料庫
+        $_SESSION['pending_code']   = $newCode;
+        $_SESSION['pending_expiry'] = $expiry;
 
         if (sendVerificationEmail($email, $username, $newCode)) {
             $success = "驗證碼已重新寄送至 " . htmlspecialchars($email);
@@ -59,17 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-$stmt = $pdo->prepare("SELECT verification_code, verification_expiry FROM users WHERE username = ?");
-$stmt->execute([$username]);
-$userRow = $stmt->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <title>Email 驗證</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css">
     <style>
         .verify-container {
             max-width: 500px;

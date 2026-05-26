@@ -28,10 +28,9 @@ $defaultAttributes = ['顯色度', '持久度', '易上色', '延展性'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?v=2">
-    <title>產品詳情</title>
+    <link rel="stylesheet" href="style.css">
+    <title>COSMETIC — 產品詳情</title>
     <style>
-    /* 管理員上傳色號照片的浮窗 */
     .color-upload-panel {
         display:none; position:fixed; bottom:24px; right:24px; z-index:999;
         background:#fff; border-radius:16px; padding:20px;
@@ -103,7 +102,7 @@ if (empty($_SESSION[$viewedKey])) {
 
 <div class="product-detail">
     <div style="margin-bottom: 20px;">
-        <a href="javascript:history.back()" style="color: #efc6cd; text-decoration: none; font-size: 14px;">← 返回</a>
+        <a href="javascript:history.back()" style="color: var(--rose); text-decoration: none; font-size: 14px; font-weight: 500;">← 返回</a>
     </div>
 
     <div class="product-detail-grid">
@@ -117,7 +116,7 @@ if (empty($_SESSION[$viewedKey])) {
                  alt="<?php echo htmlspecialchars($row['name']); ?>"
                  style="width:100%; max-height:420px; object-fit:contain; border-radius:15px; transition:opacity .2s; background:#f5f5f5; padding:8px;"
                  onerror="this.style.background='#f5f0f0';this.style.minHeight='300px';this.removeAttribute('src');">
-            <p id="activeColorName" style="text-align:center;font-size:13px;color:#c97b8a;margin-top:8px;min-height:18px;"></p>
+            <p id="activeColorName" style="text-align:center;font-size:13px;color:var(--rose);margin-top:8px;min-height:18px;"></p>
         </div>
 
         <div class="product-info">
@@ -130,15 +129,12 @@ if (empty($_SESSION[$viewedKey])) {
             <h3>用途</h3>
             <p><?php echo htmlspecialchars($row['purpose']); ?></p>
 
-            <h3>成分</h3>
-            <p><?php echo htmlspecialchars($row['ingredients']); ?></p>
-
             <h3>注意事項</h3>
             <p><?php echo htmlspecialchars($row['precautions']); ?></p>
 
             <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
             <!-- 管理員工具列 -->
-            <div style="margin-bottom:16px; padding:14px; background:#fff8f9; border-radius:12px; border:1px dashed #efc6cd; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+            <div style="margin-bottom:16px; padding:14px; background:var(--rose-50); border-radius:var(--r); border:1px dashed var(--rose-200); display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
                 <span style="font-size:12px;color:#bbb;flex:1;">管理員工具</span>
                 <button onclick="openEditProduct()" class="btn btn-outline" style="font-size:13px;padding:7px 16px;">✏️ 編輯產品資料</button>
                 <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;">
@@ -180,11 +176,11 @@ if (empty($_SESSION[$viewedKey])) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div>
                 <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">品牌</label>
-                <input id="ep_brand" type="text" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                <input id="ep_brand" type="text" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;">
             </div>
             <div>
                 <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">分類</label>
-                <select id="ep_category" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                <select id="ep_category" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;">
                     <?php foreach(['底妝','遮瑕','眼影','眼線','睫毛膏','腮紅','修容','打亮','唇彩','護膚','護唇','防曬'] as $cat): ?>
                     <option value="<?php echo $cat; ?>" <?php echo ($row['category']??'')===$cat?'selected':''; ?>><?php echo $cat; ?></option>
                     <?php endforeach; ?>
@@ -192,15 +188,15 @@ if (empty($_SESSION[$viewedKey])) {
             </div>
         </div>
         <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">產品名稱</label>
-        <input id="ep_name" type="text" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:10px;">
+        <input id="ep_name" type="text" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;margin-bottom:10px;">
         <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">產地</label>
-        <input id="ep_origin" type="text" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:10px;">
+        <input id="ep_origin" type="text" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;margin-bottom:10px;">
         <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">用途</label>
-        <textarea id="ep_purpose" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
+        <textarea id="ep_purpose" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
         <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">成分</label>
-        <textarea id="ep_ingredients" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
+        <textarea id="ep_ingredients" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
         <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">注意事項</label>
-        <textarea id="ep_precautions" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid #f0d5dc;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:12px;"></textarea>
+        <textarea id="ep_precautions" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:12px;"></textarea>
         <button onclick="saveEditProduct(<?php echo $row['p_id']; ?>)" class="btn btn-primary" style="width:100%;">儲存</button>
         <p id="editProductMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
     </div>
@@ -245,12 +241,12 @@ if (empty($_SESSION[$viewedKey])) {
             <strong style="font-size:14px;">色號操作</strong>
             <button onclick="closeColorUpload()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
         </div>
-        <p id="colorUploadName" style="font-size:13px;color:#c97b8a;margin-bottom:10px;"></p>
+        <p id="colorUploadName" style="font-size:13px;color:var(--rose);margin-bottom:10px;"></p>
         <p style="font-size:12px;color:#888;margin-bottom:6px;">更換照片</p>
         <input type="file" id="colorImgInput" accept="image/*" style="font-size:13px;width:100%;margin-bottom:8px;">
         <button onclick="uploadColorImg()" class="btn btn-primary" style="width:100%;margin-bottom:10px;">上傳到 Supabase</button>
-        <hr style="border:none;border-top:1px solid #f0d5dc;margin-bottom:10px;">
-        <button onclick="deleteColor()" style="width:100%;padding:8px;background:#fff0f0;border:1px solid #f5c0c0;border-radius:8px;color:#c0392b;font-size:13px;cursor:pointer;">刪除此色號</button>
+        <hr style="border:none;border-top:1px solid var(--border);margin-bottom:10px;">
+        <button onclick="deleteColor()" style="width:100%;padding:8px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--r-sm);color:var(--red);font-size:13px;cursor:pointer;">刪除此色號</button>
         <p id="colorUploadMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
     </div>
 
@@ -261,12 +257,12 @@ if (empty($_SESSION[$viewedKey])) {
             <button onclick="closeAddColor()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
         </div>
         <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色號名稱</label>
-        <input type="text" id="newColorName" placeholder="例：VANILLA" style="width:100%;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+        <input type="text" id="newColorName" placeholder="例：VANILLA" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;margin-bottom:10px;box-sizing:border-box;">
         <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色票顏色</label>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-            <input type="color" id="newColorHex" value="#E0AC7A" style="width:48px;height:38px;border:1px solid #f0d5dc;border-radius:8px;cursor:pointer;padding:2px;" oninput="document.getElementById('newColorHexText').value=this.value;">
+            <input type="color" id="newColorHex" value="#E0AC7A" style="width:48px;height:38px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;padding:2px;" oninput="document.getElementById('newColorHexText').value=this.value;">
             <input type="text" id="newColorHexText" value="#E0AC7A" placeholder="#RRGGBB" maxlength="7"
-                   style="flex:1;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;"
+                   style="flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;"
                    oninput="syncHexText(this.value)">
         </div>
         <button onclick="addColor()" class="btn btn-primary" style="width:100%;">新增</button>
@@ -289,12 +285,12 @@ if (empty($_SESSION[$viewedKey])) {
                 <button onclick="closeAddColor()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
             </div>
             <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色號名稱</label>
-            <input type="text" id="newColorName" placeholder="例：VANILLA" style="width:100%;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+            <input type="text" id="newColorName" placeholder="例：VANILLA" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;margin-bottom:10px;box-sizing:border-box;">
             <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色票顏色</label>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-                <input type="color" id="newColorHex" value="#E0AC7A" style="width:48px;height:38px;border:1px solid #f0d5dc;border-radius:8px;cursor:pointer;padding:2px;" oninput="document.getElementById('newColorHexText').value=this.value;">
+                <input type="color" id="newColorHex" value="#E0AC7A" style="width:48px;height:38px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;padding:2px;" oninput="document.getElementById('newColorHexText').value=this.value;">
                 <input type="text" id="newColorHexText" value="#E0AC7A" placeholder="#RRGGBB" maxlength="7"
-                       style="flex:1;padding:8px;border:1px solid #f0d5dc;border-radius:8px;font-size:13px;"
+                       style="flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;"
                        oninput="syncHexText(this.value)">
                 </div>
                 <button onclick="addColor()" class="btn btn-primary" style="width:100%;">新增</button>
@@ -348,8 +344,8 @@ if (isset($_SESSION['user']) && !empty($attributes)) {
 .rating-section h3 { margin-bottom: 20px; }
 .rating-blocks { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 @media(max-width:600px){ .rating-blocks { grid-template-columns: 1fr; } }
-.rating-block { background: #fff8f9; border-radius: 15px; padding: 20px; }
-.rating-block h4 { margin: 0 0 16px; color: #c97b8a; font-size: 15px; }
+.rating-block { background: var(--rose-50); border-radius: var(--r-lg); padding: 20px; border: 1px solid var(--border); }
+.rating-block h4 { margin: 0 0 16px; color: var(--rose); font-size: 15px; }
 .rating-row { display: flex; align-items: center; margin-bottom: 12px; gap: 10px; }
 .rating-label { min-width: 72px; font-size: 13px; color: #555; }
 .stars-display span, .stars-interactive span {
@@ -410,7 +406,7 @@ if (isset($_SESSION['user']) && !empty($attributes)) {
             <?php elseif (($_SESSION['role'] ?? '') === 'admin'): ?>
             <p class="rating-login-note" style="color:#bbb;">管理員不開放評分</p>
             <?php else: ?>
-            <p class="rating-login-note"><a href="../首頁/login.php" style="color:#efc6cd;">登入</a> 後即可評分</p>
+            <p class="rating-login-note"><a href="../首頁/login.php" style="color:var(--rose);">登入</a> 後即可評分</p>
             <?php endif; ?>
         </div>
 

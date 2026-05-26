@@ -3,99 +3,78 @@ session_start();
 include 'db.php';
 
 $ids = $_SESSION['favorite'] ?? [];
+$result = null;
 
-if(empty($ids)){
-?>
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?v=2">
-    <title>我的收藏</title>
-</head>
-<body>
-<?php include 'header.php'; ?>
-    <div class="products">
-        <div class="empty-state">
-            <h3>❤️ 目前沒有收藏</h3>
-            <p>快去產品頁面加入喜歡的商品吧！</p>
-            <a href="products.php" class="btn btn-primary" style="padding: 10px 20px; margin-top: 15px; display: inline-block;">瀏覽產品</a>
-        </div>
-    </div>
-    <?php include 'footer.php'; ?>
-</body>
-</html>
-<?php
-    exit;
+if (!empty($ids)) {
+    $id_list = implode(",", array_map('intval', $ids));
+    $result  = $conn->query("SELECT *, id AS p_id FROM data WHERE id IN ($id_list)");
 }
-
-$id_list = implode(",", array_map('intval', $ids));
-$sql = "SELECT *, id AS p_id FROM data WHERE id IN ($id_list)";
-$result = $conn->query($sql);
 ?>
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?v=2">
-    <title>我的收藏</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COSMETIC — 我的收藏</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .fav-wrap { max-width: var(--max-w); margin: 36px auto 80px; padding: 0 24px; }
+    .fav-header { margin-bottom: 24px; }
+    .fav-header h2 { font-size: 1.4rem; font-weight: 700; }
+    .fav-header p  { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+  </style>
 </head>
-
 <body>
 
 <?php include 'header.php'; ?>
 
-<div class="products">
-    <div style="max-width: 1400px; margin: 0 auto; margin-bottom: 30px;">
-        <h2 style="color: #333; font-size: 26px; font-weight: 600;">❤️ 我的收藏</h2>
-        <p style="color: #999; margin-top: 8px;">共 <?php echo count($ids); ?> 件商品</p>
+<div class="fav-wrap">
+  <?php if (empty($ids)): ?>
+    <div class="empty">
+      <div class="empty-icon">♡</div>
+      <h3>目前沒有收藏</h3>
+      <p>快去產品頁面加入喜歡的商品吧！</p>
+      <a href="products.php" class="btn btn-primary">瀏覽產品</a>
+    </div>
+  <?php else: ?>
+    <div class="fav-header">
+      <h2>♥ 我的收藏</h2>
+      <p>共 <?= count($ids) ?> 件商品</p>
     </div>
 
     <div class="product-grid">
-
-    <?php 
-    $favorites = $_SESSION['favorite'] ?? [];
-    while($row = $result->fetch()){ 
-        $isFav = in_array($row['p_id'], $favorites);
-    ?>
-
-        <div class="product-card">
-
-            <div class="fav-btn">
-                <form action="remove_favorite.php" method="POST" style="margin:0; padding:0;">
-                    <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
-                    <button type="submit" class="heart active">❤️</button>
-                </form>
-            </div>
-
-            <?php $imgSrc = !empty($row['image_url']) ? htmlspecialchars($row['image_url']) : 'images/' . $row['p_id'] . '.jpg'; ?>
-            <img src="<?php echo $imgSrc; ?>" alt="<?php echo htmlspecialchars($row['name']); ?>"
-                 onerror="this.style.background='#f5f0f0';this.removeAttribute('src')">
-
-            <div class="product-card-inner">
-                <h3><?php echo htmlspecialchars($row['name']); ?></h3>
-                <p><?php echo htmlspecialchars($row['brand']); ?> - <?php echo htmlspecialchars($row['category']); ?></p>
-
-                <div class="product-actions">
-                    <a href="product.php?id=<?php echo $row['p_id']; ?>" class="btn btn-primary">查看詳細</a>
-                    <form action="add_compare.php" method="POST" style="flex: 1;">
-                        <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
-                        <button type="submit" class="btn btn-outline">比較</button>
-                    </form>
-                </div>
-            </div>
-
+    <?php while ($row = $result->fetch()): ?>
+      <div class="product-card">
+        <div class="product-card-img">
+          <?php if (!empty($row['image_url'])): ?>
+            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:cover;">
+          <?php else: ?>💄<?php endif; ?>
         </div>
 
-    <?php } ?>
+        <form action="remove_favorite.php" method="POST" style="position:absolute;top:10px;right:10px;margin:0;">
+          <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
+          <button type="submit" class="fav-btn active" title="移除收藏">♥</button>
+        </form>
 
+        <div class="product-card-body">
+          <div class="product-card-brand"><?= htmlspecialchars($row['brand']) ?></div>
+          <div class="product-card-name"><?= htmlspecialchars($row['name']) ?></div>
+          <?php if (!empty($row['category'])): ?>
+            <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
+          <?php endif; ?>
+          <div class="product-card-actions">
+            <a href="product.php?id=<?= $row['p_id'] ?>" class="btn btn-primary">查看</a>
+            <form action="add_compare.php" method="POST" style="flex:1;">
+              <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
+              <button type="submit" class="btn btn-outline" style="width:100%;">比較</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <?php endwhile; ?>
     </div>
+  <?php endif; ?>
 </div>
 
 <?php include 'footer.php'; ?>
-
 </body>
 </html>

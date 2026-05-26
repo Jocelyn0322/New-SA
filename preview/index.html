@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COSMETIC — 首頁</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* ── Hero ── */
+.hero {
+  min-height: 520px;
+  background: linear-gradient(135deg, #3d1520 0%, #6b2d3e 45%, #c26b7c 100%);
+  display: flex; align-items: center;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-content {
+  max-width: var(--max-w); margin: 0 auto; padding: 80px 24px;
+  position: relative; z-index: 1;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,.7); margin-bottom: 20px;
+}
+.hero-eyebrow::before { content: ''; width: 24px; height: 2px; background: var(--rose-200); border-radius: 2px; }
+.hero-title {
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-weight: 700; color: white; line-height: 1.15;
+  margin-bottom: 18px; letter-spacing: -.5px;
+}
+.hero-title em { color: #f9cfd8; font-style: normal; }
+.hero-desc { font-size: 16px; color: rgba(255,255,255,.75); margin-bottom: 36px; max-width: 480px; line-height: 1.7; }
+.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.hero-stats {
+  display: flex; gap: 40px; margin-top: 56px;
+  padding-top: 40px; border-top: 1px solid rgba(255,255,255,.12);
+}
+.hero-stat-num { font-size: 1.75rem; font-weight: 700; color: white; }
+.hero-stat-label { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 2px; }
+
+/* ── Feature Pills ── */
+.feature-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  margin-top: -32px; position: relative; z-index: 2;
+}
+.feature-pill {
+  background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border);
+  padding: 20px 22px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px;
+  transition: all var(--t); cursor: pointer; text-decoration: none; color: inherit;
+}
+.feature-pill:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--rose-200); }
+.feature-pill-icon {
+  width: 44px; height: 44px; border-radius: var(--r); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.feature-pill-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.feature-pill-desc { font-size: 12px; color: var(--text-3); }
+
+@media(max-width:768px){
+  .feature-row { grid-template-columns: repeat(2,1fr); margin-top: -16px; }
+  .hero-stats { gap: 24px; flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo"><div class="logo-mark">💄</div>COSMETIC</a>
+    <nav class="nav">
+      <a href="index.html" class="nav-link active">首頁</a>
+      <a href="products.html" class="nav-link">產品</a>
+      <a href="ai.html" class="nav-link">AI 檢測</a>
+      <a href="video.html" class="nav-link">影片交流</a>
+    </nav>
+    <div class="header-actions">
+      <a href="favorite.html" class="icon-btn" title="收藏">♡<span class="count">3</span></a>
+      <a href="compare.html" class="icon-btn" title="比較">⚖</a>
+      <a href="profile.html" class="user-chip">
+        <div class="user-avatar">A</div><span>alice</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">AI 驅動的美妝平台</div>
+    <h1 class="hero-title">找到最適合<em>你</em>的<br>彩妝產品</h1>
+    <p class="hero-desc">透過 AI 膚色分析，精準推薦適合你的彩妝。超過 500 款產品，讓你輕鬆比較、收藏、評分。</p>
+    <div class="hero-actions">
+      <a href="ai.html" class="btn btn-primary btn-lg">✨ 立即 AI 分析</a>
+      <a href="products.html" class="btn btn-ghost btn-lg">瀏覽產品</a>
+    </div>
+    <div class="hero-stats">
+      <div><div class="hero-stat-num">500+</div><div class="hero-stat-label">精選產品</div></div>
+      <div><div class="hero-stat-num">1,200+</div><div class="hero-stat-label">活躍會員</div></div>
+      <div><div class="hero-stat-num">4,800+</div><div class="hero-stat-label">使用者評分</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Feature Pills -->
+<div style="max-width:var(--max-w);margin:0 auto;padding:0 24px;">
+  <div class="feature-row">
+    <a href="ai.html" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#fce7ec;">🤖</div>
+      <div><div class="feature-pill-title">AI 膚色分析</div><div class="feature-pill-desc">相機即時偵測膚色</div></div>
+    </a>
+    <a href="products.html" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#eff6ff;">💄</div>
+      <div><div class="feature-pill-title">完整產品庫</div><div class="feature-pill-desc">搜尋篩選一秒找到</div></div>
+    </a>
+    <a href="video.html" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#f5f3ff;">🎬</div>
+      <div><div class="feature-pill-title">影片交流</div><div class="feature-pill-desc">分享彩妝教學影片</div></div>
+    </a>
+    <a href="compare.html" class="feature-pill">
+      <div class="feature-pill-icon" style="background:#f0fdf4;">⚖️</div>
+      <div><div class="feature-pill-title">產品比較</div><div class="feature-pill-desc">並排分析找出最優</div></div>
+    </a>
+  </div>
+</div>
+
+<!-- Featured Products -->
+<section class="section">
+  <div style="max-width:var(--max-w);margin:0 auto;padding:0 24px;">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow">熱門推薦</div>
+        <h2 class="section-title">最新上架精選</h2>
+      </div>
+      <a href="products.html" class="btn btn-outline btn-sm">查看全部 →</a>
+    </div>
+    <div class="product-grid">
+      <!-- Card 1 -->
+      <div class="product-card">
+        <div class="product-card-img">🌸</div>
+        <button class="fav-btn active">♥</button>
+        <div class="product-card-body">
+          <div class="product-card-brand">NARS</div>
+          <div class="product-card-name">裸光蜜粉餅 Radiant Pressed</div>
+          <span class="badge badge-rose">底妝</span>
+          <div class="product-card-actions">
+            <a href="product-detail.html" class="btn btn-primary">查看</a>
+            <button class="btn btn-outline">比較</button>
+          </div>
+        </div>
+      </div>
+      <!-- Card 2 -->
+      <div class="product-card">
+        <div class="product-card-img">💋</div>
+        <button class="fav-btn">♡</button>
+        <div class="product-card-body">
+          <div class="product-card-brand">MAC</div>
+          <div class="product-card-name">Ruby Woo 持久子彈唇膏</div>
+          <span class="badge badge-rose">口紅</span>
+          <div class="product-card-actions">
+            <a href="product-detail.html" class="btn btn-primary">查看</a>
+            <button class="btn btn-outline">比較</button>
+          </div>
+        </div>
+      </div>
+      <!-- Card 3 -->
+      <div class="product-card">
+        <div class="product-card-img">✨</div>
+        <button class="fav-btn">♡</button>
+        <div class="product-card-body">
+          <div class="product-card-brand">Dior</div>
+          <div class="product-card-name">迪奧超完美柔霧唇膏</div>
+          <span class="badge badge-rose">唇膏</span>
+          <div class="product-card-actions">
+            <a href="product-detail.html" class="btn btn-primary">查看</a>
+            <button class="btn btn-outline">比較</button>
+          </div>
+        </div>
+      </div>
+      <!-- Card 4 -->
+      <div class="product-card">
+        <div class="product-card-img">💎</div>
+        <button class="fav-btn">♡</button>
+        <div class="product-card-body">
+          <div class="product-card-brand">Shiseido</div>
+          <div class="product-card-name">時尚色繪觸感氣墊粉餅</div>
+          <span class="badge badge-rose">底妝</span>
+          <div class="product-card-actions">
+            <a href="product-detail.html" class="btn btn-primary">查看</a>
+            <button class="btn btn-outline">比較</button>
+          </div>
+        </div>
+      </div>
+      <!-- Card 5 -->
+      <div class="product-card">
+        <div class="product-card-img">🎨</div>
+        <button class="fav-btn active">♥</button>
+        <div class="product-card-body">
+          <div class="product-card-brand">3CE</div>
+          <div class="product-card-name">多色眼影盤 Multi Eye Color Palette</div>
+          <span class="badge badge-rose">眼影</span>
+          <div class="product-card-actions">
+            <a href="product-detail.html" class="btn btn-primary">查看</a>
+            <button class="btn btn-outline">比較</button>
+          </div>
+        </div>
+      </div>
+      <!-- Card 6 -->
+      <div class="product-card">
+        <div class="product-card-img">🌷</div>
+        <button class="fav-btn">♡</button>
+        <div class="product-card-body">
+          <div class="product-card-brand">Fenty Beauty</div>
+          <div class="product-card-name">Pro Filt'r 柔霧持久粉底液</div>
+          <span class="badge badge-rose">底妝</span>
+          <div class="product-card-actions">
+            <a href="product-detail.html" class="btn btn-primary">查看</a>
+            <button class="btn btn-outline">比較</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <p>© 2025 COSMETIC — 找到最適合你的彩妝</p>
+</footer>
+
+<!-- Toast -->
+<div class="toast-container">
+  <div class="toast success" id="favToast" style="display:none;">♥ 已加入收藏</div>
+</div>
+
+<script>
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('favToast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.style.display = '';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+document.querySelectorAll('.fav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const isActive = btn.classList.toggle('active');
+    btn.textContent = isActive ? '♥' : '♡';
+    showToast(isActive ? '♥ 已加入收藏' : '移除收藏');
+  });
+});
+</script>
+</body>
+</html>

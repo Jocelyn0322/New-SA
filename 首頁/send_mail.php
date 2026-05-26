@@ -112,3 +112,54 @@ function sendVerificationEmail($toEmail, $username, $code) {
         return false;
     }
 }
+
+function sendPasswordResetEmail($toEmail, $username, $code) {
+    $mail = new PHPMailer(true);
+
+    if (!defined('GMAIL_USER') && file_exists(__DIR__ . '/mail_config.php')) {
+        require_once __DIR__ . '/mail_config.php';
+    }
+    $gmailUser = defined('GMAIL_USER') ? GMAIL_USER : getenv('GMAIL_USER');
+    $gmailPass = defined('GMAIL_PASS') ? GMAIL_PASS : getenv('GMAIL_PASS');
+    if (!$gmailUser || !$gmailPass) {
+        error_log('Email 設定遺失');
+        return false;
+    }
+
+    try {
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $gmailUser;
+        $mail->Password   = $gmailPass;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+
+        $mail->CharSet = 'UTF-8';
+        $mail->setFrom($gmailUser, 'Makeup Website');
+        $mail->addAddress($toEmail, $username);
+
+        $mail->isHTML(true);
+        $mail->Subject = '重設密碼驗證碼';
+        $mail->Body    = "
+            <div style='font-family:sans-serif;max-width:480px;margin:auto;'>
+                <h2 style='color:#ff5a7e;'>重設密碼</h2>
+                <p>您好，<strong>{$username}</strong></p>
+                <p>您申請了密碼重設，驗證碼如下：</p>
+                <div style='background:#fff5f6;border-radius:8px;padding:20px;text-align:center;margin:16px 0;'>
+                    <span style='font-size:36px;font-weight:bold;color:#ff3a6f;letter-spacing:8px;'>{$code}</span>
+                </div>
+                <p>此驗證碼 <strong>15 分鐘</strong>內有效。</p>
+                <p>若非您本人申請，請忽略此信，密碼不會被更改。</p>
+                <hr style='border:none;border-top:1px solid #eee;margin:20px 0;'>
+                <p style='color:#aaa;font-size:12px;'>此郵件由系統自動發送，請勿回覆。</p>
+            </div>
+        ";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("密碼重設 Email 發送失敗: " . $mail->ErrorInfo);
+        return false;
+    }
+}

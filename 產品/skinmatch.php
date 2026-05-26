@@ -157,8 +157,8 @@ if (isset($pdo)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?v=2">
-    <title>AI 專屬推薦 - Makeup</title>
+    <link rel="stylesheet" href="style.css">
+    <title>COSMETIC — AI 專屬推薦</title>
     <style>
         .ai-profile-card {
             background: linear-gradient(135deg, #f9f0f2 0%, #ede8f0 60%, #edf0f5 100%);

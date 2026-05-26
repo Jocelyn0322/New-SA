@@ -4,6 +4,19 @@
 const setToneQuizAnswer = (questionKey, optionValue) => {
     toneQuizAnswers.value[questionKey] = optionValue;
     toneGuess.value = inferToneGuess();
+    const order = ['t1', 't2', 't3'];
+    const idx = order.indexOf(questionKey);
+    if (idx < 0) return;
+    toneQuizTyping.value = true;
+    setTimeout(() => {
+        toneQuizTyping.value = false;
+        if (toneQuizStep.value <= idx + 1) toneQuizStep.value = idx + 2;
+        if (toneQuizStep.value > toneQuizData.length) applyToneGuessToSelection();
+        nextTick(() => {
+            const el = document.getElementById('chatEnd');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    }, 700);
 };
 
 const toneQuizOptionClass = (questionKey, optionValue) => {
@@ -79,6 +92,8 @@ const confirmSkinTone = () => { confirmedSkinTone.value = !confirmedSkinTone.val
 const confirmSkinType = () => { confirmedSkinType.value = !confirmedSkinType.value; };
 
 const backToToneAndSkinPage = () => { currentStep.value = 3; };
+const backToResultsPage     = () => { currentStep.value = 4; };
+const goToConfirmStep       = () => { currentStep.value = 5; };
 
 const goToMakeupStep = () => {
     if (!canChooseMakeupPreference.value) {
@@ -86,11 +101,23 @@ const goToMakeupStep = () => {
         return;
     }
     showMakeupPreference.value = true;
-    currentStep.value = 4;
+    currentStep.value = 5;
 };
 
 const setQuizAnswer = (questionKey, optionValue) => {
     quizAnswers.value[questionKey] = optionValue;
+    const order = ['q1', 'q2', 'q3', 'q4'];
+    const idx = order.indexOf(questionKey);
+    if (idx < 0) return;
+    skinQuizTyping.value = true;
+    setTimeout(() => {
+        skinQuizTyping.value = false;
+        if (skinQuizStep.value <= idx + 1) skinQuizStep.value = idx + 2;
+        nextTick(() => {
+            const el = document.getElementById('chatEnd');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    }, 700);
 };
 
 const quizOptionClass = (questionKey, optionValue) => {
