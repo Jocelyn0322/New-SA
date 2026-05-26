@@ -410,85 +410,164 @@ if ($view === 'following') {
     <title>COSMETIC — 影片交流</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Bridge: map old class names to new design tokens */
+        /* ─── Layout ─── */
+        .video-page { min-height: 100vh; background: #f4f3f8; padding-bottom: 80px; }
+        .video-wrapper { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
 
-        .video-page {
-            min-height: 100vh;
-            background: #f2f2f7;
-            padding: 32px 20px 60px;
+        /* ─── Page Header ─── */
+        .vp-header { display: flex; align-items: center; gap: 16px; padding: 32px 0 0; }
+        .vp-header-left { flex: 1; }
+        .page-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #1a1a2e; }
+        .page-title-sub { font-size: 13px; color: #888; margin-top: 5px; }
+        .btn-upload-header {
+            display: inline-flex; align-items: center; gap: 7px;
+            height: 40px; padding: 0 18px;
+            background: #c26b7c; color: #fff; border: none;
+            border-radius: 10px; font-size: 13px; font-weight: 700;
+            cursor: pointer; text-decoration: none; white-space: nowrap;
+            transition: background .18s;
         }
+        .btn-upload-header:hover { background: #b05c6c; }
 
-        .video-wrapper {
-            max-width: 1160px;
-            margin: 0 auto;
-        }
-
-        .page-title {
-            font-size: 24px;
-            font-weight: 800;
-            color: #1c1c1e;
-            margin-bottom: 4px;
-            text-align: center;
-            letter-spacing: -0.3px;
-        }
-
-        .nav-tabs {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 28px;
-            border-bottom: 2px solid #e5e5ea;
-            gap: 0;
-        }
-
+        /* ─── Tab Bar ─── */
+        .nav-tabs { display: flex; gap: 0; border-bottom: 2px solid #e8e6f0; margin: 22px 0 0; }
         .nav-tab {
-            padding: 11px 26px;
-            background: transparent;
-            color: #8e8e93;
-            text-decoration: none;
-            border-radius: 0;
-            font-weight: 600;
-            font-size: 14px;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: color 0.2s, border-color 0.2s;
+            padding: 11px 22px; color: #888; font-size: 14px; font-weight: 600;
+            text-decoration: none; border-bottom: 2px solid transparent;
+            margin-bottom: -2px; transition: all .18s; white-space: nowrap;
         }
+        .nav-tab:hover { color: #c26b7c; }
+        .nav-tab.active { color: #c26b7c; border-bottom-color: #c26b7c; }
 
-        .nav-tab.active {
-            color: #e83e5a;
-            border-bottom-color: #e83e5a;
-            background: transparent;
+        /* ─── Filter / Sort ─── */
+        .filter-area { padding: 20px 0 4px; display: flex; flex-direction: column; gap: 12px; }
+        .search-row { display: flex; gap: 10px; align-items: center; }
+        .search-wrap { position: relative; flex: 1; max-width: 380px; }
+        .search-wrap::before { content: '🔍'; position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; pointer-events: none; }
+        .search-input {
+            width: 100%; height: 38px; padding: 0 14px 0 36px;
+            border: 1.5px solid #e8e6f0; border-radius: 10px;
+            font-size: 13px; outline: none; background: #fff; color: #1a1a2e;
+            transition: border .18s;
         }
-
-        .nav-tab:hover {
-            color: #e83e5a;
-            background: transparent;
+        .search-input:focus { border-color: #c26b7c; }
+        .filter-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .filter-label { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #888; margin-right: 2px; }
+        .f-chip {
+            display: inline-flex; align-items: center; height: 28px; padding: 0 12px;
+            border-radius: 99px; border: 1.5px solid #e8e6f0;
+            background: #fff; font-size: 12px; font-weight: 600;
+            color: #555; cursor: pointer; transition: all .18s; text-decoration: none; white-space: nowrap;
         }
-
-        .nav-tab.active:hover {
-            background: transparent;
+        .f-chip:hover { border-color: #c26b7c; color: #c26b7c; }
+        .f-chip.active { background: #c26b7c; color: #fff; border-color: #c26b7c; }
+        .sort-row { display: flex; gap: 6px; align-items: center; margin-bottom: 20px; margin-top: 4px; }
+        .sort-btn {
+            height: 28px; padding: 0 12px; border-radius: 8px;
+            border: 1.5px solid #e8e6f0; background: #fff;
+            font-size: 12px; color: #555; cursor: pointer; font-family: inherit;
+            font-weight: 500; transition: all .18s; text-decoration: none;
+            display: inline-flex; align-items: center;
         }
+        .sort-btn:hover { border-color: #c26b7c; color: #c26b7c; }
+        .sort-btn.active { background: #fce7ec; color: #9d2942; border-color: #fce7ec; font-weight: 700; }
+        .sort-label { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #888; margin-right: 2px; }
 
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 40px;
+        .tag-filter-bar {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+            padding: 10px 14px; background: #fce7ec; border: 1px solid #f9cfd8;
+            border-radius: 12px; font-size: 13px; color: #9d2942; font-weight: 600;
         }
+        .tag-filter-bar a { margin-left: auto; color: #c26b7c; font-size: 12px; text-decoration: none; padding: 3px 10px; border-radius: 99px; border: 1px solid #c26b7c; }
+        .tag-filter-bar a:hover { background: #c26b7c; color: white; }
 
+        /* ─── Video Grid ─── */
+        .video-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+        @media(max-width:900px){ .video-grid { grid-template-columns: repeat(2,1fr); } }
+        @media(max-width:580px){ .video-grid { grid-template-columns: 1fr; } }
+
+        /* ─── Video Card ─── */
+        .video-card {
+            background: #fff; border-radius: 14px; overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,.06); border: 1px solid #e8e6f0;
+            transition: all .18s; cursor: pointer; display: flex; flex-direction: column;
+        }
+        .video-card:hover { transform: translateY(-4px); box-shadow: 0 10px 32px rgba(0,0,0,.13); }
+
+        /* 16:9 thumbnail */
+        .video-player {
+            position: relative; padding-top: 56.25%;
+            overflow: hidden; background: #1c1c1e;
+        }
+        .video-player video {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+        }
+        .play-icon {
+            position: absolute; inset: 0; background: rgba(0,0,0,0);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity .18s, background .18s;
+        }
+        .video-card:hover .play-icon { opacity: 1; background: rgba(0,0,0,.28); }
+        .play-icon::after {
+            content: '▶'; color: white; font-size: 20px;
+            width: 50px; height: 50px; background: rgba(194,107,124,.9);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            padding-left: 4px; box-shadow: 0 4px 18px rgba(0,0,0,.3);
+        }
+        .video-like-btn {
+            position: absolute; bottom: 9px; left: 10px;
+            background: rgba(0,0,0,.55); border: none; border-radius: 20px;
+            padding: 4px 10px; font-size: 12px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 4px;
+            transition: background .18s; z-index: 10; color: #fff;
+        }
+        .video-like-btn:hover, .video-like-btn.liked { background: rgba(194,107,124,.88); }
+
+        /* Card body */
+        .vc-info { padding: 13px 15px 15px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .vc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 2px; }
+        .vc-tag {
+            font-size: 11px; font-weight: 600; color: #c26b7c;
+            background: #fce7ec; border-radius: 99px; padding: 2px 9px;
+            text-decoration: none; cursor: pointer; transition: all .15s;
+            border: 1px solid #f9cfd8;
+        }
+        .vc-tag:hover, .vc-tag.active { background: #c26b7c; color: #fff; border-color: #c26b7c; }
+        .vc-title {
+            font-size: 14px; font-weight: 700; color: #1a1a2e; line-height: 1.45;
+            display: -webkit-box; -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 5px;
+        }
+        .vc-footer { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+        .vc-avatar {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: #fce7ec; color: #9d2942;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 800; flex-shrink: 0;
+        }
+        .vc-author { font-size: 12px; color: #555; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .vc-likes { font-size: 11px; color: #888; flex-shrink: 0; }
+
+        /* Messages */
+        .message { padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* Empty State */
+        .empty-state { grid-column: 1/-1; text-align: center; padding: 80px 20px; color: #888; }
+        .empty-icon { font-size: 48px; margin-bottom: 14px; }
+        .empty-text { font-size: 16px; font-weight: 700; color: #555; margin-bottom: 6px; }
+
+        /* ─── Personal Tab ─── */
         .upload-section {
-            grid-column: 1 / -1;
-            background: white;
-            padding: 24px 28px;
-            border-radius: 16px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            background: #fff; padding: 24px 28px; border-radius: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.06); border: 1px solid #e8e6f0;
+            margin-bottom: 28px;
         }
-
-        .upload-section h2 {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: #1c1c1e;
-        }
+        .upload-section h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #1a1a2e; }
+        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+        .content-grid .upload-section { grid-column: 1/-1; }
 
         .form-grid {
             display: grid;
@@ -497,402 +576,56 @@ if ($view === 'following') {
             margin-bottom: 15px;
         }
 
-        .form-group {
-            grid-column: 1 / -1;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-            font-size: 14px;
-        }
-
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 12px; font-weight: 700; color: #888; letter-spacing: .3px; }
         .form-group input[type="text"],
         .form-group textarea {
+            padding: 9px 12px; border: 1.5px solid #e8e6f0; border-radius: 10px;
+            font-size: 13px; outline: none; transition: border .18s; background: #f4f3f8;
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
         }
-
         .form-group input[type="text"]:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #ff5a7e;
-        }
-
-        .form-group textarea {
-            height: 80px;
-            resize: vertical;
-        }
-
-        .form-group input[type="file"] {
-            padding: 10px;
-        }
-
+        .form-group textarea:focus { border-color: #c26b7c; background: #fff; }
+        .form-group textarea { height: 80px; resize: vertical; }
+        .form-group input[type="file"] { padding: 10px; border: 1.5px solid #e8e6f0; border-radius: 10px; background: #f4f3f8; }
         .upload-btn {
-            background: linear-gradient(135deg, #ff5a7e 0%, #ff3a6f 100%);
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-            width: 100%;
+            background: #c26b7c; color: white; padding: 11px 30px; border: none;
+            border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 700;
+            width: 100%; transition: background .18s;
         }
-
-        .upload-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(255, 90, 126, 0.3);
-        }
-
-        .message {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .video-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-        }
-
-        .video-card {
-            background: #fff;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-            transition: transform 0.22s ease, box-shadow 0.22s ease;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .video-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 28px rgba(0,0,0,0.13);
-        }
-
-        .video-player {
-            width: 100%;
-            height: 200px;
-            background: #1c1c1e;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .video-player video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            pointer-events: none;
-        }
-
-        .play-icon {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.22);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.22s;
-        }
-
-        .play-icon::after {
-            content: '▶';
-            color: white;
-            font-size: 20px;
-            width: 52px;
-            height: 52px;
-            background: rgba(232,62,90,0.92);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding-left: 4px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
-        }
-
-        .video-card:hover .play-icon {
-            opacity: 1;
-        }
-
-        /* 卡片底部資訊（首頁） */
-        .vc-info {
-            padding: 12px 14px 14px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .vc-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 2px;
-        }
-
-        .vc-tag {
-            display: inline-block;
-            padding: 2px 9px;
-            border-radius: 99px;
-            background: #fff0f3;
-            color: #e83e5a;
-            font-size: 11px;
-            font-weight: 600;
-            border: 1px solid #ffd6de;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s;
-            text-decoration: none;
-        }
-
-        .vc-tag:hover, .vc-tag.active {
-            background: #e83e5a;
-            color: white;
-            border-color: #e83e5a;
-        }
-
-        .tag-filter-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-            padding: 10px 14px;
-            background: #fff0f3;
-            border: 1px solid #ffd6de;
-            border-radius: 12px;
-            font-size: 13px;
-            color: #c0375a;
-            font-weight: 600;
-        }
-
-        .tag-filter-bar a {
-            margin-left: auto;
-            color: #e83e5a;
-            font-size: 12px;
-            text-decoration: none;
-            padding: 3px 10px;
-            border-radius: 99px;
-            border: 1px solid #e83e5a;
-        }
-
-        .tag-filter-bar a:hover { background: #e83e5a; color: white; }
-
+        .upload-btn:hover { background: #b05c6c; }
+        .video-info { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
+        .video-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #333; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .video-description { color: #999; margin-bottom: 10px; font-size: 13px; line-height: 1.4; }
+        .video-meta { display: flex; align-items: center; margin-bottom: 12px; font-size: 12px; }
+        .author-info { display: flex; align-items: center; flex: 1; }
+        .author-avatar { width: 24px; height: 24px; border-radius: 50%; background: rgba(194,107,124,.7); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 11px; margin-right: 8px; }
+        .author-details { display: flex; flex-direction: column; }
+        .author-name { color: #333; font-weight: 600; font-size: 12px; }
+        .upload-time { color: #ccc; font-size: 11px; }
+        .video-actions { display: flex; gap: 8px; margin-top: auto; }
+        .delete-btn { flex: 1; background: #dc3545; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background .2s; }
+        .delete-btn:hover { background: #c82333; }
         /* Hashtag chip input */
-        .hashtag-input-box {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 6px;
-            min-height: 42px;
-            padding: 7px 12px;
-            border: 1.5px solid #ddd;
-            border-radius: 10px;
-            background: white;
-            cursor: text;
-            transition: border-color 0.2s;
-        }
-        .hashtag-input-box:focus-within { border-color: #e83e5a; }
-
-        .hashtag-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: #fff0f3;
-            color: #e83e5a;
-            border: 1px solid #ffd6de;
-            border-radius: 99px;
-            padding: 2px 10px 2px 8px;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .hashtag-chip-remove {
-            cursor: pointer;
-            font-size: 14px;
-            line-height: 1;
-            color: #e83e5a;
-            opacity: 0.6;
-            margin-left: 2px;
-        }
+        .hashtag-input-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 42px; padding: 7px 12px; border: 1.5px solid #e8e6f0; border-radius: 10px; background: white; cursor: text; transition: border-color .2s; }
+        .hashtag-input-box:focus-within { border-color: #c26b7c; }
+        .hashtag-chip { display: inline-flex; align-items: center; gap: 4px; background: #fce7ec; color: #c26b7c; border: 1px solid #f9cfd8; border-radius: 99px; padding: 2px 10px 2px 8px; font-size: 13px; font-weight: 600; }
+        .hashtag-chip-remove { cursor: pointer; font-size: 14px; line-height: 1; color: #c26b7c; opacity: 0.6; margin-left: 2px; }
         .hashtag-chip-remove:hover { opacity: 1; }
+        .hashtag-typing { border: none; outline: none; font-size: 13px; min-width: 120px; flex: 1; color: #333; background: transparent; }
+        .preset-tag-btn { background: white; border: 1.5px solid #f9cfd8; color: #c26b7c; border-radius: 99px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+        .preset-tag-btn:hover { background: #fce7ec; }
+        .preset-tag-btn.selected { background: #c26b7c; color: white; border-color: #c26b7c; }
+        .suggestion-chip { display: inline-block; padding: 3px 11px; border-radius: 99px; background: #fce7ec; color: #c26b7c; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #f9cfd8; }
+        .suggestion-chip:hover { background: #c26b7c; color: white; }
 
-        .hashtag-typing {
-            border: none;
-            outline: none;
-            font-size: 13px;
-            min-width: 120px;
-            flex: 1;
-            color: #333;
-            background: transparent;
-        }
-
-        .preset-tag-btn {
-            background: white;
-            border: 1.5px solid #ffd6de;
-            color: #e83e5a;
-            border-radius: 99px;
-            padding: 4px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s;
-        }
-        .preset-tag-btn:hover { background: #fff0f3; }
-        .preset-tag-btn.selected { background: #e83e5a; color: white; border-color: #e83e5a; }
-
-        .suggestion-chip {
-            display: inline-block;
-            padding: 3px 11px;
-            border-radius: 99px;
-            background: #fff0f3;
-            color: #e83e5a;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid #ffd6de;
-        }
-        .suggestion-chip:hover { background: #e83e5a; color: white; }
-
-        .vc-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1c1c1e;
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .vc-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: auto;
-        }
-
-        .vc-author {
-            font-size: 12px;
-            color: #8e8e93;
-        }
-
-        .vc-likes {
-            font-size: 12px;
-            color: #e83e5a;
-            font-weight: 600;
-        }
-
-        .video-like-btn {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.6);
-            border: none;
-            border-radius: 20px;
-            padding: 6px 12px;
-            cursor: pointer;
-            color: white;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: all 0.2s;
-            z-index: 10;
-        }
-
-        .video-like-btn:hover {
-            background: rgba(255, 90, 126, 0.8);
-        }
-
-        .video-like-btn.liked {
-            color: #ff5a7e;
-        }
-
-        /* 自動播放第一個影片 */
-        .video-card:first-child video {
-            autoplay: true;
-        }
-
-        /* 影片詳情浮層 */
-        .video-detail-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 1000;
-            overflow-y: auto;
-        }
-
-        .video-detail-overlay.active {
-            display: block;
-        }
-
-        .video-detail-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            display: flex;
-            gap: 30px;
-            align-items: flex-start;
-        }
-
-        .video-detail-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            font-size: 30px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 1001;
-        }
-
-        .video-detail-player {
-            width: 65%;
-            max-height: 70vh;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        .video-detail-player video {
-            max-width: 100%;
-            max-height: 70vh;
-        }
-
+        /* ─── Video Detail Overlay ─── */
+        .video-detail-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.95); z-index: 1000; overflow-y: auto; }
+        .video-detail-overlay.active { display: block; }
+        .video-detail-content { max-width: 1400px; margin: 0 auto; padding: 20px; display: flex; gap: 30px; align-items: flex-start; }
+        .video-detail-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,.2); border: none; color: white; font-size: 30px; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; z-index: 1001; }
+        .video-detail-player { width: 65%; max-height: 70vh; background: #000; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        .video-detail-player video { max-width: 100%; max-height: 70vh; }
         .video-detail-info {
             padding: 0;
             color: white;
@@ -900,297 +633,49 @@ if ($view === 'following') {
             overflow-y: auto;
             max-height: 70vh;
         }
-
-        .video-detail-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 12px;
-        }
-
-        .video-detail-meta {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 12px;
-            font-size: 13px;
-            color: #ccc;
-        }
-
-        .video-detail-author {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .video-detail-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ff5a7e 0%, #ff3a6f 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        .video-detail-description {
-            color: #aaa;
-            line-height: 1.5;
-            margin-top: 0;
-            font-size: 13px;
-        }
-
-        /* 評論區樣式 */
-        .comments-section {
-            margin-top: 16px;
-            padding-top: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .comments-header {
-            font-size: 13px;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 10px;
-        }
-
-        .comment-form {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .comment-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 8px 10px;
-            color: #fff;
-            font-size: 12px;
-            outline: none;
-        }
-
-        .comment-input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .comment-input:focus {
-            border-color: rgba(255, 90, 126, 0.5);
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .comment-submit-btn {
-            background: #ff5a7e;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-
-        .comment-submit-btn:hover {
-            background: #ff3a6f;
-        }
-
-        .comments-list {
-            max-height: 300px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .comment-item {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 10px;
-        }
-
-        .comment-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .comment-author {
-            font-size: 12px;
-            font-weight: 600;
-            color: #ff5a7e;
-        }
-
-        .comment-time {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.4);
-        }
-
-        .comment-content {
-            font-size: 12px;
-            color: #ddd;
-            margin-bottom: 8px;
-            line-height: 1.4;
-            word-break: break-word;
-        }
-
-        .comment-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .comment-like-btn {
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.6);
-            cursor: pointer;
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            transition: all 0.2s;
-        }
-
-        .comment-like-btn:hover {
-            color: #ff5a7e;
-        }
-
-        .comment-like-btn.liked {
-            color: #ff5a7e;
-        }
-
-        .comment-reply-btn {
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.6);
-            cursor: pointer;
-            font-size: 11px;
-            transition: all 0.2s;
-        }
-
-        .comment-reply-btn:hover {
-            color: #ff5a7e;
-        }
-
-        .comment-delete-btn {
-            background: none;
-            border: none;
-            color: rgba(220, 53, 69, 0.8);
-            cursor: pointer;
-            font-size: 11px;
-            transition: all 0.2s;
-        }
-
-        .comment-delete-btn:hover {
-            color: #dc3545;
-        }
-
-        .comment-report-btn {
-            background: none;
-            border: none;
-            color: rgba(150, 100, 0, 0.7);
-            cursor: pointer;
-            font-size: 11px;
-            transition: all 0.2s;
-        }
+        .video-detail-title { font-size: 20px; font-weight: bold; margin-bottom: 12px; }
+        .video-detail-meta { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; font-size: 13px; color: #ccc; }
+        .video-detail-author { display: flex; align-items: center; gap: 10px; }
+        .video-detail-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#ff5a7e 0%,#ff3a6f 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
+        .video-detail-description { color: #aaa; line-height: 1.5; margin-top: 0; font-size: 13px; }
+        .comments-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.1); }
+        .comments-header { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 10px; }
+        .comment-form { display: flex; gap: 8px; margin-bottom: 12px; }
+        .comment-input { flex: 1; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 8px 10px; color: #fff; font-size: 12px; outline: none; }
+        .comment-input::placeholder { color: rgba(255,255,255,.5); }
+        .comment-input:focus { border-color: rgba(255,90,126,.5); background: rgba(255,255,255,.12); }
+        .comment-submit-btn { background: #ff5a7e; color: white; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .comment-submit-btn:hover { background: #ff3a6f; }
+        .comments-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .comment-item { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 10px; }
+        .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .comment-author { font-size: 12px; font-weight: 600; color: #ff5a7e; }
+        .comment-time { font-size: 11px; color: rgba(255,255,255,.4); }
+        .comment-content { font-size: 12px; color: #ddd; margin-bottom: 8px; line-height: 1.4; word-break: break-word; }
+        .comment-actions { display: flex; gap: 8px; align-items: center; }
+        .comment-like-btn { background: none; border: none; color: rgba(255,255,255,.6); cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 3px; transition: all .2s; }
+        .comment-like-btn:hover, .comment-like-btn.liked { color: #ff5a7e; }
+        .comment-reply-btn { background: none; border: none; color: rgba(255,255,255,.6); cursor: pointer; font-size: 11px; transition: all .2s; }
+        .comment-reply-btn:hover { color: #ff5a7e; }
+        .comment-delete-btn { background: none; border: none; color: rgba(220,53,69,.8); cursor: pointer; font-size: 11px; transition: all .2s; }
+        .comment-delete-btn:hover { color: #dc3545; }
+        .comment-report-btn { background: none; border: none; color: rgba(150,100,0,.7); cursor: pointer; font-size: 11px; transition: all .2s; }
         .comment-report-btn:hover { color: #856404; }
-
-        .comment-report-form {
-            margin-top: 8px;
-            background: #fff8e8;
-            border: 1px solid #ffc;
-            border-radius: 8px;
-            padding: 10px 12px;
-            display: none;
-            flex-direction: column;
-            gap: 7px;
-        }
-        .comment-report-form select,
-        .comment-report-form textarea {
-            width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 12px;
-            background: #fff;
-        }
+        .comment-report-form { margin-top: 8px; background: #fff8e8; border: 1px solid #ffc; border-radius: 8px; padding: 10px 12px; display: none; flex-direction: column; gap: 7px; }
+        .comment-report-form select, .comment-report-form textarea { width: 100%; border: 1px solid #ddd; border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; }
         .comment-report-form textarea { resize: none; height: 54px; }
         .comment-report-actions { display: flex; gap: 6px; }
-        .comment-report-actions button {
-            padding: 5px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-        }
+        .comment-report-actions button { padding: 5px 12px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
         .comment-report-submit { background: #e83e5a; color: #fff; }
         .comment-report-cancel { background: #e0e0e0; color: #555; }
-
-        .replies {
-            margin-top: 8px;
-            padding-left: 12px;
-            border-left: 2px solid rgba(255, 90, 126, 0.3);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .reply-item {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 6px;
-            padding: 8px;
-            font-size: 11px;
-        }
-
-        .reply-form {
-            display: flex;
-            gap: 6px;
-            margin-top: 8px;
-        }
-
-        .reply-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-            padding: 6px 8px;
-            color: #fff;
-            font-size: 11px;
-            outline: none;
-        }
-
-        .reply-input:focus {
-            border-color: rgba(255, 90, 126, 0.4);
-        }
-
-        .reply-submit-btn {
-            background: #ff5a7e;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 11px;
-            white-space: nowrap;
-        }
-
-        .reply-submit-btn:hover {
-            background: #ff3a6f;
-        }
-
-        .empty-comments {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 12px;
-            padding: 20px 0;
-        }
+        .replies { margin-top: 8px; padding-left: 12px; border-left: 2px solid rgba(255,90,126,.3); display: flex; flex-direction: column; gap: 8px; }
+        .reply-item { background: rgba(255,255,255,.03); border-radius: 6px; padding: 8px; font-size: 11px; }
+        .reply-form { display: flex; gap: 6px; margin-top: 8px; }
+        .reply-input { flex: 1; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); border-radius: 6px; padding: 6px 8px; color: #fff; font-size: 11px; outline: none; }
+        .reply-input:focus { border-color: rgba(255,90,126,.4); }
+        .reply-submit-btn { background: #ff5a7e; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+        .reply-submit-btn:hover { background: #ff3a6f; }
+        .empty-comments { text-align: center; color: rgba(255,255,255,.4); font-size: 12px; padding: 20px 0; }
 
         .video-detail-actions {
             display: flex;
@@ -1200,375 +685,57 @@ if ($view === 'following') {
             margin-top: 12px;
             margin-bottom: 12px;
         }
+        .video-detail-like-btn, .report-trigger-btn { border: none; border-radius: 18px; padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; }
+        .video-detail-like-btn { background: #ff5a7e; color: white; }
+        .video-detail-like-btn:hover { opacity: .9; transform: translateY(-1px); }
+        .video-detail-like-btn.liked { background: #d6336c; }
+        .report-trigger-btn { background: rgba(255,255,255,.15); color: #ff5a7e; }
+        .report-trigger-btn:hover { background: rgba(255,255,255,.3); }
+        .share-btn { background: rgba(255,255,255,.15); color: white; border: none; border-radius: 18px; padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; }
+        .share-btn:hover { background: rgba(255,255,255,.28); transform: translateY(-1px); }
+        .share-toast { display: none; position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,.92); color: #fff; padding: 10px 22px; border-radius: 24px; font-size: 14px; z-index: 2000; pointer-events: none; white-space: nowrap; }
+        .share-toast.show { display: block; animation: fadeInOut 2s ease forwards; }
+        @keyframes fadeInOut { 0%{opacity:0;transform:translateX(-50%) translateY(8px)} 15%{opacity:1;transform:translateX(-50%) translateY(0)} 75%{opacity:1} 100%{opacity:0} }
+        .report-form { display: none; flex-direction: column; gap: 10px; padding: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 12px; margin-bottom: 12px; }
+        .report-form.active { display: flex; }
+        .report-form label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fff; font-size: 13px; }
+        .report-form textarea { width: 100%; min-height: 60px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 8px; color: #fff; resize: vertical; font-size: 12px; }
+        .report-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .report-submit-btn, .report-cancel-btn { border: none; border-radius: 20px; padding: 10px 18px; font-size: 14px; cursor: pointer; }
+        .report-submit-btn { background: #ff5a7e; color: #fff; }
+        .report-cancel-btn { background: rgba(255,255,255,.2); color: #fff; }
+        .report-message { padding: 10px 12px; border-radius: 8px; font-size: 12px; display: none; }
+        .report-message.success { display: block; background: rgba(72,187,120,.15); color: #d4f8dc; border: 1px solid rgba(72,187,120,.35); }
+        .report-message.error { display: block; background: rgba(220,53,69,.15); color: #ffd5dc; border: 1px solid rgba(220,53,69,.35); }
 
-        .video-detail-like-btn,
-        .report-trigger-btn {
-            border: none;
-            border-radius: 18px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
+        /* Following tab */
+        .following-user-card { display: flex; align-items: center; gap: 14px; background: #fff; border-radius: 14px; padding: 14px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 10px; border: 1px solid #e8e6f0; }
+        .following-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg,#c26b7c,#9d2942); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; flex-shrink: 0; }
+        .follow-btn { margin-left: auto; padding: 6px 16px; border-radius: 20px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+        .follow-btn.following { background: #fce7ec; color: #9d2942; }
+        .follow-btn.following:hover { background: #c26b7c; color: #fff; }
+        .follow-btn.not-following { background: #c26b7c; color: #fff; }
+        .follow-btn.not-following:hover { background: #9d2942; }
 
-        .video-detail-like-btn {
-            background: #ff5a7e;
-            color: white;
-        }
+        /* Admin report table */
+        .report-mgr-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .report-mgr-table th, .report-mgr-table td { padding: 12px 14px; border: 1px solid #f1d1dc; text-align: left; vertical-align: top; }
+        .report-mgr-table th { background: #ffe3eb; color: #9c2132; }
+        .report-mgr-table tbody tr:nth-child(odd) { background: #fff7f9; }
+        .rpt-tag { display: inline-block; background: #ffd6de; color: #9c2132; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin: 2px; }
+        .btn-force-del { background: #c82333; color: #fff; border: none; border-radius: 6px; padding: 7px 12px; cursor: pointer; font-size: 12px; }
+        .btn-dismiss { background: #6c757d; color: #fff; border: none; border-radius: 6px; padding: 7px 12px; cursor: pointer; font-size: 12px; margin-left: 6px; }
+        .btn-preview { background: #0069d9; color: #fff; border: none; border-radius: 6px; padding: 7px 12px; cursor: pointer; font-size: 12px; margin-left: 6px; }
+        .rpt-preview-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 3000; justify-content: center; align-items: center; }
+        .rpt-preview-overlay.open { display: flex; }
+        .rpt-preview-box { background: #111; border-radius: 12px; padding: 20px; max-width: 720px; width: 90%; position: relative; }
+        .rpt-preview-box video { width: 100%; border-radius: 8px; max-height: 70vh; }
+        .rpt-preview-title { color: #fff; font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+        .rpt-preview-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: #aaa; font-size: 22px; cursor: pointer; }
+        .rpt-preview-close:hover { color: #fff; }
 
-        .video-detail-like-btn:hover,
-        .report-trigger-btn:hover {
-            transform: translateY(-1px);
-            opacity: 0.95;
-        }
+        @media(max-width:560px){ .content-grid { grid-template-columns: 1fr; } }
 
-        .video-detail-like-btn.liked {
-            background: #d6336c;
-            color: white;
-        }
-
-        .report-trigger-btn {
-            background: #dc3545;
-            color: white;
-        }
-
-        .video-detail-like-btn:hover {
-            background: #ff5a7e;
-            color: white;
-        }
-
-        .video-detail-like-btn.liked {
-            background: #ff5a7e;
-            color: white;
-        }
-
-        .share-btn {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-            border: none;
-            border-radius: 18px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .share-btn:hover {
-            background: rgba(255, 255, 255, 0.28);
-            transform: translateY(-1px);
-        }
-
-        .share-toast {
-            display: none;
-            position: fixed;
-            bottom: 36px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(30, 30, 30, 0.92);
-            color: #fff;
-            padding: 10px 22px;
-            border-radius: 24px;
-            font-size: 14px;
-            z-index: 2000;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-
-        .share-toast.show {
-            display: block;
-            animation: fadeInOut 2s ease forwards;
-        }
-
-        @keyframes fadeInOut {
-            0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
-            15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
-            75%  { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
-        .video-detail-report {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .report-trigger-btn,
-        .report-submit-btn,
-        .report-cancel-btn {
-            border: none;
-            border-radius: 20px;
-            padding: 10px 18px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .report-trigger-btn {
-            background: rgba(255, 255, 255, 0.15);
-            color: #ff5a7e;
-        }
-
-        .report-trigger-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .report-form {
-            display: none;
-            flex-direction: column;
-            gap: 10px;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 12px;
-            margin-bottom: 12px;
-        }
-
-        .report-form.active {
-            display: flex;
-        }
-
-        .report-form label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            color: #fff;
-            font-size: 13px;
-        }
-
-        .report-form input[type="radio"],
-        .report-form textarea {
-            margin-right: 6px;
-        }
-
-        .report-form textarea {
-            width: 100%;
-            min-height: 60px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 8px;
-            color: #fff;
-            resize: vertical;
-            font-size: 12px;
-        }
-
-        .report-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .report-message {
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            display: none;
-        }
-
-        .report-message.success {
-            display: block;
-            background: rgba(72, 187, 120, 0.15);
-            color: #d4f8dc;
-            border: 1px solid rgba(72, 187, 120, 0.35);
-        }
-
-        .report-message.error {
-            display: block;
-            background: rgba(220, 53, 69, 0.15);
-            color: #ffd5dc;
-            border: 1px solid rgba(220, 53, 69, 0.35);
-        }
-
-        .video-info {
-            padding: 15px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .video-title {
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #333;
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 6px 8px;
-            border-radius: 6px;
-        }
-
-        .video-description {
-            color: #999;
-            margin-bottom: 10px;
-            font-size: 13px;
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .video-meta {
-            display: flex;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 12px;
-        }
-
-        .author-info {
-            display: flex;
-            align-items: center;
-            flex: 1;
-        }
-
-        .author-avatar {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: rgba(255, 90, 126, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 11px;
-            margin-right: 8px;
-        }
-
-        .author-details {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .author-name {
-            color: #333;
-            font-weight: 600;
-            font-size: 12px;
-        }
-
-        .upload-time {
-            color: #ccc;
-            font-size: 11px;
-        }
-
-        .like-icon {
-            font-size: 14px;
-        }
-
-        .like-form {
-            display: flex;
-            align-items: center;
-        }
-
-        .like-btn {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #ccc;
-            font-size: 12px;
-            padding: 4px;
-            border-radius: 4px;
-            transition: all 0.2s;
-        }
-
-        .like-btn:hover {
-            background: rgba(255, 90, 126, 0.1);
-        }
-
-        .like-btn.liked {
-            color: #ff5a7e;
-        }
-
-        .like-btn.liked:hover {
-            background: rgba(255, 90, 126, 0.2);
-        }
-
-        .video-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: auto;
-        }
-
-        .delete-btn {
-            flex: 1;
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-
-        .delete-btn:hover {
-            background: #c82333;
-        }
-
-        .edit-btn {
-            flex: 1;
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-
-        .edit-btn:hover {
-            background: #0056b3;
-        }
-
-        .empty-state {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-        }
-
-        .empty-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-
-        .empty-text {
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-
-        @media (max-width: 900px) {
-            .video-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 560px) {
-            .video-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .video-player {
-                height: 220px;
-            }
-        }
     </style>
 </head>
 <body>
@@ -1584,24 +751,29 @@ if ($view === 'following') {
     </div>
     <?php else: ?>
     <div class="video-wrapper">
-        <h1 class="page-title">影片交流</h1>
-        <p style="text-align:center;color:#8e8e93;font-size:13px;margin-bottom:20px;">探索彩妝技巧，分享你的精彩</p>
+        <div class="vp-header">
+            <div class="vp-header-left">
+                <h1 class="page-title">影片交流</h1>
+                <div class="page-title-sub">探索彩妝技巧・分享你的精彩</div>
+            </div>
+            <a href="?view=personal" class="btn-upload-header">＋ 上傳影片</a>
+        </div>
 
         <div class="nav-tabs">
             <a href="?view=home" class="nav-tab <?php echo ($view === 'home') ? 'active' : ''; ?>">🏠 主頁</a>
             <?php if ($isLoggedIn): ?>
             <a href="?view=following" class="nav-tab <?php echo ($view === 'following') ? 'active' : ''; ?>" style="position:relative;">
-                追蹤中
+                📡 追蹤中
                 <?php
                 $followingCount = count($myFollowings);
                 if ($followingCount > 0): ?>
-                    <span style="position:absolute;top:8px;right:2px;background:#e83e5a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;"><?php echo $followingCount; ?></span>
+                    <span style="position:absolute;top:8px;right:2px;background:#c26b7c;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;"><?php echo $followingCount; ?></span>
                 <?php endif; ?>
             </a>
             <?php endif; ?>
             <a href="?view=personal" class="nav-tab <?php echo ($view === 'personal') ? 'active' : ''; ?>">👤 個人</a>
             <?php if ($isAdmin): ?>
-                <a href="?view=admin" class="nav-tab <?php echo ($view === 'admin') ? 'active' : ''; ?>" style="background:<?php echo ($view === 'admin') ? '#c82333' : '#6c757d'; ?>;color:#fff;">🛡️ 檢舉管理</a>
+                <a href="?view=admin" class="nav-tab <?php echo ($view === 'admin') ? 'active' : ''; ?>">🛡️ 檢舉管理</a>
             <?php endif; ?>
         </div>
 
@@ -1718,10 +890,7 @@ if ($view === 'following') {
                                 </div>
 
                                 <div class="video-actions">
-                                    <form method="post" style="flex: 1;" onsubmit="return confirm('確定要刪除此影片嗎？')">
-                                        <input type="hidden" name="video_id" value="<?php echo $video['id']; ?>">
-                                        <button type="submit" name="delete" class="delete-btn">🗑️ 刪除</button>
-                                    </form>
+                                    <button class="delete-btn" onclick="deleteVideoAjax(<?php echo (int)$video['id']; ?>, this)">🗑️ 刪除</button>
                                 </div>
                             </div>
                         </div>
@@ -1784,28 +953,6 @@ if ($view === 'following') {
             <?php endif; ?>
         <?php elseif ($view === 'following'): ?>
         <!-- ── 追蹤中 ── -->
-        <style>
-        .following-user-card {
-            display:flex; align-items:center; gap:14px;
-            background:#fff; border-radius:14px; padding:14px 18px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:10px;
-        }
-        .following-avatar {
-            width:44px; height:44px; border-radius:50%;
-            background:linear-gradient(135deg,#ff5a7e,#ff3a6f);
-            display:flex; align-items:center; justify-content:center;
-            color:#fff; font-weight:700; font-size:18px; flex-shrink:0;
-        }
-        .follow-btn {
-            margin-left:auto; padding:6px 16px; border-radius:20px;
-            border:none; font-size:13px; font-weight:600; cursor:pointer;
-            transition:all .2s;
-        }
-        .follow-btn.following { background:#f0e8e8; color:#c47a8a; }
-        .follow-btn.following:hover { background:#e83e5a; color:#fff; }
-        .follow-btn.not-following { background:#e83e5a; color:#fff; }
-        .follow-btn.not-following:hover { background:#c82333; }
-        </style>
 
         <!-- 追蹤的人列表 -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
@@ -1866,14 +1013,15 @@ if ($view === 'following') {
                         <div class="vc-info">
                             <div class="vc-title"><?php echo htmlspecialchars($video['title']); ?></div>
                             <?php if (!empty($video['tags'])): ?>
-                            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+                            <div class="vc-tags">
                                 <?php foreach(array_slice(explode(',', $video['tags']), 0, 3) as $tag): $tag=trim($tag); if(!$tag) continue; ?>
                                 <a href="?view=home&tag=<?php echo urlencode($tag);?>" onclick="event.stopPropagation();"
-                                   style="font-size:11px;background:#fdeaee;color:#e83e5a;border-radius:10px;padding:2px 8px;text-decoration:none;">#<?php echo htmlspecialchars($tag);?></a>
+                                   class="vc-tag">#<?php echo htmlspecialchars($tag);?></a>
                                 <?php endforeach; ?>
                             </div>
                             <?php endif; ?>
                             <div class="vc-footer">
+                                <div class="vc-avatar"><?php echo mb_strtoupper(mb_substr($video['uploaded_by'], 0, 1)); ?></div>
                                 <span class="vc-author"><?php echo htmlspecialchars($video['uploaded_by']); ?></span>
                                 <span class="vc-likes">❤️ <?php echo (int)$video['likes']; ?></span>
                             </div>
@@ -1884,36 +1032,6 @@ if ($view === 'following') {
         <?php endif; ?>
 
         <?php elseif ($view === 'admin' && $isAdmin): ?>
-            <style>
-                .report-mgr-table { width:100%; border-collapse:collapse; font-size:14px; }
-                .report-mgr-table th, .report-mgr-table td { padding:12px 14px; border:1px solid #f1d1dc; text-align:left; vertical-align:top; }
-                .report-mgr-table th { background:#ffe3eb; color:#9c2132; }
-                .report-mgr-table tbody tr:nth-child(odd) { background:#fff7f9; }
-                .rpt-tag { display:inline-block; background:#ffd6de; color:#9c2132; padding:2px 8px; border-radius:10px; font-size:12px; margin:2px; }
-                .btn-force-del { background:#c82333; color:#fff; border:none; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:12px; }
-                .btn-dismiss { background:#6c757d; color:#fff; border:none; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:12px; margin-left:6px; }
-                .btn-preview { background:#0069d9; color:#fff; border:none; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:12px; margin-left:6px; }
-
-                /* 影片預覽 Modal */
-                .rpt-preview-overlay {
-                    display:none; position:fixed; inset:0;
-                    background:rgba(0,0,0,0.8); z-index:3000;
-                    justify-content:center; align-items:center;
-                }
-                .rpt-preview-overlay.open { display:flex; }
-                .rpt-preview-box {
-                    background:#111; border-radius:12px; padding:20px;
-                    max-width:720px; width:90%; position:relative;
-                }
-                .rpt-preview-box video { width:100%; border-radius:8px; max-height:70vh; }
-                .rpt-preview-title { color:#fff; font-size:15px; font-weight:600; margin-bottom:12px; }
-                .rpt-preview-close {
-                    position:absolute; top:12px; right:14px;
-                    background:none; border:none; color:#aaa;
-                    font-size:22px; cursor:pointer;
-                }
-                .rpt-preview-close:hover { color:#fff; }
-            </style>
             <h2 style="font-size:22px;margin-bottom:18px;color:#c82333;">🚩 待處理檢舉</h2>
             <?php if (empty($reportedVideos)): ?>
                 <div class="empty-state">
@@ -1991,20 +1109,33 @@ if ($view === 'following') {
         </div>
 
         <?php else: ?>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;">
-                <!-- 標籤搜尋 -->
-                <form method="get" action="" id="tagSearchForm" style="display:flex;align-items:center;gap:8px;flex:1;min-width:180px;max-width:320px;">
-                    <input type="hidden" name="view" value="home">
-                    <input type="hidden" name="tag" id="tagSearchHidden" value="<?php echo htmlspecialchars($activeTag); ?>">
-                    <input type="text" id="tagSearchDisplay" placeholder="#搜尋標籤"
-                           value="<?php echo $activeTag ? '#'.htmlspecialchars($activeTag) : ''; ?>"
-                           style="flex:1;border:1.5px solid #ffd6de;border-radius:20px;padding:7px 14px;font-size:13px;outline:none;color:#333;"
-                           onfocus="this.style.borderColor='#e83e5a'" onblur="this.style.borderColor='#ffd6de'">
-                    <button type="submit" style="background:#e83e5a;color:white;border:none;border-radius:20px;padding:7px 24px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">搜尋</button>
-                </form>
-                <a href="?view=personal" style="display:inline-flex;align-items:center;gap:6px;background:#e83e5a;color:#fff;padding:9px 18px;border-radius:20px;text-decoration:none;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(232,62,90,0.3);">
-                    + 上傳影片
-                </a>
+            <form method="get" action="" id="tagSearchForm">
+                <input type="hidden" name="view" value="home">
+                <input type="hidden" name="tag" id="tagSearchHidden" value="<?php echo htmlspecialchars($activeTag); ?>">
+                <div class="filter-area">
+                    <div class="search-row">
+                        <div class="search-wrap">
+                            <input type="text" id="tagSearchDisplay" class="search-input"
+                                   placeholder="搜尋標籤或影片關鍵字…"
+                                   value="<?php echo $activeTag ? '#'.htmlspecialchars($activeTag) : ''; ?>">
+                        </div>
+                        <button type="submit" style="display:none">搜尋</button>
+                    </div>
+                    <?php if (!empty($existingTags)): ?>
+                    <div class="filter-tags">
+                        <span class="filter-label">標籤</span>
+                        <a href="?view=home" class="f-chip <?php echo $activeTag === '' ? 'active' : ''; ?>"># 全部</a>
+                        <?php foreach (array_slice($existingTags, 0, 8) as $tag): ?>
+                        <a href="?view=home&tag=<?php echo urlencode($tag); ?>"
+                           class="f-chip <?php echo $activeTag === $tag ? 'active' : ''; ?>">#<?php echo htmlspecialchars($tag); ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </form>
+            <div class="sort-row">
+                <span class="sort-label">排序</span>
+                <a href="?view=home<?php echo $activeTag ? '&tag='.urlencode($activeTag) : ''; ?>" class="sort-btn active">最新</a>
             </div>
 
             <?php if ($activeTag !== ''): ?>
@@ -2046,6 +1177,7 @@ if ($view === 'following') {
                             </div>
                             <?php endif; ?>
                             <div class="vc-footer">
+                                <div class="vc-avatar"><?php echo mb_strtoupper(mb_substr($video['uploaded_by'], 0, 1)); ?></div>
                                 <span class="vc-author"><?php echo htmlspecialchars($video['uploaded_by']); ?></span>
                                 <span class="vc-likes">❤️ <?php echo (int)$video['likes']; ?></span>
                             </div>
@@ -2765,14 +1897,44 @@ if ($view === 'following') {
     }
 
     document.addEventListener('keydown', function(e) {
+        const tag = document.activeElement ? document.activeElement.tagName : '';
+        const isEditing = (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable);
         if (e.key === 'Escape') {
             closeVideoDetail();
-        } else if (e.key === 'ArrowUp') {
+        } else if (!isEditing && e.key === 'ArrowUp') {
             prevVideo();
-        } else if (e.key === 'ArrowDown') {
+        } else if (!isEditing && e.key === 'ArrowDown') {
             nextVideo();
         }
     });
+
+    async function deleteVideoAjax(videoId, btn) {
+        if (!confirm('確定要刪除此影片嗎？')) return;
+        btn.disabled = true;
+        btn.textContent = '刪除中…';
+        try {
+            const form = new FormData();
+            form.append('video_id', videoId);
+            form.append('delete', '1');
+            const res = await fetch('?view=personal', { method: 'POST', body: form });
+            if (res.ok) {
+                const card = btn.closest('.video-card');
+                if (card) {
+                    card.style.transition = 'opacity .3s';
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 300);
+                }
+            } else {
+                alert('刪除失敗，請重試');
+                btn.disabled = false;
+                btn.textContent = '🗑️ 刪除';
+            }
+        } catch (e) {
+            alert('網路錯誤，請重試');
+            btn.disabled = false;
+            btn.textContent = '🗑️ 刪除';
+        }
+    }
 
     async function toggleFollow(username, btn) {
         var form = new FormData();
