@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     libpq-dev \
     libcurl4-openssl-dev \
+    ca-certificates \
+    && update-ca-certificates \
     && docker-php-ext-install pdo pdo_pgsql curl \
     && ln -sf /usr/bin/nodejs /usr/bin/node 2>/dev/null || true \
     && rm -rf /var/lib/apt/lists/*

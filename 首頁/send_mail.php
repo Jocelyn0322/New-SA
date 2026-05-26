@@ -19,6 +19,13 @@ function _setupMailer(): PHPMailer {
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port       = 587;
     $mail->CharSet    = 'UTF-8';
+    $mail->SMTPOptions = [
+        'ssl' => [
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+        ],
+    ];
     $mail->setFrom(MAIL_USER, MAIL_NAME);
     return $mail;
 }
