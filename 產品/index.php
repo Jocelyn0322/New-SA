@@ -5,6 +5,11 @@ include __DIR__ . '/../db.php';
 $sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 6";
 $result = $conn->query($sql);
 $favorites = $_SESSION['favorite'] ?? [];
+
+// 真實統計數字
+$statProducts = (int)$pdo->query("SELECT COUNT(*) FROM data")->fetchColumn();
+$statUsers    = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active'")->fetchColumn();
+$statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchColumn();
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -90,15 +95,15 @@ $favorites = $_SESSION['favorite'] ?? [];
   <div class="hero-content">
     <div class="hero-eyebrow">AI 驅動的美妝平台</div>
     <h1 class="hero-title">找到最適合<em>你</em>的<br>彩妝產品</h1>
-    <p class="hero-desc">透過 AI 膚色分析，精準推薦適合你的彩妝。超過 500 款產品，讓你輕鬆比較、收藏、評分。</p>
+    <p class="hero-desc">透過 AI 膚色分析，精準推薦適合你的彩妝。超過 <?= number_format($statProducts) ?> 款產品，讓你輕鬆比較、收藏、評分。</p>
     <div class="hero-actions">
       <a href="/SA/New-SA/AI/index.php" class="btn btn-primary btn-lg">✨ 立即 AI 分析</a>
       <a href="/SA/New-SA/產品/products.php" class="btn btn-ghost btn-lg">瀏覽產品</a>
     </div>
     <div class="hero-stats">
-      <div><div class="hero-stat-num">500+</div><div class="hero-stat-label">精選產品</div></div>
-      <div><div class="hero-stat-num">1,200+</div><div class="hero-stat-label">活躍會員</div></div>
-      <div><div class="hero-stat-num">4,800+</div><div class="hero-stat-label">使用者評分</div></div>
+      <div><div class="hero-stat-num"><?= number_format($statProducts) ?>+</div><div class="hero-stat-label">精選產品</div></div>
+      <div><div class="hero-stat-num"><?= number_format($statUsers) ?>+</div><div class="hero-stat-label">活躍會員</div></div>
+      <div><div class="hero-stat-num"><?= number_format($statRatings) ?>+</div><div class="hero-stat-label">使用者評分</div></div>
     </div>
   </div>
 </section>
