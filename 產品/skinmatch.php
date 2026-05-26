@@ -341,8 +341,8 @@ if (isset($pdo)) {
         <h3>登入後查看 AI 專屬推薦</h3>
         <p>完成 AI 膚質分析後，系統將根據您的膚質、膚色和妝感偏好，精選最適合您的底妝產品。</p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-            <a href="/SA/New-SA/首頁/login.php" class="ai-cta-btn ai-cta-btn-large">前往登入</a>
-            <a href="/SA/New-SA/AI/index.php" class="ai-cta-btn ai-cta-btn-large"
+            <a href="<?= BASE_URL ?>/首頁/login.php" class="ai-cta-btn ai-cta-btn-large">前往登入</a>
+            <a href="<?= BASE_URL ?>/AI/index.php" class="ai-cta-btn ai-cta-btn-large"
                style="background:linear-gradient(135deg,#6b2d3e,#c26b7c);">去做 AI 分析</a>
         </div>
     </div>
@@ -353,7 +353,7 @@ if (isset($pdo)) {
         <div class="icon">🔍</div>
         <h3>尚未完成 AI 膚質分析</h3>
         <p>完成分析後，系統會依照您的膚質、膚色與妝感偏好，為您精選最合適的底妝產品。</p>
-        <a href="/SA/New-SA/AI/index.php" class="ai-cta-btn ai-cta-btn-large">開始 AI 膚質分析</a>
+        <a href="<?= BASE_URL ?>/AI/index.php" class="ai-cta-btn ai-cta-btn-large">開始 AI 膚質分析</a>
     </div>
 
 <?php else: ?>
@@ -403,8 +403,8 @@ if (isset($pdo)) {
         </div>
 
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <a href="/SA/New-SA/AI/index.php" class="ai-cta-btn">重新 AI 檢測</a>
-            <a href="/SA/New-SA/首頁/profile.php"
+            <a href="<?= BASE_URL ?>/AI/index.php" class="ai-cta-btn">重新 AI 檢測</a>
+            <a href="<?= BASE_URL ?>/首頁/profile.php"
                style="font-size:13px;color:rgba(255,255,255,.65);text-decoration:none;">編輯個人資料 →</a>
         </div>
     </div>

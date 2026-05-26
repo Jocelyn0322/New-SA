@@ -1,0 +1,9 @@
+{
+    "name": "cosmetic/app",
+    "require": {
+        "phpmailer/phpmailer": "^7.0"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

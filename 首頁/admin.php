@@ -725,7 +725,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
     </a>
 
     <div class="nav-group-label">產品管理</div>
-    <a href="/SA/New-SA/產品/report_manage.php" class="nav-item">
+    <a href="<?= BASE_URL ?>/產品/report_manage.php" class="nav-item">
       <span class="nav-icon">⚠️</span> 商品回報
     </a>
     <a href="?tab=data_products" class="nav-item <?php echo $tab==='data_products' ? 'active':''; ?>">
@@ -771,7 +771,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
       <div class="topbar-breadcrumb">後台管理 / <?php echo $currentTitle; ?></div>
     </div>
     <div class="topbar-spacer"></div>
-    <a href="/SA/New-SA/產品/index.php" class="topbar-btn">← 返回網站</a>
+    <a href="<?= BASE_URL ?>/產品/index.php" class="topbar-btn">← 返回網站</a>
     <a href="logout.php" class="topbar-btn primary">登出</a>
   </div>
 

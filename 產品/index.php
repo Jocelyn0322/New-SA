@@ -98,8 +98,8 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
     <h1 class="hero-title">找到最適合<em>你</em>的<br>彩妝產品</h1>
     <p class="hero-desc">透過 AI 膚色分析，精準推薦適合你的彩妝。超過 <?= number_format($statProducts) ?> 款產品，讓你輕鬆比較、收藏、評分。</p>
     <div class="hero-actions">
-      <a href="/SA/New-SA/AI/index.php" class="btn btn-primary btn-lg">✨ 立即 AI 分析</a>
-      <a href="/SA/New-SA/產品/products.php" class="btn btn-ghost btn-lg">瀏覽產品</a>
+      <a href="<?= BASE_URL ?>/AI/index.php" class="btn btn-primary btn-lg">✨ 立即 AI 分析</a>
+      <a href="<?= BASE_URL ?>/產品/products.php" class="btn btn-ghost btn-lg">瀏覽產品</a>
     </div>
     <div class="hero-stats">
       <div><div class="hero-stat-num"><?= number_format($statProducts) ?>+</div><div class="hero-stat-label">精選產品</div></div>
@@ -112,19 +112,19 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
 <!-- Feature Pills -->
 <div class="feature-wrap">
   <div class="feature-row">
-    <a href="/SA/New-SA/AI/index.php" class="feature-pill">
+    <a href="<?= BASE_URL ?>/AI/index.php" class="feature-pill">
       <div class="feature-pill-icon" style="background:#fce7ec;">🤖</div>
       <div><div class="feature-pill-title">AI 膚色分析</div><div class="feature-pill-desc">相機即時偵測膚色</div></div>
     </a>
-    <a href="/SA/New-SA/產品/products.php" class="feature-pill">
+    <a href="<?= BASE_URL ?>/產品/products.php" class="feature-pill">
       <div class="feature-pill-icon" style="background:#eff6ff;">💄</div>
       <div><div class="feature-pill-title">完整產品庫</div><div class="feature-pill-desc">搜尋篩選一秒找到</div></div>
     </a>
-    <a href="/SA/New-SA/首頁/video.php" class="feature-pill">
+    <a href="<?= BASE_URL ?>/首頁/video.php" class="feature-pill">
       <div class="feature-pill-icon" style="background:#f5f3ff;">🎬</div>
       <div><div class="feature-pill-title">影片交流</div><div class="feature-pill-desc">分享彩妝教學影片</div></div>
     </a>
-    <a href="/SA/New-SA/產品/compare.php" class="feature-pill">
+    <a href="<?= BASE_URL ?>/產品/compare.php" class="feature-pill">
       <div class="feature-pill-icon" style="background:#f0fdf4;">⚖️</div>
       <div><div class="feature-pill-title">產品比較</div><div class="feature-pill-desc">並排分析找出最優</div></div>
     </a>
@@ -139,7 +139,7 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
         <div class="section-eyebrow">熱門推薦</div>
         <div class="section-title">最新上架精選</div>
       </div>
-      <a href="/SA/New-SA/產品/products.php" class="btn btn-outline btn-sm">查看全部 →</a>
+      <a href="<?= BASE_URL ?>/產品/products.php" class="btn btn-outline btn-sm">查看全部 →</a>
     </div>
 
     <div class="product-grid">

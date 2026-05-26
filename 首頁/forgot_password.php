@@ -4,7 +4,7 @@ require __DIR__ . '/../db.php';
 require 'send_mail.php';
 
 if (isset($_SESSION['user'])) {
-    header("Location: /SA/New-SA/產品/index.php");
+    header("Location: " . BASE_URL . "/產品/index.php");
     exit();
 }
 

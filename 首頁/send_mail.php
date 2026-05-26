@@ -4,18 +4,27 @@ use PHPMailer\PHPMailer\Exception;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-function sendProductReviewEmail($toEmail, $username, $productName, $status, $adminNote = '') {
-    $mail = new PHPMailer(true);
+// ── 寄件帳號設定（統一由此帳號送出所有系統信）──
+define('MAIL_USER', 'jocelynfan.tw@gmail.com');
+define('MAIL_PASS', 'wnkmjytmssjnwwfo');   // Google App 密碼（16碼）
+define('MAIL_NAME', 'COSMETIC');
 
-    if (!defined('GMAIL_USER') && file_exists(__DIR__ . '/mail_config.php')) {
-        require_once __DIR__ . '/mail_config.php';
-    }
-    $gmailUser = defined('GMAIL_USER') ? GMAIL_USER : getenv('GMAIL_USER');
-    $gmailPass = defined('GMAIL_PASS') ? GMAIL_PASS : getenv('GMAIL_PASS');
-    if (!$gmailUser || !$gmailPass) {
-        error_log('Email 設定遺失：請設定 mail_config.php 或環境變數');
-        return false;
-    }
+function _setupMailer(): PHPMailer {
+    $mail = new PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host       = 'smtp.gmail.com';
+    $mail->SMTPAuth   = true;
+    $mail->Username   = MAIL_USER;
+    $mail->Password   = MAIL_PASS;
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Port       = 587;
+    $mail->CharSet    = 'UTF-8';
+    $mail->setFrom(MAIL_USER, MAIL_NAME);
+    return $mail;
+}
+
+function sendProductReviewEmail($toEmail, $username, $productName, $status, $adminNote = '') {
+    $mail = _setupMailer();
 
     $isApproved  = ($status === 'approved');
     $subjectText = $isApproved ? '您的商品申請已通過審核' : '您的商品申請未通過審核';
@@ -29,18 +38,7 @@ function sendProductReviewEmail($toEmail, $username, $productName, $status, $adm
         : '<p>如有疑問，歡迎聯繫管理員。您可依建議修改後重新提交。</p>';
 
     try {
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $gmailUser;
-        $mail->Password   = $gmailPass;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
-
-        $mail->CharSet = 'UTF-8';
-        $mail->setFrom($gmailUser, 'Makeup Website');
         $mail->addAddress($toEmail, $username);
-
         $mail->isHTML(true);
         $mail->Subject = $subjectText;
         $mail->Body    = "
@@ -67,32 +65,9 @@ function sendProductReviewEmail($toEmail, $username, $productName, $status, $adm
 }
 
 function sendVerificationEmail($toEmail, $username, $code) {
-    $mail = new PHPMailer(true);
-
-    // 從環境變數讀取。設定方式：在 XAMPP httpd.conf 加入：
-    //   SetEnv GMAIL_USER yourname@gmail.com
-    //   SetEnv GMAIL_PASS xxxx xxxx xxxx xxxx（Google App 密碼，16碼）
-    if (!defined('GMAIL_USER') && file_exists(__DIR__ . '/mail_config.php')) {
-        require_once __DIR__ . '/mail_config.php';
-    }
-    $gmailUser = defined('GMAIL_USER') ? GMAIL_USER : getenv('GMAIL_USER');
-    $gmailPass = defined('GMAIL_PASS') ? GMAIL_PASS : getenv('GMAIL_PASS');
-    if (!$gmailUser || !$gmailPass) {
-        error_log('Email 設定遺失：請設定 mail_config.php 或環境變數');
-        return false;
-    }
+    $mail = _setupMailer();
 
     try {
-        $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
-        $mail->SMTPAuth = true;
-        $mail->Username = $gmailUser;
-        $mail->Password = $gmailPass;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
-
-        $mail->CharSet = 'UTF-8';
-        $mail->setFrom($gmailUser, 'Makeup Website');
         $mail->addAddress($toEmail, $username);
 
         $mail->isHTML(true);
@@ -114,29 +89,9 @@ function sendVerificationEmail($toEmail, $username, $code) {
 }
 
 function sendPasswordResetEmail($toEmail, $username, $code) {
-    $mail = new PHPMailer(true);
-
-    if (!defined('GMAIL_USER') && file_exists(__DIR__ . '/mail_config.php')) {
-        require_once __DIR__ . '/mail_config.php';
-    }
-    $gmailUser = defined('GMAIL_USER') ? GMAIL_USER : getenv('GMAIL_USER');
-    $gmailPass = defined('GMAIL_PASS') ? GMAIL_PASS : getenv('GMAIL_PASS');
-    if (!$gmailUser || !$gmailPass) {
-        error_log('Email 設定遺失');
-        return false;
-    }
+    $mail = _setupMailer();
 
     try {
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $gmailUser;
-        $mail->Password   = $gmailPass;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
-
-        $mail->CharSet = 'UTF-8';
-        $mail->setFrom($gmailUser, 'Makeup Website');
         $mail->addAddress($toEmail, $username);
 
         $mail->isHTML(true);

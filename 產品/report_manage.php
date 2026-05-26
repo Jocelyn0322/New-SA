@@ -202,25 +202,25 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
   </div>
   <nav class="sidebar-nav">
     <div class="nav-group-label">概覽</div>
-    <a href="/SA/New-SA/首頁/admin.php?tab=stats" class="nav-item"><span class="nav-icon">📊</span> 數據統計</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php?tab=stats" class="nav-item"><span class="nav-icon">📊</span> 數據統計</a>
 
     <div class="nav-group-label">內容管理</div>
-    <a href="/SA/New-SA/首頁/admin.php?tab=videos"   class="nav-item"><span class="nav-icon">🎬</span> 影片管理</a>
-    <a href="/SA/New-SA/首頁/admin.php?tab=comments" class="nav-item"><span class="nav-icon">💬</span> 留言管理</a>
-    <a href="/SA/New-SA/首頁/admin.php?tab=reports"  class="nav-item"><span class="nav-icon">🚩</span> 檢舉管理</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php?tab=videos"   class="nav-item"><span class="nav-icon">🎬</span> 影片管理</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php?tab=comments" class="nav-item"><span class="nav-icon">💬</span> 留言管理</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php?tab=reports"  class="nav-item"><span class="nav-icon">🚩</span> 檢舉管理</a>
 
     <div class="nav-group-label">產品管理</div>
-    <a href="/SA/New-SA/產品/report_manage.php" class="nav-item active">
+    <a href="<?= BASE_URL ?>/產品/report_manage.php" class="nav-item active">
       <span class="nav-icon">⚠️</span> 商品回報
       <?php if ($pendingCount > 0): ?>
         <span class="nav-badge warn"><?= $pendingCount ?></span>
       <?php endif; ?>
     </a>
-    <a href="/SA/New-SA/首頁/admin.php?tab=data_products" class="nav-item"><span class="nav-icon">🗄️</span> 資料庫產品</a>
-    <a href="/SA/New-SA/首頁/admin.php?tab=products"      class="nav-item"><span class="nav-icon">🛍️</span> 商品審核</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php?tab=data_products" class="nav-item"><span class="nav-icon">🗄️</span> 資料庫產品</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php?tab=products"      class="nav-item"><span class="nav-icon">🛍️</span> 商品審核</a>
 
     <div class="nav-group-label">會員</div>
-    <a href="/SA/New-SA/首頁/admin.php?tab=users" class="nav-item"><span class="nav-icon">👥</span> 使用者管理</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php?tab=users" class="nav-item"><span class="nav-icon">👥</span> 使用者管理</a>
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-avatar"><?= strtoupper(substr($adminUser, 0, 1)) ?></div>
@@ -236,7 +236,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
   <div class="topbar">
     <div class="topbar-title">商品回報管理</div>
     <div class="topbar-spacer"></div>
-    <a href="/SA/New-SA/首頁/admin.php" class="topbar-btn">← 返回後台</a>
+    <a href="<?= BASE_URL ?>/首頁/admin.php" class="topbar-btn">← 返回後台</a>
   </div>
 
   <div class="content">

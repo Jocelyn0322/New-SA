@@ -86,21 +86,21 @@ if (isset($_SESSION['user'])) {
 </style>
 <header class="header">
   <div class="header-inner">
-    <a href="/SA/New-SA/產品/index.php" class="logo">
+    <a href="<?= BASE_URL ?>/產品/index.php" class="logo">
       <div class="logo-mark">💄</div>COSMETIC
     </a>
     <nav class="nav">
-      <a href="/SA/New-SA/產品/index.php"    class="nav-link <?= $_navHome   ? 'active' : '' ?>">首頁</a>
-      <a href="/SA/New-SA/AI/index.php"      class="nav-link <?= $_navAI     ? 'active' : '' ?>">AI 檢測</a>
-      <a href="/SA/New-SA/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
-      <a href="/SA/New-SA/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
+      <a href="<?= BASE_URL ?>/產品/index.php"    class="nav-link <?= $_navHome   ? 'active' : '' ?>">首頁</a>
+      <a href="<?= BASE_URL ?>/AI/index.php"      class="nav-link <?= $_navAI     ? 'active' : '' ?>">AI 檢測</a>
+      <a href="<?= BASE_URL ?>/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
+      <a href="<?= BASE_URL ?>/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
     <div class="header-actions">
-      <a href="/SA/New-SA/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <a href="<?= BASE_URL ?>/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M50,85 C35,75 10,60 10,35 C10,18 20,8 33,8 C42,8 48,13 50,20 C52,13 58,8 67,8 C80,8 90,18 90,35 C90,60 65,75 50,85 Z"/>
             </svg><?php if ($_favCount > 0): ?><span class="count"><?= $_favCount ?></span><?php endif; ?></a>
-      <a href="/SA/New-SA/產品/skinmatch.php" class="icon-btn" data-tip="膚色配對"><img src="/SA/New-SA/images/weather-icon.png" width="26" height="26" alt="膚色配對" style="display:block;opacity:.75;"></a>
-      <a href="/SA/New-SA/產品/compare.php"  class="icon-btn" data-tip="產品比較"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <a href="<?= BASE_URL ?>/產品/skinmatch.php" class="icon-btn" data-tip="膚色配對"><img src="<?= BASE_URL ?>/images/weather-icon.png" width="26" height="26" alt="膚色配對" style="display:block;opacity:.75;"></a>
+      <a href="<?= BASE_URL ?>/產品/compare.php"  class="icon-btn" data-tip="產品比較"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" width="20" height="20" fill="currentColor" aria-hidden="true">
               <!-- knob -->
               <circle cx="50" cy="7" r="6"/>
               <!-- crossbar -->
@@ -152,15 +152,15 @@ if (isset($_SESSION['user'])) {
           </div>
         </div>
         <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
-          <a href="/SA/New-SA/首頁/admin.php" class="btn btn-outline btn-sm">管理後台</a>
+          <a href="<?= BASE_URL ?>/首頁/admin.php" class="btn btn-outline btn-sm">管理後台</a>
         <?php else: ?>
-          <a href="/SA/New-SA/首頁/profile.php" class="user-chip" data-tip="個人資料">
+          <a href="<?= BASE_URL ?>/首頁/profile.php" class="user-chip" data-tip="個人資料">
             <div class="user-avatar"><?= htmlspecialchars($_initial) ?></div>
             <span><?= htmlspecialchars($_SESSION['user']) ?></span>
           </a>
         <?php endif; ?>
       <?php else: ?>
-        <a href="/SA/New-SA/首頁/login.php" class="btn btn-primary btn-sm">登入</a>
+        <a href="<?= BASE_URL ?>/首頁/login.php" class="btn btn-primary btn-sm">登入</a>
       <?php endif; ?>
     </div>
   </div>
@@ -168,6 +168,7 @@ if (isset($_SESSION['user'])) {
 
 <script>
 (function(){
+  const BASE = '<?= BASE_URL ?>';
   function timeAgo(dateStr) {
     // 統一轉成 ISO+08:00 讓瀏覽器正確解析台灣時間
     const iso = dateStr.trim().replace(' ', 'T') + '+08:00';
@@ -196,7 +197,7 @@ if (isset($_SESSION['user'])) {
   }
 
   function loadNotifications() {
-    fetch('/SA/New-SA/notifications.php?action=list')
+    fetch(BASE + '/notifications.php?action=list')
       .then(r => r.json())
       .then(data => {
         const list = document.getElementById('notifList');
@@ -212,16 +213,16 @@ if (isset($_SESSION['user'])) {
           if (n.message) {
             text = n.message;
             if (n.type === 'video_removed' && n.video_id) {
-              link = `/SA/New-SA/首頁/appeal.php?video_id=${n.video_id}`;
+              link = `${BASE}/首頁/appeal.php?video_id=${n.video_id}`;
             } else if (n.type === 'appeal_result' || n.type === 'new_video') {
-              link = '/SA/New-SA/首頁/video.php';
+              link = BASE + '/首頁/video.php';
             } else {
               link = '#';
             }
           } else {
             const title = n.video_title ? `「${n.video_title}」` : '新影片';
             text = `<strong>${n.actor}</strong> 發布了新影片 ${title}`;
-            link = '/SA/New-SA/首頁/video.php';
+            link = BASE + '/首頁/video.php';
           }
           const appealedTag = n.has_appealed
             ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#e8f4fd;color:#2471a3;vertical-align:middle;">已申訴</span>`
@@ -243,7 +244,7 @@ if (isset($_SESSION['user'])) {
   }
 
   window.markAllRead = function() {
-    fetch('/SA/New-SA/notifications.php?action=mark_read', { method: 'POST' });
+    fetch(BASE + '/notifications.php?action=mark_read', { method: 'POST' });
     const badge = document.getElementById('notifBadge');
     if (badge) badge.style.display = 'none';
     document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
