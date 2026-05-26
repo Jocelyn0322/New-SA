@@ -17,4 +17,4 @@ RUN composer install --no-dev --optimize-autoloader
 
 EXPOSE 8080
 
-CMD php -S 0.0.0.0:${PORT:-8080}
+CMD php -c php.ini -S 0.0.0.0:${PORT:-8080}
