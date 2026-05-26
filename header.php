@@ -27,36 +27,38 @@ if (isset($_SESSION['user'])) {
 }
 ?>
 <style>
-.icon-btn .icon-fav { font-size: 16px; line-height: 1; }
+.icon-btn { border: 1.5px solid #bbb !important; border-radius: 8px; }
+.icon-btn:hover { border-color: #999 !important; }
+.icon-btn .icon-fav { font-size: 22px; line-height: 1; }
 .icon-btn .icon-cmp { font-size: 22px; line-height: 1; }
-.icon-btn[data-tip] { overflow: visible; }
-.icon-btn[data-tip]::before,
-.icon-btn[data-tip]::after {
+.icon-btn[data-tip], .notif-bell[data-tip], .user-chip[data-tip] { overflow: visible; position: relative; }
+.icon-btn[data-tip]::before, .notif-bell[data-tip]::before, .user-chip[data-tip]::before,
+.icon-btn[data-tip]::after,  .notif-bell[data-tip]::after,  .user-chip[data-tip]::after {
   pointer-events: none; opacity: 0; transition: opacity .18s;
   position: absolute; left: 50%; transform: translateX(-50%); z-index: 9999;
 }
-.icon-btn[data-tip]::after {
+.icon-btn[data-tip]::after, .notif-bell[data-tip]::after, .user-chip[data-tip]::after {
   content: attr(data-tip);
   top: calc(100% + 9px);
   background: rgba(26,26,46,.9); color: #fff;
   font-size: 12px; font-weight: 500; white-space: nowrap;
   padding: 5px 10px; border-radius: 6px;
 }
-.icon-btn[data-tip]::before {
+.icon-btn[data-tip]::before, .notif-bell[data-tip]::before, .user-chip[data-tip]::before {
   content: '';
   top: calc(100% + 4px);
   border: 5px solid transparent;
   border-bottom-color: rgba(26,26,46,.9);
 }
-.icon-btn[data-tip]:hover::before,
-.icon-btn[data-tip]:hover::after { opacity: 1; }
+.icon-btn[data-tip]:hover::before, .notif-bell[data-tip]:hover::before, .user-chip[data-tip]:hover::before,
+.icon-btn[data-tip]:hover::after,  .notif-bell[data-tip]:hover::after,  .user-chip[data-tip]:hover::after { opacity: 1; }
 
 /* ── Notification bell ── */
 .notif-wrap { position: relative; }
-.notif-bell { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1;
+.notif-bell { background: none; border: 1.5px solid #bbb; cursor: pointer; font-size: 18px; line-height: 1;
   width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  color: #555; transition: background .15s; position: relative; }
-.notif-bell:hover { background: #f4f3f8; }
+  color: #555; transition: background .15s, border-color .15s; position: relative; }
+.notif-bell:hover { background: #f4f3f8; border-color: #999; }
 .notif-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px;
   background: #c26b7c; color: #fff; font-size: 10px; font-weight: 700;
   border-radius: 99px; padding: 0 4px; display: flex; align-items: center; justify-content: center;
@@ -99,18 +101,12 @@ if (isset($_SESSION['user'])) {
       <a href="/SA/New-SA/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
     <div class="header-actions">
-      <a href="/SA/New-SA/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><span class="icon-fav">♡</span><?php if ($_favCount > 0): ?><span class="count"><?= $_favCount ?></span><?php endif; ?></a>
-      <a href="/SA/New-SA/產品/compare.php"  class="icon-btn" data-tip="產品比較"><span class="icon-cmp">⚖</span></a>
+      <a href="/SA/New-SA/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><span class="icon-fav">❤️</span><?php if ($_favCount > 0): ?><span class="count"><?= $_favCount ?></span><?php endif; ?></a>
+      <a href="/SA/New-SA/產品/compare.php"  class="icon-btn" data-tip="產品比較"><span class="icon-cmp">⚖️</span></a>
       <?php if (isset($_SESSION['user'])): ?>
         <div class="notif-wrap">
-          <button class="notif-bell" id="notifBell" onclick="toggleNotifPanel()" aria-label="通知">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 105" width="20" height="20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="50" cy="11" r="7.5" stroke-width="4.5"/>
-              <path d="M50 18.5 C28 18.5 14 36 14 58 L14 72 L86 72 L86 58 C86 36 72 18.5 50 18.5Z" stroke-width="4.5"/>
-              <line x1="10" y1="63" x2="90" y2="63" stroke-width="4.5"/>
-              <path d="M14 72 Q50 90 86 72 L86 78 Q50 97 14 78Z" fill="currentColor" stroke="none"/>
-              <ellipse cx="50" cy="85" rx="7" ry="5.5" fill="white" stroke="none"/>
-            </svg>
+          <button class="notif-bell" id="notifBell" onclick="toggleNotifPanel()" aria-label="通知" data-tip="通知">
+            🔔
             <?php if ($_notifCount > 0): ?>
             <span class="notif-badge" id="notifBadge"><?= $_notifCount > 99 ? '99+' : $_notifCount ?></span>
             <?php else: ?>
@@ -119,7 +115,7 @@ if (isset($_SESSION['user'])) {
           </button>
           <div class="notif-panel" id="notifPanel">
             <div class="notif-panel-header">
-              <span class="notif-panel-title">通知</span>
+              <span class="notif-panel-title">🔔 通知</span>
               <button class="notif-mark-read" onclick="markAllRead()">全部標為已讀</button>
             </div>
             <div class="notif-list" id="notifList">
@@ -130,7 +126,7 @@ if (isset($_SESSION['user'])) {
         <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
           <a href="/SA/New-SA/首頁/admin.php" class="btn btn-outline btn-sm">管理後台</a>
         <?php else: ?>
-          <a href="/SA/New-SA/首頁/profile.php" class="user-chip">
+          <a href="/SA/New-SA/首頁/profile.php" class="user-chip" data-tip="個人資料">
             <div class="user-avatar"><?= htmlspecialchars($_initial) ?></div>
             <span><?= htmlspecialchars($_SESSION['user']) ?></span>
           </a>
