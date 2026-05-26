@@ -291,31 +291,50 @@ const ensureDebugPanel = () => {
     const d = document.createElement('div');
     d.id = 'liveness-debug';
     Object.assign(d.style, {
-        position: 'fixed', right: '12px', bottom: '12px', zIndex: 99999,
-        minWidth: '260px', maxWidth: '380px', background: 'rgba(0,0,0,0.75)',
-        color: '#fff', fontSize: '13px', padding: '10px', borderRadius: '8px',
-        fontFamily: 'system-ui, -apple-system, "Helvetica Neue", Arial'
+        position: 'fixed',
+        left: '50%', bottom: '180px',
+        transform: 'translateX(-50%)',
+        zIndex: 99999,
+        minWidth: '280px', maxWidth: '420px',
+        background: 'rgba(0,0,0,0.72)',
+        color: '#fff', fontSize: '14px',
+        padding: '12px 20px', borderRadius: '14px',
+        fontFamily: 'system-ui, -apple-system, "Helvetica Neue", Arial',
+        textAlign: 'center', lineHeight: '1.6',
+        backdropFilter: 'blur(4px)',
+        pointerEvents: 'none',
     });
-    d.innerHTML = '<strong>Liveness Debug</strong><div id="liveness-debug-body" style="margin-top:8px;line-height:1.3;"></div>';
+    d.innerHTML = '<div id="liveness-debug-body"></div>';
     document.body.appendChild(d);
     return d;
 };
 
+let _debugHideTimer = null;
+
 const updateDebugPanel = (obj) => {
-    ensureDebugPanel();
+    const panel = ensureDebugPanel();
     const body = document.getElementById('liveness-debug-body');
     if (!body) return;
-    const rows = [];
-    const push = (k, v) => rows.push(`<div><strong>${k}:</strong> ${v}</div>`);
-    if (obj.instruction) push('Instruction', obj.instruction);
-    if (typeof obj.isLive !== 'undefined') push('isLive', obj.isLive ? '✅' : '❌');
-    if (typeof obj.horizontalMovement !== 'undefined') push('horizontalMovement', Math.round(obj.horizontalMovement));
-    if (typeof obj.sizeVariation !== 'undefined') push('sizeVariation', Math.round(obj.sizeVariation));
-    if (typeof obj.noseRange !== 'undefined') push('noseRange', obj.noseRange.toFixed(3));
-    if (typeof obj.eyeDistRange !== 'undefined') push('eyeDistRange', Math.round(obj.eyeDistRange));
-    if (typeof obj.bgCorr !== 'undefined') push('bgCorr', obj.bgCorr.toFixed(3));
-    if (obj.reason) push('Reason', obj.reason);
-    body.innerHTML = rows.join('');
+
+    const isInstruction = !!obj.instruction;
+    const msg = obj.instruction || obj.reason || '';
+    const isLiveDefined = typeof obj.isLive !== 'undefined';
+    const icon = isLiveDefined ? (obj.isLive ? '✅' : '❌') : '';
+
+    body.innerHTML = `
+        ${icon ? `<div style="font-size:22px;margin-bottom:4px;">${icon}</div>` : ''}
+        ${msg ? `<div style="font-size:14px;">${msg}</div>` : ''}
+    `;
+
+    panel.style.display = msg || icon ? 'block' : 'none';
+
+    // 錯誤/狀態提示 3 秒後消失，轉頭指示維持顯示
+    if (_debugHideTimer) clearTimeout(_debugHideTimer);
+    if (!isInstruction && (msg || icon)) {
+        _debugHideTimer = setTimeout(() => {
+            panel.style.display = 'none';
+        }, 3000);
+    }
 };
 
 // ── Head rotation detection ──────────────────────────────────────
@@ -522,15 +541,6 @@ const checkObstacleAndLiveness = async (face) => {
 
     const rotationResult = await detectHeadRotation();
     if (!rotationResult.success) return false;
-
-    const lapVar = computeLaplacianVariance(patch);
-    if (lapVar > 600) {
-        const moireScore = detectScreenMoireViaFFT(patch);
-        if (moireScore > 5000) {
-            alert('❌ 偵測到螢幕重複圖案特徵（Moiré）。\n這可能是翻拍照片或屏幕錄影。請勿翻拍，使用真實臉部。');
-            return false;
-        }
-    }
 
     const coherenceScore = analyzeSkinTextureCoherence(patch);
     if (coherenceScore < 50) {

@@ -144,13 +144,35 @@ if (isset($pdo)) {
         }
         $st->execute();
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-        // 用關鍵字命中數排序，取前 4
         usort($rows, function($a, $b) use ($heatKw) {
             $scoreA = array_sum(array_map(fn($k) => (mb_strpos($a['purpose'].$a['name'], $k) !== false) ? 1 : 0, $heatKw));
             $scoreB = array_sum(array_map(fn($k) => (mb_strpos($b['purpose'].$b['name'], $k) !== false) ? 1 : 0, $heatKw));
             return $scoreB <=> $scoreA;
         });
         $heatProducts = array_slice($rows, 0, 4);
+    } catch (Exception $e) {}
+}
+
+// ── 天氣推薦產品（保濕／滋潤，低溫時顯示） ───────────────────────
+$coldProducts = [];
+if (isset($pdo)) {
+    try {
+        $coldKw = ['保濕', '滋潤', '水光', '養膚', '補水', '透亮'];
+        $conditions = array_map(fn($k) => "purpose LIKE :kw_p_$k OR name LIKE :kw_n_$k", array_keys($coldKw));
+        $sql = "SELECT id, name, brand, purpose, image_url FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
+        $st = $pdo->prepare($sql);
+        foreach ($coldKw as $i => $kw) {
+            $st->bindValue(":kw_p_$i", '%' . $kw . '%');
+            $st->bindValue(":kw_n_$i", '%' . $kw . '%');
+        }
+        $st->execute();
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        usort($rows, function($a, $b) use ($coldKw) {
+            $scoreA = array_sum(array_map(fn($k) => (mb_strpos($a['purpose'].$a['name'], $k) !== false) ? 1 : 0, $coldKw));
+            $scoreB = array_sum(array_map(fn($k) => (mb_strpos($b['purpose'].$b['name'], $k) !== false) ? 1 : 0, $coldKw));
+            return $scoreB <=> $scoreA;
+        });
+        $coldProducts = array_slice($rows, 0, 4);
     } catch (Exception $e) {}
 }
 ?>
@@ -484,6 +506,73 @@ if (isset($pdo)) {
         </div>
     </div>
 
+    <!-- 乾冷提醒（氣溫低於門檻時由 JS 顯示） -->
+    <div id="cold-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #dbd0e0; box-shadow:0 2px 12px rgba(0,0,0,.07);">
+
+        <!-- 標題列 -->
+        <div style="background:linear-gradient(135deg,#edf3f9,#e8ecf5); padding:18px 24px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #d8e2ed;">
+            <div style="flex:1;">
+                <div style="font-size:15px; font-weight:700; color:#3a4f6a;">今日低溫提醒</div>
+                <div style="font-size:12px; color:#8a9bbf; margin-top:3px;">今日最高氣溫 <span id="cold-temp-text" style="font-weight:700; color:#5a7299;"></span>，天氣乾冷，妝前補水是重點</div>
+            </div>
+            <div style="background:white; border:1.5px solid #c8d8ea; border-radius:14px; padding:8px 16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.06);">
+                <div id="cold-temp-num" style="font-size:20px; font-weight:800; color:#3a4f6a; line-height:1;"></div>
+                <div style="font-size:10px; color:#8a9bbf; margin-top:2px;">今日最高</div>
+            </div>
+        </div>
+
+        <!-- 內容區 -->
+        <div style="background:white; padding:20px 24px;">
+
+            <!-- 保濕上妝法 -->
+            <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:12px;">保濕上妝法（3 步驟不卡粉）</div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;">
+                <?php
+                $coldSteps = [
+                    ['num'=>'1','title'=>'妝前敷水膜',    'desc'=>'上妝前敷 5 分鐘保濕面膜，讓肌膚充飽水分'],
+                    ['num'=>'2','title'=>'保濕妝前乳打底', 'desc'=>'選含玻尿酸的妝前乳，填平紋路防浮粉卡紋'],
+                    ['num'=>'3','title'=>'海綿輕拍上妝',   'desc'=>'用海綿輕拍取代刷塗，避免破壞肌膚保濕層'],
+                ];
+                foreach ($coldSteps as $s): ?>
+                <div style="background:#edf3f9; border-radius:14px; padding:14px 12px; border:1px solid #d8e2ed;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#b8ccdf; color:#3a4f6a; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px;"><?= $s['num'] ?></div>
+                    <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:4px;"><?= $s['title'] ?></div>
+                    <div style="font-size:11px; color:#8a9bbf; line-height:1.6;"><?= $s['desc'] ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- 小提醒 -->
+            <div style="background:#edf3f9; border:1px solid #d8e2ed; border-radius:12px; padding:10px 16px; font-size:12px; color:#5a7299; margin-bottom:20px;">
+                脫妝時先噴保濕噴霧補水再補妝，乾燥天不要直接補粉，否則會讓浮粉更嚴重。
+            </div>
+
+            <?php if (!empty($coldProducts)): ?>
+            <!-- 冷天推薦產品 -->
+            <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:12px;">適合今天低溫的保濕底妝</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px;">
+                <?php foreach ($coldProducts as $cp): ?>
+                <a href="product.php?id=<?= $cp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #d8e2ed; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                    <div style="width:100%; aspect-ratio:1; background:#edf3f9; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
+                        <?php if (!empty($cp['image_url'])): ?>
+                        <img src="<?= htmlspecialchars($cp['image_url']) ?>"
+                             alt="<?= htmlspecialchars($cp['name']) ?>"
+                             style="width:100%; height:100%; object-fit:cover;"
+                             onerror="this.parentElement.innerHTML='💄';">
+                        <?php else: ?>💄<?php endif; ?>
+                    </div>
+                    <div style="padding:10px 12px;">
+                        <div style="font-size:10px; color:#8a9bbf; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($cp['brand']) ?></div>
+                        <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4;"><?= htmlspecialchars($cp['name']) ?></div>
+                        <div style="margin-top:5px; font-size:11px; color:#8a9bbf; line-height:1.4;"><?= htmlspecialchars(mb_substr($cp['purpose'], 0, 18)) ?>…</div>
+                    </div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
 
 <?php endif; ?>
 </div>
@@ -493,14 +582,18 @@ if (isset($pdo)) {
 
 <script>
 (function () {
-    const THRESHOLD = 25;
+    const HOT_THRESHOLD  = 25;
+    const COLD_THRESHOLD = 18;
     const STORAGE_KEY = 'skinmatch_city';
 
-    const select  = document.getElementById('city-select');
-    const status  = document.getElementById('weather-status');
-    const alert   = document.getElementById('heat-alert');
-    const tempNum = document.getElementById('heat-temp-num');
-    const tempTxt = document.getElementById('heat-temp-text');
+    const select    = document.getElementById('city-select');
+    const status    = document.getElementById('weather-status');
+    const alert     = document.getElementById('heat-alert');
+    const tempNum   = document.getElementById('heat-temp-num');
+    const tempTxt   = document.getElementById('heat-temp-text');
+    const coldAlert = document.getElementById('cold-alert');
+    const coldNum   = document.getElementById('cold-temp-num');
+    const coldTxt   = document.getElementById('cold-temp-text');
 
     function showAlert(tempC) {
         if (!alert) return;
@@ -511,6 +604,17 @@ if (isset($pdo)) {
 
     function hideAlert() {
         if (alert) alert.style.display = 'none';
+    }
+
+    function showColdAlert(tempC) {
+        if (!coldAlert) return;
+        if (coldNum) coldNum.textContent = tempC + '°C';
+        if (coldTxt) coldTxt.textContent = tempC + '°C';
+        coldAlert.style.display = 'block';
+    }
+
+    function hideColdAlert() {
+        if (coldAlert) coldAlert.style.display = 'none';
     }
 
     function setStatus(msg) {
@@ -530,10 +634,16 @@ if (isset($pdo)) {
         const temp = await fetchMaxTemp(lat, lon).catch(() => null);
         if (temp === null) { setStatus('無法取得天氣'); return; }
         setStatus('');
-        if (temp > THRESHOLD) {
-            showAlert(Math.round(temp));
+        const t = Math.round(temp);
+        if (temp > HOT_THRESHOLD) {
+            showAlert(t);
+            hideColdAlert();
+        } else if (temp < COLD_THRESHOLD) {
+            hideAlert();
+            showColdAlert(t);
         } else {
             hideAlert();
+            hideColdAlert();
         }
     }
 
