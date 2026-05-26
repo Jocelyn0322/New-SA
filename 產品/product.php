@@ -129,6 +129,9 @@ if (empty($_SESSION[$viewedKey])) {
             <h3>用途</h3>
             <p><?php echo htmlspecialchars($row['purpose']); ?></p>
 
+            <h3>成分</h3>
+            <p><?php echo htmlspecialchars($row['ingredients']); ?></p>
+
             <h3>注意事項</h3>
             <p><?php echo htmlspecialchars($row['precautions']); ?></p>
 
