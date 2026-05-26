@@ -30,12 +30,13 @@ $prompt = '你是彩妝產品識別專家。分析這張產品照片，只輸出
 
 格式：
 {
-  "product_type": "具體產品名稱，如睫毛膏、粉底液、口紅、眼影盤、眼線筆、腮紅、氣墊粉餅等",
-  "brand": "品牌名（看不清楚填空字串）",
+  "brand": "品牌名，優先辨識包裝上的文字（看不清楚填空字串）",
+  "product_type": "產品類型，如睫毛膏、粉底液、口紅、眼影盤、眼線筆、腮紅、氣墊粉餅等（不確定填空字串，寧可填空也不要猜錯）",
+  "shape": "外觀容器形狀，如細長管狀、扁平盒狀、調色盤、氣墊、粉條、膏狀管等",
   "attributes": ["顏色或質地描述，如黑色、霧面、玫瑰色等"]
 }
 
-重要：product_type 必須是最具體的產品類型，不要填大類別（不要填「眼妝」，要填「睫毛膏」）。';
+重要：brand 辨識優先級最高；product_type 不確定時填空字串，不要猜測。';
 
 $requestBody = json_encode([
     'model'    => 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -85,24 +86,31 @@ if (!$parsed) {
 
 $productType = trim($parsed['product_type'] ?? '');
 $brand       = trim($parsed['brand']        ?? '');
+$shape       = trim($parsed['shape']        ?? '');
 $attributes  = array_filter(array_map('trim', $parsed['attributes'] ?? []));
 
 // ── 相關度評分搜尋 ──────────────────────────────────────────────────
-// 分數設計：product_type 命中名稱 = 10分，命中用途 = 8分；brand 命中 = 5分；attributes 各 1分
-// 至少需要 product_type 或 brand 命中才收錄
+// 品牌吻合 = 15分（最高），product_type 吻合 = 8分加分，shape/attributes 各 1分
+// 策略：brand 識別到 → 以 brand 為必要篩選條件，product_type 只影響排名
+//       brand 識別不到 → 以 product_type 為必要篩選條件
 
 $scoreParts = [];
 $params     = [];
 
-if ($productType) {
-    $scoreParts[] = "CASE WHEN p.name    ILIKE ? THEN 10 ELSE 0 END";  $params[] = "%$productType%";
-    $scoreParts[] = "CASE WHEN p.purpose ILIKE ? THEN 8  ELSE 0 END";  $params[] = "%$productType%";
-    $scoreParts[] = "CASE WHEN p.category ILIKE ? THEN 3 ELSE 0 END";  $params[] = "%$productType%";
+if ($brand) {
+    $scoreParts[] = "CASE WHEN p.brand ILIKE ? THEN 15 ELSE 0 END";    $params[] = "%$brand%";
+    $scoreParts[] = "CASE WHEN p.name  ILIKE ? THEN 5  ELSE 0 END";    $params[] = "%$brand%";
 }
 
-if ($brand) {
-    $scoreParts[] = "CASE WHEN p.brand ILIKE ? THEN 5 ELSE 0 END";     $params[] = "%$brand%";
-    $scoreParts[] = "CASE WHEN p.name  ILIKE ? THEN 3 ELSE 0 END";     $params[] = "%$brand%";
+if ($productType) {
+    $scoreParts[] = "CASE WHEN p.name     ILIKE ? THEN 8 ELSE 0 END";  $params[] = "%$productType%";
+    $scoreParts[] = "CASE WHEN p.purpose  ILIKE ? THEN 6 ELSE 0 END";  $params[] = "%$productType%";
+    $scoreParts[] = "CASE WHEN p.category ILIKE ? THEN 4 ELSE 0 END";  $params[] = "%$productType%";
+}
+
+if ($shape) {
+    $scoreParts[] = "CASE WHEN p.name    ILIKE ? THEN 1 ELSE 0 END";   $params[] = "%$shape%";
+    $scoreParts[] = "CASE WHEN p.purpose ILIKE ? THEN 1 ELSE 0 END";   $params[] = "%$shape%";
 }
 
 foreach ($attributes as $attr) {
@@ -117,16 +125,15 @@ if (empty($scoreParts)) {
 
 $scoreExpr = '(' . implode(' + ', $scoreParts) . ')';
 
-// WHERE 條件：product_type 或 brand 至少命中一個欄位
-$whereParts = [];
+// WHERE 條件：brand 識別到 → 以品牌篩選（product_type 只加分）；否則以 product_type 篩選
+$whereParts  = [];
 $whereParams = [];
-if ($productType) {
-    $whereParts[]  = "(p.name ILIKE ? OR p.purpose ILIKE ? OR p.category ILIKE ?)";
-    $whereParams   = array_merge($whereParams, ["%$productType%", "%$productType%", "%$productType%"]);
-}
 if ($brand) {
     $whereParts[]  = "(p.brand ILIKE ? OR p.name ILIKE ?)";
     $whereParams   = array_merge($whereParams, ["%$brand%", "%$brand%"]);
+} elseif ($productType) {
+    $whereParts[]  = "(p.name ILIKE ? OR p.purpose ILIKE ? OR p.category ILIKE ?)";
+    $whereParams   = array_merge($whereParams, ["%$productType%", "%$productType%", "%$productType%"]);
 }
 
 $whereClause = implode(' OR ', $whereParts);
@@ -143,10 +150,10 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($allParams);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 顯示給前端的標籤：product_type + brand + attributes
+// 顯示給前端的標籤：brand + product_type + attributes
 $displayTerms = array_filter(array_merge(
-    $productType ? [$productType] : [],
     $brand       ? [$brand]       : [],
+    $productType ? [$productType] : [],
     $attributes
 ));
 

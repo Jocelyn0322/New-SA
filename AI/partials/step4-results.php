@@ -58,23 +58,6 @@
         </div>
     </div>
 
-    <!-- 成分避雷 -->
-    <div v-if="ingredientAdvice" class="p-5 border border-rose-100 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 shadow-sm">
-        <h3 class="font-extrabold mb-2 text-gray-900">🧪 成分避雷（AI）</h3>
-        <p class="text-sm text-gray-600 mb-2">膚質：{{ ingredientAdvice.skin_type }}</p>
-        <ul class="space-y-2">
-            <li v-for="item in ingredientAdvice.avoid_ingredients" :key="item.ingredient" class="bg-white/90 border border-rose-100 rounded-xl p-3">
-                <p class="font-semibold text-gray-900">{{ item.ingredient }}</p>
-                <p class="text-sm text-gray-600 mt-1">{{ item.reason }}</p>
-            </li>
-        </ul>
-        <div v-if="ingredientAdvice.suitable_focus && ingredientAdvice.suitable_focus.length" class="mt-3 text-sm text-gray-700">
-            <p class="font-semibold">建議著重：</p>
-            <p>{{ ingredientAdvice.suitable_focus.join('、') }}</p>
-        </div>
-        <p class="text-xs text-gray-500 mt-3">{{ ingredientAdvice.disclaimer }}</p>
-    </div>
-
     <!-- 歷史回饋 -->
     <div v-if="feedbackHistory.length > 0" class="p-5 border border-cyan-100 rounded-2xl bg-gradient-to-br from-cyan-50 to-sky-50 shadow-sm">
         <h3 class="font-extrabold mb-3 text-gray-900">🧾 歷史回饋清單</h3>
@@ -114,6 +97,23 @@
 
 <!-- ── Step 5：確認結果 ── -->
 <div v-if="currentStep === 5" class="space-y-5">
+
+    <!-- 成分避雷 -->
+    <div v-if="ingredientAdvice" class="p-5 border border-rose-100 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 shadow-sm">
+        <h3 class="font-extrabold mb-2 text-gray-900">🧪 成分避雷（AI）</h3>
+        <p class="text-sm text-gray-600 mb-2">膚質：{{ ingredientAdvice.skin_type }}</p>
+        <ul class="space-y-2">
+            <li v-for="item in ingredientAdvice.avoid_ingredients" :key="item.ingredient" class="bg-white/90 border border-rose-100 rounded-xl p-3">
+                <p class="font-semibold text-gray-900">{{ item.ingredient }}</p>
+                <p class="text-sm text-gray-600 mt-1">{{ item.reason }}</p>
+            </li>
+        </ul>
+        <div v-if="ingredientAdvice.suitable_focus && ingredientAdvice.suitable_focus.length" class="mt-3 text-sm text-gray-700">
+            <p class="font-semibold">建議著重：</p>
+            <p>{{ ingredientAdvice.suitable_focus.join('、') }}</p>
+        </div>
+        <p class="text-xs text-gray-500 mt-3">{{ ingredientAdvice.disclaimer }}</p>
+    </div>
 
     <!-- 確認結果 -->
     <div class="p-5 md:p-6 border border-amber-100 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">

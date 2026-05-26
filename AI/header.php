@@ -4,6 +4,7 @@ $_uri      = $_SERVER['REQUEST_URI'];
 $_navHome  = strpos($_uri, '/產品/index.php') !== false;
 $_navProds = strpos($_uri, '/products.php') !== false || strpos($_uri, '/product.php') !== false;
 $_navAI    = strpos($_uri, '/AI/') !== false;
+$_navSkin  = strpos($_uri, '/skinmatch.php') !== false || strpos($_uri, '/skin-match.php') !== false;
 $_navVideo = strpos($_uri, '/video.php') !== false;
 $_favCount = count($_SESSION['favorite'] ?? []);
 $_initial  = isset($_SESSION['user']) ? mb_strtoupper(mb_substr($_SESSION['user'], 0, 1)) : '';
@@ -16,7 +17,8 @@ $_initial  = isset($_SESSION['user']) ? mb_strtoupper(mb_substr($_SESSION['user'
     <nav class="nav">
       <a href="/SA/New-SA/產品/index.php"    class="nav-link <?= $_navHome  ? 'active' : '' ?>">首頁</a>
       <a href="/SA/New-SA/產品/products.php" class="nav-link <?= $_navProds ? 'active' : '' ?>">產品</a>
-      <a href="/SA/New-SA/AI/index.php"      class="nav-link <?= $_navAI    ? 'active' : '' ?>">AI 檢測</a>
+      <a href="/SA/New-SA/AI/index.php"       class="nav-link <?= $_navAI   ? 'active' : '' ?>">AI 檢測</a>
+      <a href="/SA/New-SA/產品/skinmatch.php" class="nav-link <?= $_navSkin ? 'active' : '' ?>">膚色配對</a>
       <a href="/SA/New-SA/首頁/video.php"    class="nav-link <?= $_navVideo ? 'active' : '' ?>">影片交流</a>
     </nav>
     <div class="header-actions">
