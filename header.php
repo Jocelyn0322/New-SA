@@ -27,8 +27,8 @@ if (isset($_SESSION['user'])) {
 }
 ?>
 <style>
-.icon-btn { border: 1.5px solid #bbb !important; border-radius: 8px; }
-.icon-btn:hover { border-color: #999 !important; }
+.icon-btn { border: none !important; border-radius: 8px; }
+.icon-btn:hover { border: none !important; }
 .icon-btn .icon-fav { font-size: 22px; line-height: 1; }
 .icon-btn .icon-cmp { font-size: 22px; line-height: 1; }
 .icon-btn[data-tip], .notif-bell[data-tip], .user-chip[data-tip] { overflow: visible; position: relative; }
@@ -55,10 +55,10 @@ if (isset($_SESSION['user'])) {
 
 /* ── Notification bell ── */
 .notif-wrap { position: relative; }
-.notif-bell { background: none; border: 1.5px solid #bbb; cursor: pointer; font-size: 18px; line-height: 1;
+.notif-bell { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1;
   width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  color: #555; transition: background .15s, border-color .15s; position: relative; }
-.notif-bell:hover { background: #f4f3f8; border-color: #999; }
+  color: #555; transition: background .15s; position: relative; }
+.notif-bell:hover { background: #f4f3f8; }
 .notif-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px;
   background: #c26b7c; color: #fff; font-size: 10px; font-weight: 700;
   border-radius: 99px; padding: 0 4px; display: flex; align-items: center; justify-content: center;
@@ -101,12 +101,44 @@ if (isset($_SESSION['user'])) {
       <a href="/SA/New-SA/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
     <div class="header-actions">
-      <a href="/SA/New-SA/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><span class="icon-fav">❤️</span><?php if ($_favCount > 0): ?><span class="count"><?= $_favCount ?></span><?php endif; ?></a>
-      <a href="/SA/New-SA/產品/compare.php"  class="icon-btn" data-tip="產品比較"><span class="icon-cmp">⚖️</span></a>
+      <a href="/SA/New-SA/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="18" height="18" fill="currentColor" aria-hidden="true">
+              <path d="M50,85 C35,75 10,60 10,35 C10,18 20,8 33,8 C42,8 48,13 50,20 C52,13 58,8 67,8 C80,8 90,18 90,35 C90,60 65,75 50,85 Z"/>
+            </svg><?php if ($_favCount > 0): ?><span class="count"><?= $_favCount ?></span><?php endif; ?></a>
+      <a href="/SA/New-SA/產品/compare.php"  class="icon-btn" data-tip="產品比較"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" width="20" height="20" fill="currentColor" aria-hidden="true">
+              <!-- knob -->
+              <circle cx="50" cy="7" r="6"/>
+              <!-- crossbar -->
+              <rect x="7" y="13" width="86" height="8" rx="4"/>
+              <!-- pole -->
+              <rect x="46" y="6" width="8" height="66"/>
+              <!-- base -->
+              <rect x="26" y="72" width="48" height="9" rx="4.5"/>
+              <!-- left outer wire -->
+              <polygon points="11,21 15,21 7,50 3,50"/>
+              <!-- left inner wire -->
+              <polygon points="11,21 15,21 35,50 31,50"/>
+              <!-- left bowl rim -->
+              <rect x="1" y="49" width="34" height="4" rx="2"/>
+              <!-- left bowl body -->
+              <path d="M2,53 Q2,65 18,65 Q34,65 34,53 Z"/>
+              <!-- right outer wire -->
+              <polygon points="89,21 85,21 93,50 97,50"/>
+              <!-- right inner wire -->
+              <polygon points="89,21 85,21 65,50 69,50"/>
+              <!-- right bowl rim -->
+              <rect x="65" y="49" width="34" height="4" rx="2"/>
+              <!-- right bowl body -->
+              <path d="M66,53 Q66,65 82,65 Q98,65 98,53 Z"/>
+            </svg></a>
       <?php if (isset($_SESSION['user'])): ?>
         <div class="notif-wrap">
           <button class="notif-bell" id="notifBell" onclick="toggleNotifPanel()" aria-label="通知" data-tip="通知">
-            🔔
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="20" height="20" aria-hidden="true">
+              <g transform="translate(0,-980.36218)">
+                <path fill="currentColor" transform="translate(0,980.36218)" d="M36,12.594c-1.609,0-4.781,0.656-4.781,0.656c-1.012,0.14-0.444,2.115-0.063,3.063c0.182,0.451,2.781,1.031,2.781,1.031l-0.063,3c0,0-4.356,0.657-5.719,1.844c-1.363,1.187-2.464,1.342-4.125,5.281c-1.038,2.464-2.282,14.221-3.094,17.875c-0.811,3.654-1.781,4.031-1.781,4.031L36,49.344l16.844,0.031c0,0-0.97-0.377-1.781-4.031c-0.811-3.654-2.056-15.411-3.094-17.875c-1.66-3.939-2.762-4.094-4.125-5.281c-1.363-1.187-5.719-1.844-5.719-1.844l-0.063-3c0,0,2.6-0.58,2.781-1.031c0.381-0.948,0.949-2.923-0.063-3.063C40.781,13.25,37.609,12.594,36,12.594z"/>
+                <path fill="currentColor" d="m55,1031.716-37.969,0.031c-0.739,0.001-1.024,1.219-1.031,1.969-0.007,0.75,0.24,2.032,1,2.031l14.406,0c-0.005,0.075-0.031,0.142-0.031,0.219c0,2.514,2.075,4.563,4.625,4.563c2.55,0,4.625-2.049,4.625-4.563c0-0.088-0.025-0.164-0.031-0.25l14.406,0c0.745-0.001,0.999-1.254,1-2c0.001-0.746-0.253-2.001-1-2z"/>
+              </g>
+            </svg>
             <?php if ($_notifCount > 0): ?>
             <span class="notif-badge" id="notifBadge"><?= $_notifCount > 99 ? '99+' : $_notifCount ?></span>
             <?php else: ?>
@@ -115,7 +147,7 @@ if (isset($_SESSION['user'])) {
           </button>
           <div class="notif-panel" id="notifPanel">
             <div class="notif-panel-header">
-              <span class="notif-panel-title">🔔 通知</span>
+              <span class="notif-panel-title">通知</span>
               <button class="notif-mark-read" onclick="markAllRead()">全部標為已讀</button>
             </div>
             <div class="notif-list" id="notifList">

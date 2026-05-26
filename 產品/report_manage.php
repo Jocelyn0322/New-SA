@@ -1,50 +1,48 @@
 <?php
 session_start();
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 if (($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: products.php');
     exit;
 }
 
-// 處理標記已處理
+$adminUser = $_SESSION['user'] ?? 'Admin';
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS product_reports (
+    id          SERIAL PRIMARY KEY,
+    username    VARCHAR(100) NOT NULL,
+    product_id  INT NOT NULL,
+    report_type VARCHAR(50)  NOT NULL,
+    description TEXT,
+    status      VARCHAR(20)  DEFAULT 'pending',
+    created_at  TIMESTAMP    DEFAULT NOW()
+)");
+
+// 標記已處理
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resolve_id'])) {
-    $rid = intval($_POST['resolve_id']);
-    try {
-        $pdo->prepare("UPDATE product_reports SET status = 'resolved' WHERE id = ?")->execute([$rid]);
-    } catch (Exception $e) {}
-    header('Location: report_manage.php');
+    $pdo->prepare("UPDATE product_reports SET status = 'resolved' WHERE id = ?")->execute([intval($_POST['resolve_id'])]);
+    header('Location: report_manage.php?status=' . ($_GET['status'] ?? 'pending'));
     exit;
 }
 
-// 處理刪除回報
+// 刪除回報
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
-    $rid = intval($_POST['delete_id']);
-    try {
-        $pdo->prepare("DELETE FROM product_reports WHERE id = ?")->execute([$rid]);
-    } catch (Exception $e) {}
-    header('Location: report_manage.php');
+    $pdo->prepare("DELETE FROM product_reports WHERE id = ?")->execute([intval($_POST['delete_id'])]);
+    header('Location: report_manage.php?status=' . ($_GET['status'] ?? 'pending'));
     exit;
 }
 
-// 處理刪除整個產品
+// 刪除整個產品
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_product_id'])) {
     $pid = intval($_POST['delete_product_id']);
     if ($pid > 0) {
-        try {
-            $pdo->prepare("DELETE FROM product_colors  WHERE p_id = ?")->execute([$pid]);
-        } catch (Exception $e) {}
-        try {
-            $pdo->prepare("DELETE FROM product_reports WHERE product_id = ?")->execute([$pid]);
-        } catch (Exception $e) {}
-        try {
-            $pdo->prepare("DELETE FROM product_ratings WHERE product_id = ?")->execute([$pid]);
-        } catch (Exception $e) {}
-        try {
-            $pdo->prepare("DELETE FROM data WHERE id = ?")->execute([$pid]);
-        } catch (Exception $e) {}
+        foreach (['product_colors','product_reports','product_ratings'] as $tbl) {
+            try { $pdo->prepare("DELETE FROM $tbl WHERE " . ($tbl === 'product_colors' ? 'p_id' : 'product_id') . " = ?")->execute([$pid]); } catch (Exception $e) {}
+        }
+        try { $pdo->prepare("DELETE FROM data WHERE id = ?")->execute([$pid]); } catch (Exception $e) {}
     }
-    header('Location: report_manage.php');
+    header('Location: report_manage.php?status=pending');
     exit;
 }
 
@@ -62,9 +60,13 @@ try {
         ORDER BY r.created_at DESC
     ")->fetchAll();
 } catch (Exception $e) {
-    $reports = [];
-    $dbError = $e->getMessage();
+    $reports  = [];
+    $dbError  = $e->getMessage();
 }
+
+$pendingCount  = (int)$pdo->query("SELECT COUNT(*) FROM product_reports WHERE status = 'pending' OR status IS NULL")->fetchColumn();
+$totalCount    = (int)$pdo->query("SELECT COUNT(*) FROM product_reports")->fetchColumn();
+$resolvedCount = $totalCount - $pendingCount;
 
 $typeLabel = [
     'discontinued' => '已停產',
@@ -72,147 +74,265 @@ $typeLabel = [
     'wrong_info'   => '資訊有誤',
     'other'        => '其他',
 ];
+$typeBadge = [
+    'discontinued' => 'badge-red',
+    'new_version'  => 'badge-blue',
+    'wrong_info'   => 'badge-orange',
+    'other'        => 'badge-gray',
+];
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?v=3">
-    <title>問題回報管理</title>
-    <style>
-    .report-page { max-width: 1100px; margin: 40px auto 80px; padding: 0 40px; }
-    .report-page h2 { font-size: 22px; margin-bottom: 6px; }
-    .report-page .subtitle { font-size: 13px; color: #aaa; margin-bottom: 24px; }
-    .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-    .filter-tabs a {
-        padding: 6px 18px; border-radius: 20px; font-size: 13px;
-        text-decoration: none; border: 1.5px solid #ddd; color: #666;
-    }
-    .filter-tabs a.active { background: #efc6cd; border-color: #efc6cd; color: #333; }
-    .report-table { width: 100%; border-collapse: collapse; background: white;
-        border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
-    .report-table th { background: #fdf5f6; font-size: 13px; color: #888;
-        font-weight: 600; padding: 12px 16px; text-align: left; border-bottom: 1px solid #f0e0e3; }
-    .report-table td { padding: 12px 16px; font-size: 14px; color: #333;
-        border-bottom: 1px solid #f8f0f2; vertical-align: top; }
-    .report-table tr:last-child td { border-bottom: none; }
-    .report-table tr:hover td { background: #fffbfc; }
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px;
-        font-size: 12px; font-weight: 600; }
-    .badge-discontinued { background: #fde8e8; color: #c0392b; }
-    .badge-new_version  { background: #e8f4fd; color: #2471a3; }
-    .badge-wrong_info   { background: #fef9e7; color: #b7770d; }
-    .badge-other        { background: #f2f2f2; color: #666; }
-    .badge-resolved     { background: #eafaf1; color: #27ae60; }
-    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-    .action-btns a, .action-btns button {
-        padding: 5px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
-        text-decoration: none; border: 1.5px solid #ddd; background: white; color: #555;
-    }
-    .action-btns a:hover { background: #fff4f6; border-color: #efc6cd; color: #c97b8a; }
-    .action-btns .btn-resolve { border-color: #a9dfbf; color: #27ae60; }
-    .action-btns .btn-resolve:hover { background: #eafaf1; }
-    .action-btns .btn-delete { border-color: #f5c6c6; color: #c0392b; }
-    .action-btns .btn-delete:hover { background: #fde8e8; }
-    .desc-text { font-size: 13px; color: #777; margin-top: 4px; }
-    .empty-msg { text-align: center; padding: 60px; color: #bbb; font-size: 16px; }
-    @media(max-width:768px){ .report-page{ padding: 0 16px; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品回報管理 — COSMETIC 後台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sidebar-w: 220px;
+  --topbar-h: 58px;
+  --sidebar-bg: #5c1a2a;
+  --sidebar-hover: #7a2038;
+  --sidebar-active: #9d2942;
+  --accent: #c26b7c;
+  --accent-light: #f9cfd8;
+  --text-main: #1a1a2e;
+  --text-2: #555;
+  --text-3: #888;
+  --bg: #f4f3f8;
+  --card: #fff;
+  --border: #e8e6f0;
+  --r: 10px;
+  --r-lg: 14px;
+  --shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text-main); font-size: 14px; display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--sidebar-bg); position: fixed; top: 0; left: 0; z-index: 100; display: flex; flex-direction: column; box-shadow: 4px 0 20px rgba(0,0,0,.25); }
+.sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.sidebar-logo-main { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+.sidebar-logo-sub  { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; }
+.sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+.nav-group-label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,.3); padding: 12px 20px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; transition: background .15s; color: rgba(255,255,255,.65); font-size: 13.5px; text-decoration: none; position: relative; }
+.nav-item:hover  { background: var(--sidebar-hover); color: #fff; }
+.nav-item.active { background: var(--sidebar-active); color: #fff; }
+.nav-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); border-radius: 0 2px 2px 0; }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; min-width: 20px; text-align: center; }
+.nav-badge.warn { background: #f0a500; }
+.sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 10px; }
+.sidebar-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; font-weight: 700; flex-shrink: 0; }
+.sidebar-user-name { font-size: 13px; font-weight: 600; color: #fff; }
+.sidebar-user-role { font-size: 11px; color: rgba(255,255,255,.4); }
+
+/* ── Layout ── */
+.main    { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.topbar  { height: var(--topbar-h); background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; display: flex; align-items: center; padding: 0 28px; box-shadow: 0 1px 4px rgba(0,0,0,.06); gap: 16px; }
+.topbar-title { font-size: 17px; font-weight: 700; }
+.topbar-spacer { flex: 1; }
+.topbar-btn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); font-size: 13px; cursor: pointer; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: background .15s; }
+.topbar-btn:hover { background: var(--bg); }
+.content { padding: 28px; flex: 1; }
+
+/* ── Stats ── */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card { background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 18px 20px; display: flex; align-items: center; gap: 14px; }
+.stat-icon { font-size: 22px; width: 44px; height: 44px; border-radius: var(--r); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.stat-num   { font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 3px; }
+.stat-label { font-size: 12px; color: var(--text-3); }
+
+/* ── Filter tabs ── */
+.filter-row { display: flex; gap: 8px; margin-bottom: 20px; }
+.filter-tab { padding: 6px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; text-decoration: none; border: 1.5px solid var(--border); color: var(--text-3); background: var(--card); transition: all .15s; }
+.filter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── Report cards ── */
+.rp-list { display: flex; flex-direction: column; gap: 12px; }
+.rp-card { background: var(--card); border-radius: var(--r-lg); border: 1px solid var(--border); box-shadow: var(--shadow); display: grid; grid-template-columns: 210px 1fr 148px; overflow: hidden; }
+.rp-card.resolved { opacity: .6; }
+
+.rp-product { padding: 18px 20px; border-right: 1px solid var(--border); }
+.rp-id      { font-size: 11px; color: #ccc; margin-bottom: 6px; }
+.rp-name    { font-size: 14px; font-weight: 700; color: var(--accent); text-decoration: none; display: block; margin-bottom: 4px; line-height: 1.4; }
+.rp-name:hover { text-decoration: underline; }
+.rp-brand   { font-size: 12px; color: var(--text-3); }
+
+.rp-content { padding: 18px 20px; }
+.rp-badges  { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+.badge-red    { background: #fde8e8; color: #c0392b; }
+.badge-blue   { background: #dbeafe; color: #1d4ed8; }
+.badge-orange { background: #fef3c7; color: #b45309; }
+.badge-gray   { background: #f1f5f9; color: #64748b; }
+.badge-green  { background: #d1fae5; color: #065f46; }
+.rp-desc    { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 8px; }
+.rp-desc.empty { color: #ccc; font-style: italic; }
+.rp-who     { font-size: 12px; color: #bbb; }
+
+.rp-actions { padding: 14px 16px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 7px; background: #fdfbfc; }
+.rp-btn { padding: 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; text-decoration: none; border: 1.5px solid var(--border); background: var(--card); color: var(--text-2); transition: all .15s; font-family: inherit; }
+.rp-btn:hover         { background: var(--bg); border-color: #c9b8be; }
+.rp-resolve           { border-color: #a9dfbf; color: #27ae60; }
+.rp-resolve:hover     { background: #eafaf1; }
+.rp-del-report        { border-color: #f5c6c6; color: #c0392b; }
+.rp-del-report:hover  { background: #fde8e8; }
+.rp-del-product       { border-color: #f5c6c6; background: #fff5f5; color: #c0392b; font-weight: 700; }
+.rp-del-product:hover { background: #fde8e8; }
+
+/* ── Empty ── */
+.empty-state { text-align: center; padding: 70px 20px; color: #ccc; }
+.empty-icon  { font-size: 44px; margin-bottom: 12px; }
+
+/* ── Error ── */
+.db-error { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: var(--r); padding: 16px 20px; color: #c0392b; font-size: 13px; }
+</style>
 </head>
 <body>
-<?php include 'header.php'; ?>
 
-<div class="report-page">
-    <h2>問題回報管理</h2>
-    <p class="subtitle">使用者回報有問題的商品，請審查後進行編輯或標記已處理。</p>
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-main">💄 COSMETIC</div>
+    <div class="sidebar-logo-sub">管理後台</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group-label">概覽</div>
+    <a href="/SA/New-SA/首頁/admin.php?tab=stats" class="nav-item"><span class="nav-icon">📊</span> 數據統計</a>
 
-    <div class="filter-tabs">
-        <a href="?status=pending" class="<?php echo $statusFilter !== 'all' ? 'active' : ''; ?>">待處理</a>
-        <a href="?status=all"     class="<?php echo $statusFilter === 'all'  ? 'active' : ''; ?>">全部</a>
+    <div class="nav-group-label">內容管理</div>
+    <a href="/SA/New-SA/首頁/admin.php?tab=videos"   class="nav-item"><span class="nav-icon">🎬</span> 影片管理</a>
+    <a href="/SA/New-SA/首頁/admin.php?tab=comments" class="nav-item"><span class="nav-icon">💬</span> 留言管理</a>
+    <a href="/SA/New-SA/首頁/admin.php?tab=reports"  class="nav-item"><span class="nav-icon">🚩</span> 檢舉管理</a>
+
+    <div class="nav-group-label">產品管理</div>
+    <a href="/SA/New-SA/產品/report_manage.php" class="nav-item active">
+      <span class="nav-icon">⚠️</span> 商品回報
+      <?php if ($pendingCount > 0): ?>
+        <span class="nav-badge warn"><?= $pendingCount ?></span>
+      <?php endif; ?>
+    </a>
+    <a href="/SA/New-SA/首頁/admin.php?tab=data_products" class="nav-item"><span class="nav-icon">🗄️</span> 資料庫產品</a>
+    <a href="/SA/New-SA/首頁/admin.php?tab=products"      class="nav-item"><span class="nav-icon">🛍️</span> 商品審核</a>
+
+    <div class="nav-group-label">會員</div>
+    <a href="/SA/New-SA/首頁/admin.php?tab=users" class="nav-item"><span class="nav-icon">👥</span> 使用者管理</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-avatar"><?= strtoupper(substr($adminUser, 0, 1)) ?></div>
+    <div>
+      <div class="sidebar-user-name"><?= htmlspecialchars($adminUser) ?></div>
+      <div class="sidebar-user-role">超級管理員</div>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">商品回報管理</div>
+    <div class="topbar-spacer"></div>
+    <a href="/SA/New-SA/首頁/admin.php" class="topbar-btn">← 返回後台</a>
+  </div>
+
+  <div class="content">
+
+    <!-- 統計 -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fff0f0;">⏳</div>
+        <div><div class="stat-num" style="color:#c0392b;"><?= $pendingCount ?></div><div class="stat-label">待處理回報</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#eafaf1;">✅</div>
+        <div><div class="stat-num" style="color:#27ae60;"><?= $resolvedCount ?></div><div class="stat-label">已處理</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f0eef8;">📋</div>
+        <div><div class="stat-num"><?= $totalCount ?></div><div class="stat-label">累計回報</div></div>
+      </div>
+    </div>
+
+    <!-- 篩選 -->
+    <div class="filter-row">
+      <a href="?status=pending" class="filter-tab <?= $statusFilter !== 'all' ? 'active' : '' ?>">待處理</a>
+      <a href="?status=all"     class="filter-tab <?= $statusFilter === 'all'  ? 'active' : '' ?>">全部</a>
     </div>
 
     <?php if (!empty($dbError)): ?>
-        <div style="background:#fff0f0;padding:16px;border-radius:10px;color:#c0392b;font-size:13px;">
-            資料庫錯誤：<?php echo htmlspecialchars($dbError); ?><br>
-            請確認 Supabase 中有建立 <strong>product_reports</strong> 資料表（含 status、created_at 欄位）。
-        </div>
+      <div class="db-error">資料庫錯誤：<?= htmlspecialchars($dbError) ?></div>
     <?php elseif (empty($reports)): ?>
-        <div class="empty-msg">目前沒有<?php echo $statusFilter !== 'all' ? '待處理的' : ''; ?>回報</div>
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        目前沒有<?= $statusFilter !== 'all' ? '待處理的' : '' ?>回報
+      </div>
     <?php else: ?>
-    <table class="report-table">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>商品</th>
-                <th>回報類型</th>
-                <th>說明</th>
-                <th>回報者</th>
-                <th>時間</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-        <?php foreach ($reports as $r): ?>
-            <tr>
-                <td style="color:#bbb;font-size:12px;"><?php echo $r['id']; ?></td>
-                <td>
-                    <a href="product.php?id=<?php echo (int)$r['product_id']; ?>"
-                       style="color:#c97b8a;font-weight:600;text-decoration:none;">
-                        <?php echo htmlspecialchars($r['product_name'] ?? '（查無商品）'); ?>
-                    </a>
-                    <div style="font-size:12px;color:#aaa;margin-top:2px;">
-                        <?php echo htmlspecialchars($r['product_brand'] ?? ''); ?>
-                        <?php if($r['product_category']): ?> · <?php echo htmlspecialchars($r['product_category']); ?><?php endif; ?>
-                    </div>
-                </td>
-                <td>
-                    <?php
-                    $type = $r['report_type'];
-                    $label = $typeLabel[$type] ?? $type;
-                    ?>
-                    <span class="badge badge-<?php echo htmlspecialchars($type); ?>"><?php echo $label; ?></span>
-                    <?php if (($r['status'] ?? '') === 'resolved'): ?>
-                        <br><span class="badge badge-resolved" style="margin-top:4px;">已處理</span>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <div class="desc-text"><?php echo $r['description'] ? htmlspecialchars($r['description']) : '<em style="color:#ddd;">無說明</em>'; ?></div>
-                </td>
-                <td style="font-size:13px;color:#666;"><?php echo htmlspecialchars($r['username']); ?></td>
-                <td style="font-size:12px;color:#aaa;white-space:nowrap;">
-                    <?php echo $r['created_at'] ? substr($r['created_at'], 0, 16) : '—'; ?>
-                </td>
-                <td>
-                    <div class="action-btns">
-                        <a href="product.php?id=<?php echo (int)$r['product_id']; ?>">前往編輯</a>
-                        <?php if (($r['status'] ?? '') !== 'resolved'): ?>
-                        <form method="POST" style="margin:0;">
-                            <input type="hidden" name="resolve_id" value="<?php echo $r['id']; ?>">
-                            <button type="submit" class="btn-resolve">標記已處理</button>
-                        </form>
-                        <?php endif; ?>
-                        <form method="POST" style="margin:0;"
-                              onsubmit="return confirm('確定刪除此回報記錄？');">
-                            <input type="hidden" name="delete_id" value="<?php echo $r['id']; ?>">
-                            <button type="submit" class="btn-delete">刪除回報</button>
-                        </form>
-                        <?php if ($r['product_id']): ?>
-                        <form method="POST" style="margin:0;"
-                              onsubmit="return confirm('⚠️ 確定要刪除整個商品「<?php echo addslashes(htmlspecialchars($r['product_name'] ?? '')); ?>」？\n此操作無法復原，色號、評分、回報記錄都會一併刪除。');">
-                            <input type="hidden" name="delete_product_id" value="<?php echo (int)$r['product_id']; ?>">
-                            <button type="submit" class="btn-delete" style="background:#fff0f0;font-weight:600;">🗑 刪除整個產品</button>
-                        </form>
-                        <?php endif; ?>
-                    </div>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-    <?php endif; ?>
-</div>
+    <div class="rp-list">
+      <?php foreach ($reports as $r):
+        $type     = $r['report_type'];
+        $resolved = ($r['status'] ?? '') === 'resolved';
+      ?>
+      <div class="rp-card <?= $resolved ? 'resolved' : '' ?>">
 
-<?php include 'footer.php'; ?>
+        <!-- 產品資訊 -->
+        <div class="rp-product">
+          <div class="rp-id">#<?= $r['id'] ?></div>
+          <a href="product.php?id=<?= (int)$r['product_id'] ?>" class="rp-name">
+            <?= htmlspecialchars($r['product_name'] ?? '（查無商品）') ?>
+          </a>
+          <div class="rp-brand">
+            <?= htmlspecialchars($r['product_brand'] ?? '') ?>
+            <?php if ($r['product_category']): ?> · <?= htmlspecialchars($r['product_category']) ?><?php endif; ?>
+          </div>
+        </div>
+
+        <!-- 回報內容 -->
+        <div class="rp-content">
+          <div class="rp-badges">
+            <span class="badge <?= $typeBadge[$type] ?? 'badge-gray' ?>"><?= $typeLabel[$type] ?? $type ?></span>
+            <?php if ($resolved): ?>
+              <span class="badge badge-green">已處理</span>
+            <?php endif; ?>
+          </div>
+          <div class="rp-desc <?= empty($r['description']) ? 'empty' : '' ?>">
+            <?= $r['description'] ? htmlspecialchars($r['description']) : '無說明' ?>
+          </div>
+          <div class="rp-who">
+            <?= htmlspecialchars($r['username']) ?> · <?= $r['created_at'] ? substr($r['created_at'], 0, 16) : '—' ?>
+          </div>
+        </div>
+
+        <!-- 操作 -->
+        <div class="rp-actions">
+          <a href="product.php?id=<?= (int)$r['product_id'] ?>" class="rp-btn">查看產品</a>
+          <?php if (!$resolved): ?>
+          <form method="POST" style="margin:0;">
+            <input type="hidden" name="resolve_id" value="<?= $r['id'] ?>">
+            <button type="submit" class="rp-btn rp-resolve">✔ 標記已處理</button>
+          </form>
+          <?php endif; ?>
+          <form method="POST" style="margin:0;" onsubmit="return confirm('確定刪除此回報記錄？');">
+            <input type="hidden" name="delete_id" value="<?= $r['id'] ?>">
+            <button type="submit" class="rp-btn rp-del-report">刪除回報</button>
+          </form>
+          <?php if ($r['product_id']): ?>
+          <form method="POST" style="margin:0;" onsubmit="return confirm('⚠️ 確定刪除整個商品「<?= addslashes(htmlspecialchars($r['product_name'] ?? '')) ?>」？\n此操作無法復原。');">
+            <input type="hidden" name="delete_product_id" value="<?= (int)$r['product_id'] ?>">
+            <button type="submit" class="rp-btn rp-del-product">🗑 刪除產品</button>
+          </form>
+          <?php endif; ?>
+        </div>
+
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+  </div>
+</div>
 </body>
 </html>

@@ -9,6 +9,16 @@ if (!isset($_SESSION['user'])) {
 
 require __DIR__ . '/../db.php';
 
+$pdo->exec("CREATE TABLE IF NOT EXISTS product_reports (
+    id          SERIAL PRIMARY KEY,
+    username    VARCHAR(100) NOT NULL,
+    product_id  INT NOT NULL,
+    report_type VARCHAR(50)  NOT NULL,
+    description TEXT,
+    status      VARCHAR(20)  DEFAULT 'pending',
+    created_at  TIMESTAMP    DEFAULT NOW()
+)");
+
 $data       = json_decode(file_get_contents('php://input'), true) ?? [];
 $username   = $_SESSION['user'];
 $productId  = intval($data['product_id']  ?? 0);

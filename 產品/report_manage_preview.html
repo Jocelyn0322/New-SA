@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>問題回報管理 — 新排版預覽</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f5f6; color: #333; }
+
+.page-wrap { max-width: 960px; margin: 40px auto 80px; padding: 0 24px; }
+
+/* ── 頁首 ── */
+.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-title { font-size: 20px; font-weight: 700; color: #1a1a2e; }
+.page-sub   { font-size: 13px; color: #aaa; margin-top: 3px; }
+
+/* ── 篩選標籤 ── */
+.filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.filter-tab {
+  padding: 6px 20px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  text-decoration: none; border: 1.5px solid #e0d5d8; color: #888; background: #fff;
+  cursor: pointer;
+}
+.filter-tab.active { background: #c26b7c; border-color: #c26b7c; color: #fff; }
+
+/* ── 統計小卡 ── */
+.stat-row { display: flex; gap: 12px; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: 12px; border: 1px solid #ede8ea;
+  padding: 14px 20px; flex: 1; }
+.stat-num  { font-size: 22px; font-weight: 700; color: #c26b7c; }
+.stat-label { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+/* ── 回報卡片 ── */
+.rp-list { display: flex; flex-direction: column; gap: 12px; }
+.rp-card {
+  background: #fff; border-radius: 14px; border: 1px solid #ede8ea;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  display: grid; grid-template-columns: 220px 1fr auto;
+  align-items: start; gap: 0; overflow: hidden;
+}
+.rp-card.resolved { opacity: .65; }
+
+/* 左欄 */
+.rp-product { padding: 18px 20px; border-right: 1px solid #f3eef0; }
+.rp-id      { font-size: 11px; color: #ccc; margin-bottom: 6px; }
+.rp-name    { font-size: 14px; font-weight: 700; color: #c26b7c; text-decoration: none; display: block; margin-bottom: 4px; }
+.rp-name:hover { text-decoration: underline; }
+.rp-meta    { font-size: 12px; color: #aaa; }
+
+/* 中欄 */
+.rp-content { padding: 18px 20px; }
+.rp-type    { margin-bottom: 8px; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+.badge-discontinued { background: #fde8e8; color: #c0392b; }
+.badge-new_version  { background: #e8f4fd; color: #2471a3; }
+.badge-wrong_info   { background: #fef9e7; color: #b7770d; }
+.badge-other        { background: #f2f2f2; color: #888; }
+.badge-resolved     { background: #eafaf1; color: #27ae60; }
+.rp-desc { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px; min-height: 20px; }
+.rp-desc.empty { color: #ccc; font-style: italic; }
+.rp-who  { font-size: 12px; color: #bbb; }
+
+/* 右欄 */
+.rp-actions {
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 7px;
+  border-left: 1px solid #f3eef0; min-width: 130px;
+}
+.rp-btn {
+  padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  text-align: center; cursor: pointer; text-decoration: none;
+  border: 1.5px solid #e0d5d8; background: #fff; color: #555;
+  transition: all .15s;
+}
+.rp-btn:hover         { background: #fdf4f6; border-color: #c26b7c; color: #c26b7c; }
+.rp-resolve           { border-color: #a9dfbf; color: #27ae60; }
+.rp-resolve:hover     { background: #eafaf1; }
+.rp-del-report        { border-color: #f5c6c6; color: #c0392b; }
+.rp-del-report:hover  { background: #fde8e8; }
+.rp-del-product       { border-color: #f5c6c6; background: #fff5f5; color: #c0392b; font-weight: 700; }
+.rp-del-product:hover { background: #fde8e8; }
+
+/* ── 空狀態 ── */
+.empty-state { text-align: center; padding: 60px 20px; color: #ccc; font-size: 15px; }
+.empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- 頁首 -->
+  <div class="page-head">
+    <div>
+      <div class="page-title">問題回報管理</div>
+      <div class="page-sub">使用者回報有問題的商品，審查後進行處理</div>
+    </div>
+  </div>
+
+  <!-- 統計 -->
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-num">8</div><div class="stat-label">待處理回報</div></div>
+    <div class="stat-card"><div class="stat-num">33</div><div class="stat-label">累計回報</div></div>
+    <div class="stat-card"><div class="stat-num">25</div><div class="stat-label">已處理</div></div>
+  </div>
+
+  <!-- 篩選 -->
+  <div class="filter-tabs">
+    <a class="filter-tab active">待處理</a>
+    <a class="filter-tab">全部</a>
+  </div>
+
+  <!-- 回報列表 -->
+  <div class="rp-list">
+
+    <!-- 範例 1 -->
+    <div class="rp-card">
+      <div class="rp-product">
+        <div class="rp-id">#33</div>
+        <a href="#" class="rp-name">幻彩流螢粉盤</a>
+        <div class="rp-meta">Guerlain · 打亮</div>
+      </div>
+      <div class="rp-content">
+        <div class="rp-type"><span class="badge badge-discontinued">已停產</span></div>
+        <div class="rp-desc">此產品已下架，官網查無資料</div>
+        <div class="rp-who">admin · 2026-05-26 03:41</div>
+      </div>
+      <div class="rp-actions">
+        <a href="#" class="rp-btn">查看產品</a>
+        <button class="rp-btn rp-resolve">✔ 標記已處理</button>
+        <button class="rp-btn rp-del-report">刪除回報</button>
+        <button class="rp-btn rp-del-product">🗑 刪除產品</button>
+      </div>
+    </div>
+
+    <!-- 範例 2 -->
+    <div class="rp-card">
+      <div class="rp-product">
+        <div class="rp-id">#32</div>
+        <a href="#" class="rp-name">Strobe Cream 幻彩提亮乳</a>
+        <div class="rp-meta">MAC · 打亮</div>
+      </div>
+      <div class="rp-content">
+        <div class="rp-type"><span class="badge badge-wrong_info">資訊有誤</span></div>
+        <div class="rp-desc">價格標示錯誤，應為 NT$1,200</div>
+        <div class="rp-who">user01 · 2026-05-26 03:04</div>
+      </div>
+      <div class="rp-actions">
+        <a href="#" class="rp-btn">查看產品</a>
+        <button class="rp-btn rp-resolve">✔ 標記已處理</button>
+        <button class="rp-btn rp-del-report">刪除回報</button>
+        <button class="rp-btn rp-del-product">🗑 刪除產品</button>
+      </div>
+    </div>
+
+    <!-- 範例 3 — 無說明 -->
+    <div class="rp-card">
+      <div class="rp-product">
+        <div class="rp-id">#31</div>
+        <a href="#" class="rp-name">超持妝立體彩妝盤</a>
+        <div class="rp-meta">MAC · 打亮</div>
+      </div>
+      <div class="rp-content">
+        <div class="rp-type"><span class="badge badge-other">其他</span></div>
+        <div class="rp-desc empty">無說明</div>
+        <div class="rp-who">admin · 2026-05-26 03:04</div>
+      </div>
+      <div class="rp-actions">
+        <a href="#" class="rp-btn">查看產品</a>
+        <button class="rp-btn rp-resolve">✔ 標記已處理</button>
+        <button class="rp-btn rp-del-report">刪除回報</button>
+        <button class="rp-btn rp-del-product">🗑 刪除產品</button>
+      </div>
+    </div>
+
+    <!-- 範例 4 — 已處理 -->
+    <div class="rp-card resolved">
+      <div class="rp-product">
+        <div class="rp-id">#30</div>
+        <a href="#" class="rp-name">探險家修容盤</a>
+        <div class="rp-meta">完美日記 · 打亮</div>
+      </div>
+      <div class="rp-content">
+        <div class="rp-type">
+          <span class="badge badge-new_version">有新版本</span>
+          <span class="badge badge-resolved" style="margin-left:6px;">已處理</span>
+        </div>
+        <div class="rp-desc">2024 新版已上市，舊版色號有調整</div>
+        <div class="rp-who">user02 · 2026-05-24 09:50</div>
+      </div>
+      <div class="rp-actions">
+        <a href="#" class="rp-btn">查看產品</a>
+        <button class="rp-btn rp-del-report">刪除回報</button>
+        <button class="rp-btn rp-del-product">🗑 刪除產品</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
