@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 if (isset($_GET['remove'])) {
     $removeId = intval($_GET['remove']);
@@ -36,7 +36,7 @@ if (isset($_GET['clear'])) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <div class="compare-wrap">
   <?php

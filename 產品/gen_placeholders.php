@@ -1,5 +1,5 @@
 <?php
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 $imgDir = __DIR__ . '/images/';
 

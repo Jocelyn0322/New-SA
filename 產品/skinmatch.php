@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 $profile    = null;
 $products   = [];
@@ -113,14 +113,16 @@ if ($hasProfile) {
         $colorHexes = array_values(array_filter(array_map('trim', explode(',', $row['color_hexes'] ?? ''))));
 
         $ranked[] = [
-            'id'         => $row['id'],
-            'brand'      => $row['brand'] ?? '',
-            'name'       => $row['name']  ?? '',
-            'purpose'    => $row['purpose'] ?? '',
-            'score'      => round($score, 1),
-            'reasons'    => array_values(array_unique($reasons)),
-            'colorNames' => $colorNames,
-            'colorHexes' => $colorHexes,
+            'id'        => $row['id'],
+            'brand'     => $row['brand']     ?? '',
+            'name'      => $row['name']      ?? '',
+            'purpose'   => $row['purpose']   ?? '',
+            'image_url' => $row['image_url'] ?? '',
+            'category'  => $row['category']  ?? '',
+            'score'     => round($score, 1),
+            'reasons'   => array_values(array_unique($reasons)),
+            'colorNames'=> $colorNames,
+            'colorHexes'=> $colorHexes,
         ];
     }
 
@@ -134,7 +136,7 @@ if (isset($pdo)) {
     try {
         $heatKw = ['控油', '持妝', '定妝', '抗汗', '霧面', '長效'];
         $conditions = array_map(fn($k) => "purpose LIKE :kw_p_$k OR name LIKE :kw_n_$k", array_keys($heatKw));
-        $sql = "SELECT id, name, brand, purpose FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
+        $sql = "SELECT id, name, brand, purpose, image_url FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
         $st = $pdo->prepare($sql);
         foreach ($heatKw as $i => $kw) {
             $st->bindValue(":kw_p_$i", '%' . $kw . '%');
@@ -142,13 +144,35 @@ if (isset($pdo)) {
         }
         $st->execute();
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-        // 用關鍵字命中數排序，取前 4
         usort($rows, function($a, $b) use ($heatKw) {
             $scoreA = array_sum(array_map(fn($k) => (mb_strpos($a['purpose'].$a['name'], $k) !== false) ? 1 : 0, $heatKw));
             $scoreB = array_sum(array_map(fn($k) => (mb_strpos($b['purpose'].$b['name'], $k) !== false) ? 1 : 0, $heatKw));
             return $scoreB <=> $scoreA;
         });
         $heatProducts = array_slice($rows, 0, 4);
+    } catch (Exception $e) {}
+}
+
+// ── 天氣推薦產品（保濕／滋潤，低溫時顯示） ───────────────────────
+$coldProducts = [];
+if (isset($pdo)) {
+    try {
+        $coldKw = ['保濕', '滋潤', '水光', '養膚', '補水', '透亮'];
+        $conditions = array_map(fn($k) => "purpose LIKE :kw_p_$k OR name LIKE :kw_n_$k", array_keys($coldKw));
+        $sql = "SELECT id, name, brand, purpose, image_url FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
+        $st = $pdo->prepare($sql);
+        foreach ($coldKw as $i => $kw) {
+            $st->bindValue(":kw_p_$i", '%' . $kw . '%');
+            $st->bindValue(":kw_n_$i", '%' . $kw . '%');
+        }
+        $st->execute();
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        usort($rows, function($a, $b) use ($coldKw) {
+            $scoreA = array_sum(array_map(fn($k) => (mb_strpos($a['purpose'].$a['name'], $k) !== false) ? 1 : 0, $coldKw));
+            $scoreB = array_sum(array_map(fn($k) => (mb_strpos($b['purpose'].$b['name'], $k) !== false) ? 1 : 0, $coldKw));
+            return $scoreB <=> $scoreA;
+        });
+        $coldProducts = array_slice($rows, 0, 4);
     } catch (Exception $e) {}
 }
 ?>
@@ -160,17 +184,19 @@ if (isset($pdo)) {
     <link rel="stylesheet" href="style.css">
     <title>COSMETIC — AI 專屬推薦</title>
     <style>
+        .products-wrap { max-width: var(--max-w); margin: 24px auto 60px; padding: 0 24px; }
         .ai-profile-card {
-            background: linear-gradient(135deg, #f9f0f2 0%, #ede8f0 60%, #edf0f5 100%);
-            border: 1px solid #e3d8e8;
+            background: linear-gradient(135deg, #6b2d3e 0%, #c26b7c 100%);
+            border: 1px solid #c26b7c;
             border-radius: 20px;
             padding: 28px 32px;
             margin-bottom: 32px;
+            box-shadow: 0 4px 20px rgba(107,45,62,.25);
         }
         .ai-profile-card h2 {
             font-size: 20px;
             font-weight: 700;
-            color: #5c4a5a;
+            color: #fff;
             margin-bottom: 18px;
         }
         .profile-tags {
@@ -183,17 +209,17 @@ if (isset($pdo)) {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: white;
-            border: 1.5px solid #dbd0e0;
+            background: rgba(255,255,255,.15);
+            border: 1.5px solid rgba(255,255,255,.3);
             border-radius: 20px;
             padding: 6px 14px;
             font-size: 13px;
-            color: #5c4a5a;
+            color: #fff;
             font-weight: 600;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: none;
         }
         .profile-tag .tag-label {
-            color: #a897b0;
+            color: rgba(255,255,255,.6);
             font-weight: 400;
             font-size: 11px;
         }
@@ -209,7 +235,7 @@ if (isset($pdo)) {
             position: absolute;
             top: 10px;
             left: 10px;
-            background: linear-gradient(135deg, #b5a8c0, #c4a5a5);
+            background: linear-gradient(135deg, #6b2d3e, #c26b7c);
             color: white;
             font-size: 11px;
             font-weight: 700;
@@ -246,8 +272,8 @@ if (isset($pdo)) {
         }
         .ai-cta-btn {
             display: inline-block;
-            background: linear-gradient(135deg, #c4a5a5, #b5a8c0);
-            color: white;
+            background: #fff;
+            color: #6b2d3e;
             padding: 10px 22px;
             border-radius: 24px;
             font-weight: 700;
@@ -303,10 +329,10 @@ if (isset($pdo)) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <main class="page">
-<div class="products">
+<div class="products-wrap">
 
 <?php if (!isset($_SESSION['user'])): ?>
     <!-- Not logged in -->
@@ -317,7 +343,7 @@ if (isset($pdo)) {
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
             <a href="/SA/New-SA/首頁/login.php" class="ai-cta-btn ai-cta-btn-large">前往登入</a>
             <a href="/SA/New-SA/AI/index.php" class="ai-cta-btn ai-cta-btn-large"
-               style="background:linear-gradient(135deg,#a8b5a2,#9db3c5);">去做 AI 分析</a>
+               style="background:linear-gradient(135deg,#6b2d3e,#c26b7c);">去做 AI 分析</a>
         </div>
     </div>
 
@@ -379,14 +405,14 @@ if (isset($pdo)) {
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
             <a href="/SA/New-SA/AI/index.php" class="ai-cta-btn">重新 AI 檢測</a>
             <a href="/SA/New-SA/首頁/profile.php"
-               style="font-size:13px;color:#a897b0;text-decoration:none;">編輯個人資料 →</a>
+               style="font-size:13px;color:rgba(255,255,255,.65);text-decoration:none;">編輯個人資料 →</a>
         </div>
     </div>
 
     <!-- 地區選擇 -->
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; padding:10px 16px; background:#f9f0f2; border:1px solid #e3d8e8; border-radius:14px;">
-        <span style="font-size:12px; color:#7a5c6e; font-weight:600; white-space:nowrap;">天氣地區</span>
-        <select id="city-select" style="flex:1; border:1.5px solid #dbd0e0; border-radius:8px; padding:5px 10px; font-size:13px; color:#5c4a5a; background:white; outline:none; cursor:pointer;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; padding:10px 16px; background:#fdf2f4; border:1px solid #f5c6d0; border-radius:14px;">
+        <span style="font-size:12px; color:#c26b7c; font-weight:600; white-space:nowrap;">天氣地區</span>
+        <select id="city-select" style="flex:1; border:1.5px solid #f5c6d0; border-radius:8px; padding:5px 10px; font-size:13px; color:#6b2d3e; background:white; outline:none; cursor:pointer;">
             <option value="auto">自動偵測位置</option>
             <optgroup label="六都">
                 <option value="25.0330,121.5654">台北市</option>
@@ -411,29 +437,29 @@ if (isset($pdo)) {
                 <option value="23.5654,119.5795">澎湖縣</option>
             </optgroup>
         </select>
-        <span id="weather-status" style="font-size:11px; color:#a897b0; white-space:nowrap;"></span>
+        <span id="weather-status" style="font-size:11px; color:#c09aaa; white-space:nowrap;"></span>
     </div>
 
     <!-- 抗汗指南（氣溫超過門檻時由 JS 顯示） -->
-    <div id="heat-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #dbd0e0; box-shadow:0 2px 12px rgba(0,0,0,.07);">
+    <div id="heat-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #6b2d3e; box-shadow:0 4px 20px rgba(61,21,32,.25);">
 
         <!-- 標題列 -->
-        <div style="background:linear-gradient(135deg,#f9f0f2,#ede8f0); padding:18px 24px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #e3d8e8;">
+        <div style="background:linear-gradient(135deg,#3d1520,#6b2d3e); padding:18px 24px; display:flex; align-items:center; gap:14px;">
             <div style="flex:1;">
-                <div style="font-size:15px; font-weight:700; color:#5c4a5a;">今日高溫提醒</div>
-                <div style="font-size:12px; color:#a897b0; margin-top:3px;">今日最高氣溫 <span id="heat-temp-text" style="font-weight:700; color:#7a5c6e;"></span>，建議加上定妝步驟讓妝感撐一整天</div>
+                <div style="font-size:15px; font-weight:700; color:#fff;">今日高溫提醒</div>
+                <div style="font-size:12px; color:rgba(255,255,255,.7); margin-top:3px;">今日最高氣溫 <span id="heat-temp-text" style="font-weight:700; color:#f9cfd8;"></span>，建議加上定妝步驟讓妝感撐一整天</div>
             </div>
-            <div style="background:white; border:1.5px solid #dbd0e0; border-radius:14px; padding:8px 16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.06);">
-                <div id="heat-temp-num" style="font-size:20px; font-weight:800; color:#5c4a5a; line-height:1;"></div>
-                <div style="font-size:10px; color:#a897b0; margin-top:2px;">今日最高</div>
+            <div style="background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.3); border-radius:14px; padding:8px 16px; text-align:center;">
+                <div id="heat-temp-num" style="font-size:20px; font-weight:800; color:#fff; line-height:1;"></div>
+                <div style="font-size:10px; color:rgba(255,255,255,.6); margin-top:2px;">今日最高</div>
             </div>
         </div>
 
         <!-- 內容區 -->
-        <div style="background:white; padding:20px 24px;">
+        <div style="background:#fdf2f4; padding:20px 24px;">
 
             <!-- 三明治定妝法 -->
-            <div style="font-size:13px; font-weight:700; color:#5c4a5a; margin-bottom:12px;">三明治定妝法（新手 3 步驟）</div>
+            <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:12px;">三明治定妝法（新手 3 步驟）</div>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;">
                 <?php
                 $steps = [
@@ -442,35 +468,37 @@ if (isset($pdo)) {
                     ['num'=>'3','title'=>'再掃一層散粉', 'desc'=>'鎖住噴霧，三明治順序讓持妝效果翻倍'],
                 ];
                 foreach ($steps as $s): ?>
-                <div style="background:#f9f0f2; border-radius:14px; padding:14px 12px; border:1px solid #e3d8e8;">
-                    <div style="width:26px; height:26px; border-radius:50%; background:#efc6cd; color:#5c4a5a; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px;"><?= $s['num'] ?></div>
-                    <div style="font-size:13px; font-weight:700; color:#5c4a5a; margin-bottom:4px;"><?= $s['title'] ?></div>
-                    <div style="font-size:11px; color:#a897b0; line-height:1.6;"><?= $s['desc'] ?></div>
+                <div style="background:#fff; border-radius:14px; padding:14px 12px; border:1px solid #f5c6d0;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#c26b7c; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px;"><?= $s['num'] ?></div>
+                    <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:4px;"><?= $s['title'] ?></div>
+                    <div style="font-size:11px; color:#c09aaa; line-height:1.6;"><?= $s['desc'] ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
 
             <!-- 小提醒 -->
-            <div style="background:#f9f0f2; border:1px solid #e3d8e8; border-radius:12px; padding:10px 16px; font-size:12px; color:#7a5c6e; margin-bottom:20px;">
+            <div style="background:#fff; border:1px solid #f5c6d0; border-radius:12px; padding:10px 16px; font-size:12px; color:#6b2d3e; margin-bottom:20px;">
                 出門前最後一步才噴，隨身帶一瓶定妝噴霧，中午直接噴臉補妝，不用補粉也能維持妝感。
             </div>
 
             <?php if (!empty($heatProducts)): ?>
             <!-- 天氣推薦產品 -->
-            <div style="font-size:13px; font-weight:700; color:#5c4a5a; margin-bottom:12px;">適合今天高溫的持妝產品</div>
+            <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:12px;">適合今天高溫的持妝產品</div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px;">
                 <?php foreach ($heatProducts as $hp): ?>
-                <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #dbd0e0; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
-                    <div style="width:100%; aspect-ratio:1; background:#f9f0f2; overflow:hidden;">
-                        <img src="images/<?= $hp['id'] ?>.jpg"
+                <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:#fff; border-radius:16px; border:1.5px solid #f5c6d0; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                    <div style="width:100%; aspect-ratio:1; background:#fdf2f4; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
+                        <?php if (!empty($hp['image_url'])): ?>
+                        <img src="<?= htmlspecialchars($hp['image_url']) ?>"
                              alt="<?= htmlspecialchars($hp['name']) ?>"
                              style="width:100%; height:100%; object-fit:cover;"
-                             onerror="this.parentElement.style.background='#f5eff7';this.remove();">
+                             onerror="this.parentElement.innerHTML='💄';">
+                        <?php else: ?>💄<?php endif; ?>
                     </div>
                     <div style="padding:10px 12px;">
-                        <div style="font-size:10px; color:#a897b0; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($hp['brand']) ?></div>
+                        <div style="font-size:10px; color:#c09aaa; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($hp['brand']) ?></div>
                         <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4;"><?= htmlspecialchars($hp['name']) ?></div>
-                        <div style="margin-top:5px; font-size:11px; color:#a897b0; line-height:1.4;"><?= htmlspecialchars(mb_substr($hp['purpose'], 0, 18)) ?>…</div>
+                        <div style="margin-top:5px; font-size:11px; color:#c09aaa; line-height:1.4;"><?= htmlspecialchars(mb_substr($hp['purpose'], 0, 18)) ?>…</div>
                     </div>
                 </a>
                 <?php endforeach; ?>
@@ -479,84 +507,73 @@ if (isset($pdo)) {
         </div>
     </div>
 
-    <!-- Products -->
-    <div class="section-head">
-        <div>
-            <div class="section-title">💄 為您推薦的底妝</div>
-            <div class="section-sub">
-                依膚質<?= $makeupFinish ? '、'. htmlspecialchars($makeupFinish) .'妝感' : '' ?>
-                <?= $makeupStyle ? '、'. htmlspecialchars($makeupStyle) : '' ?>
-                精選 · 共 <?= count($products) ?> 款
+    <!-- 乾冷提醒（氣溫低於門檻時由 JS 顯示） -->
+    <div id="cold-alert" style="display:none; margin-bottom:28px; border-radius:20px; overflow:hidden; border:1px solid #f5c6d0; box-shadow:0 2px 12px rgba(0,0,0,.07);">
+
+        <!-- 標題列 -->
+        <div style="background:linear-gradient(135deg,#edf3f9,#e8ecf5); padding:18px 24px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #d8e2ed;">
+            <div style="flex:1;">
+                <div style="font-size:15px; font-weight:700; color:#3a4f6a;">今日低溫提醒</div>
+                <div style="font-size:12px; color:#8a9bbf; margin-top:3px;">今日最高氣溫 <span id="cold-temp-text" style="font-weight:700; color:#5a7299;"></span>，天氣乾冷，妝前補水是重點</div>
             </div>
+            <div style="background:white; border:1.5px solid #c8d8ea; border-radius:14px; padding:8px 16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.06);">
+                <div id="cold-temp-num" style="font-size:20px; font-weight:800; color:#3a4f6a; line-height:1;"></div>
+                <div style="font-size:10px; color:#8a9bbf; margin-top:2px;">今日最高</div>
+            </div>
+        </div>
+
+        <!-- 內容區 -->
+        <div style="background:white; padding:20px 24px;">
+
+            <!-- 保濕上妝法 -->
+            <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:12px;">保濕上妝法（3 步驟不卡粉）</div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;">
+                <?php
+                $coldSteps = [
+                    ['num'=>'1','title'=>'妝前敷水膜',    'desc'=>'上妝前敷 5 分鐘保濕面膜，讓肌膚充飽水分'],
+                    ['num'=>'2','title'=>'保濕妝前乳打底', 'desc'=>'選含玻尿酸的妝前乳，填平紋路防浮粉卡紋'],
+                    ['num'=>'3','title'=>'海綿輕拍上妝',   'desc'=>'用海綿輕拍取代刷塗，避免破壞肌膚保濕層'],
+                ];
+                foreach ($coldSteps as $s): ?>
+                <div style="background:#edf3f9; border-radius:14px; padding:14px 12px; border:1px solid #d8e2ed;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#b8ccdf; color:#3a4f6a; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px;"><?= $s['num'] ?></div>
+                    <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:4px;"><?= $s['title'] ?></div>
+                    <div style="font-size:11px; color:#8a9bbf; line-height:1.6;"><?= $s['desc'] ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- 小提醒 -->
+            <div style="background:#edf3f9; border:1px solid #d8e2ed; border-radius:12px; padding:10px 16px; font-size:12px; color:#5a7299; margin-bottom:20px;">
+                脫妝時先噴保濕噴霧補水再補妝，乾燥天不要直接補粉，否則會讓浮粉更嚴重。
+            </div>
+
+            <?php if (!empty($coldProducts)): ?>
+            <!-- 冷天推薦產品 -->
+            <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:12px;">適合今天低溫的保濕底妝</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px;">
+                <?php foreach ($coldProducts as $cp): ?>
+                <a href="product.php?id=<?= $cp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #d8e2ed; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                    <div style="width:100%; aspect-ratio:1; background:#edf3f9; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
+                        <?php if (!empty($cp['image_url'])): ?>
+                        <img src="<?= htmlspecialchars($cp['image_url']) ?>"
+                             alt="<?= htmlspecialchars($cp['name']) ?>"
+                             style="width:100%; height:100%; object-fit:cover;"
+                             onerror="this.parentElement.innerHTML='💄';">
+                        <?php else: ?>💄<?php endif; ?>
+                    </div>
+                    <div style="padding:10px 12px;">
+                        <div style="font-size:10px; color:#8a9bbf; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($cp['brand']) ?></div>
+                        <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4;"><?= htmlspecialchars($cp['name']) ?></div>
+                        <div style="margin-top:5px; font-size:11px; color:#8a9bbf; line-height:1.4;"><?= htmlspecialchars(mb_substr($cp['purpose'], 0, 18)) ?>…</div>
+                    </div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
-    <?php if (empty($products)): ?>
-        <div style="text-align:center;padding:50px;color:#bbb;">
-            <p>目前沒有找到符合條件的產品，請稍後再試。</p>
-        </div>
-    <?php else: ?>
-    <div class="product-grid">
-    <?php
-    $favorites = $_SESSION['favorite'] ?? [];
-    foreach ($products as $p):
-        $isFav = in_array($p['id'], $favorites);
-    ?>
-        <div class="product-card">
-            <div class="match-badge">★ <?= $p['score'] ?></div>
-
-            <div class="fav-btn">
-                <?php if ($isFav): ?>
-                    <form action="remove_favorite.php" method="POST" style="margin:0;">
-                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                        <button type="submit" class="heart active">❤️</button>
-                    </form>
-                <?php else: ?>
-                    <form action="add_favorite.php" method="POST" style="margin:0;">
-                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                        <button type="submit" class="heart">🤍</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-
-            <img src="images/<?= $p['id'] ?>.jpg"
-                 alt="<?= htmlspecialchars($p['name']) ?>"
-                 onerror="this.style.background='#f5eff7';this.style.minHeight='160px';this.src='';this.onerror=null;">
-
-            <div class="product-card-inner">
-                <h3><?= htmlspecialchars($p['name']) ?></h3>
-                <p><?= htmlspecialchars($p['brand']) ?></p>
-
-                <?php if (!empty($p['reasons'])): ?>
-                <div class="match-reasons">
-                    <?php foreach (array_slice($p['reasons'], 0, 3) as $r): ?>
-                    <span class="match-reason-tag"><?= htmlspecialchars($r) ?></span>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($p['colorHexes'])): ?>
-                <div class="color-swatches">
-                    <?php foreach (array_slice($p['colorHexes'], 0, 6) as $i => $hex): ?>
-                    <span class="color-swatch"
-                          style="background:<?= htmlspecialchars($hex) ?>;"
-                          title="<?= htmlspecialchars($p['colorNames'][$i] ?? '') ?>"></span>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-
-                <div class="product-actions">
-                    <a href="product.php?id=<?= $p['id'] ?>" class="btn btn-primary">查看</a>
-                    <form action="add_compare.php" method="POST" style="flex:1;">
-                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                        <button type="submit" class="btn btn-outline">比較</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
 
 <?php endif; ?>
 </div>
@@ -566,14 +583,18 @@ if (isset($pdo)) {
 
 <script>
 (function () {
-    const THRESHOLD = 25;
+    const HOT_THRESHOLD  = 25;
+    const COLD_THRESHOLD = 18;
     const STORAGE_KEY = 'skinmatch_city';
 
-    const select  = document.getElementById('city-select');
-    const status  = document.getElementById('weather-status');
-    const alert   = document.getElementById('heat-alert');
-    const tempNum = document.getElementById('heat-temp-num');
-    const tempTxt = document.getElementById('heat-temp-text');
+    const select    = document.getElementById('city-select');
+    const status    = document.getElementById('weather-status');
+    const alert     = document.getElementById('heat-alert');
+    const tempNum   = document.getElementById('heat-temp-num');
+    const tempTxt   = document.getElementById('heat-temp-text');
+    const coldAlert = document.getElementById('cold-alert');
+    const coldNum   = document.getElementById('cold-temp-num');
+    const coldTxt   = document.getElementById('cold-temp-text');
 
     function showAlert(tempC) {
         if (!alert) return;
@@ -584,6 +605,17 @@ if (isset($pdo)) {
 
     function hideAlert() {
         if (alert) alert.style.display = 'none';
+    }
+
+    function showColdAlert(tempC) {
+        if (!coldAlert) return;
+        if (coldNum) coldNum.textContent = tempC + '°C';
+        if (coldTxt) coldTxt.textContent = tempC + '°C';
+        coldAlert.style.display = 'block';
+    }
+
+    function hideColdAlert() {
+        if (coldAlert) coldAlert.style.display = 'none';
     }
 
     function setStatus(msg) {
@@ -603,10 +635,16 @@ if (isset($pdo)) {
         const temp = await fetchMaxTemp(lat, lon).catch(() => null);
         if (temp === null) { setStatus('無法取得天氣'); return; }
         setStatus('');
-        if (temp > THRESHOLD) {
-            showAlert(Math.round(temp));
+        const t = Math.round(temp);
+        if (temp > HOT_THRESHOLD) {
+            showAlert(t);
+            hideColdAlert();
+        } else if (temp < COLD_THRESHOLD) {
+            hideAlert();
+            showColdAlert(t);
         } else {
             hideAlert();
+            hideColdAlert();
         }
     }
 

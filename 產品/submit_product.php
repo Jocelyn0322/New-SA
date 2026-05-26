@@ -7,7 +7,7 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 $data        = json_decode(file_get_contents('php://input'), true) ?? [];
 $username    = $_SESSION['user'];

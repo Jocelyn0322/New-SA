@@ -12,7 +12,7 @@ $email = $_SESSION['pending_email'];
 $error = '';
 $success = '';
 
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['verify_code'])) {
@@ -139,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <div class="verify-container">
     <h2>Email 驗證</h2>

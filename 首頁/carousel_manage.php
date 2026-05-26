@@ -1,6 +1,6 @@
 <?php
 session_start();
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 if (!isset($_SESSION['user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header("Location: index.php");

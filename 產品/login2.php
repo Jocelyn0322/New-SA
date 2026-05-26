@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db.php';
+require_once __DIR__ . '/../db.php';
 
 if (isset($_SESSION['user'])) {
     header("Location: index.php");
@@ -121,7 +121,7 @@ if (isset($_POST['login'])) {
     </style>
 </head>
 <body>
-    <?php include 'header.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
 
     <div class="login-container">
         <h2 style="text-align: center; margin-bottom: 30px;">登入</h2>

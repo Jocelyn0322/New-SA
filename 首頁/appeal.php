@@ -1,6 +1,6 @@
 <?php
 session_start();
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 if (!isset($_SESSION['user'])) {
     header("Location: login.php");
@@ -83,6 +83,7 @@ textarea:focus { outline: none; border-color: #e83e5a; }
 </style>
 </head>
 <body>
+<?php include __DIR__ . '/../header.php'; ?>
 <div class="container">
     <div class="card">
         <h1>📋 影片申訴</h1>

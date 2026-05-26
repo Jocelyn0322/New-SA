@@ -5,7 +5,7 @@
  * 回傳 JSON: { success, url, message }
  */
 session_start();
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 header('Content-Type: application/json');
 

@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 $ids = $_SESSION['favorite'] ?? [];
 $result = null;
@@ -25,7 +25,7 @@ if (!empty($ids)) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <div class="fav-wrap">
   <?php if (empty($ids)): ?>

@@ -2,7 +2,7 @@
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 // 檢查是否已登入
 if (!isset($_SESSION['user'])) {

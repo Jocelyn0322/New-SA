@@ -1,7 +1,7 @@
 <?php
 session_start();
 header('Content-Type: application/json; charset=utf-8');
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 $user = $_SESSION['user'] ?? null;
 
