@@ -21,8 +21,8 @@ if ($color_filter) { $joins .= " LEFT JOIN product_colors pc ON p.id = pc.p_id";
 $where_clause = !empty($wheres) ? " WHERE " . implode(" AND ", $wheres) : "";
 $order = match($sort) {
   'oldest' => "ORDER BY p.id ASC",
-  'name'   => "ORDER BY p.name ASC",
-  default  => "ORDER BY p.id DESC",
+  'brand'  => "ORDER BY p.brand ASC, p.name ASC",
+  default  => "ORDER BY p.brand ASC, p.name ASC",
 };
 
 $total_row = $conn->query($sql_count . $joins . $where_clause)->fetch();
@@ -33,7 +33,13 @@ $offset = ($page - 1) * $per_page;
 
 $result = $conn->query($sql_base . $joins . $where_clause . " $order LIMIT $per_page OFFSET $offset");
 
-$categories_result = $conn->query("SELECT DISTINCT category FROM data ORDER BY category");
+$categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT category FROM data) sub ORDER BY CASE category
+    WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2
+    WHEN '眼影' THEN 3 WHEN '眼線' THEN 4 WHEN '睫毛膏' THEN 5
+    WHEN '腮紅' THEN 6 WHEN '修容' THEN 7 WHEN '打亮' THEN 8
+    WHEN '唇彩' THEN 9
+    WHEN '護膚' THEN 10 WHEN '護唇' THEN 11 WHEN '防曬' THEN 12
+    ELSE 99 END");
 $favorites = $_SESSION['favorite'] ?? [];
 $compare_count = count($_SESSION['compare'] ?? []);
 
@@ -80,6 +86,8 @@ function page_url($p) {
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-msg { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .product-card-img { height: 220px; }
+    .product-card-img img { object-fit: contain; background: #f5f5f5; padding: 8px; }
   </style>
 </head>
 <body>
@@ -98,7 +106,7 @@ function page_url($p) {
     <select class="sort-select" onchange="applySort(this.value)">
       <option value="newest" <?= $sort==='newest'?'selected':'' ?>>最新上架</option>
       <option value="oldest" <?= $sort==='oldest'?'selected':'' ?>>最早上架</option>
-      <option value="name"   <?= $sort==='name'  ?'selected':'' ?>>名稱 A→Z</option>
+      <option value="brand"  <?= $sort==='brand' ?'selected':'' ?>>品牌 A→Z</option>
     </select>
     <button type="button" onclick="openImgSearch()" class="btn btn-secondary btn-sm">📷 以圖搜尋</button>
   </div>
@@ -137,7 +145,7 @@ function page_url($p) {
       <div class="product-card">
         <div class="product-card-img">
           <?php if (!empty($row['image_url'])): ?>
-            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:cover;">
+            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
           <?php else: ?>💄<?php endif; ?>
         </div>
 
@@ -244,10 +252,10 @@ function page_url($p) {
       <label>分類</label>
       <select id="sub_category">
         <option value="">請選擇分類</option>
-        <option>粉底</option><option>口紅</option><option>眼影</option>
+        <option>底妝</option><option>遮瑕</option><option>眼影</option>
         <option>眼線</option><option>睫毛膏</option><option>腮紅</option>
-        <option>修容</option><option>打亮</option><option>底妝</option>
-        <option>唇釉</option><option>護膚</option><option>其他</option>
+        <option>修容</option><option>打亮</option><option>唇彩</option>
+        <option>護膚</option><option>護唇</option><option>防曬</option>
       </select>
       <label>產品描述</label>
       <textarea id="sub_desc" rows="3" placeholder="簡單描述產品特色、適合膚質等"></textarea>

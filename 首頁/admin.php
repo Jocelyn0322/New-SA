@@ -625,6 +625,9 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
     </a>
 
     <div class="nav-group-label">產品管理</div>
+    <a href="/SA/New-SA/產品/report_manage.php" class="nav-item">
+      <span class="nav-icon">⚠️</span> 商品回報
+    </a>
     <a href="?tab=data_products" class="nav-item <?php echo $tab==='data_products' ? 'active':''; ?>">
       <span class="nav-icon">🗄️</span> 資料庫產品
     </a>
