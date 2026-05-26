@@ -319,24 +319,24 @@ body { background: #f7f4f5 !important; min-height: 100vh; }
 .chip-row { display: flex !important; gap: 9px !important; flex-wrap: wrap !important; }
 .chip {
   padding: 11px 22px !important;
-  border: 1.5px solid #ead5d8 !important;
+  border: 1.5px solid #c26b7c !important;
   border-radius: 99px !important;
-  background: #fff !important;
+  background: #fce8ec !important;
   font-size: 14px !important;
-  color: #1a1a1a !important;
+  color: #6b2d3e !important;
   cursor: pointer !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   transition: background .15s, border-color .15s, color .15s, transform .12s, box-shadow .15s !important;
 }
 .chip:hover {
-  border-color: #c26b7c !important;
-  background: #fdf2f4 !important;
-  color: #6b2d3e !important;
+  border-color: #6b2d3e !important;
+  background: #f5c6d0 !important;
+  color: #3d1520 !important;
 }
 .chip:active {
   background: linear-gradient(135deg, #6b2d3e, #c26b7c) !important;
   color: #fff !important;
-  border-color: #c26b7c !important;
+  border-color: #6b2d3e !important;
   box-shadow: 0 3px 10px rgba(194,107,124,.3) !important;
   transform: scale(.97) !important;
 }

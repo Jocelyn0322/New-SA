@@ -316,9 +316,11 @@ const updateDebugPanel = (obj) => {
     const body = document.getElementById('liveness-debug-body');
     if (!body) return;
 
-    const isInstruction = !!obj.instruction;
-    const msg = obj.instruction || obj.reason || '';
     const isLiveDefined = typeof obj.isLive !== 'undefined';
+    const isPassed = isLiveDefined && obj.isLive === true;
+    // 轉頭指示（非通過結果）才永久顯示
+    const isInstruction = !!obj.instruction && !isPassed;
+    const msg = obj.instruction || obj.reason || '';
     const icon = isLiveDefined ? (obj.isLive ? '✅' : '❌') : '';
 
     body.innerHTML = `
@@ -328,7 +330,7 @@ const updateDebugPanel = (obj) => {
 
     panel.style.display = msg || icon ? 'block' : 'none';
 
-    // 錯誤/狀態提示 3 秒後消失，轉頭指示維持顯示
+    // 錯誤/狀態/通過提示 3 秒後消失；轉頭指示維持顯示
     if (_debugHideTimer) clearTimeout(_debugHideTimer);
     if (!isInstruction && (msg || icon)) {
         _debugHideTimer = setTimeout(() => {
