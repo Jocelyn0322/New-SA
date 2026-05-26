@@ -86,6 +86,8 @@ function page_url($p) {
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-msg { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .product-card-img { height: 220px; }
+    .product-card-img img { object-fit: contain; background: #f5f5f5; padding: 8px; }
   </style>
 </head>
 <body>
@@ -143,7 +145,7 @@ function page_url($p) {
       <div class="product-card">
         <div class="product-card-img">
           <?php if (!empty($row['image_url'])): ?>
-            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:cover;">
+            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
           <?php else: ?>💄<?php endif; ?>
         </div>
 
