@@ -1,5 +1,7 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/notify_helper.php';
 $_uri       = $_SERVER['REQUEST_URI'];
 $_navHome   = strpos($_uri, '/產品/index.php') !== false;
 $_navProds  = strpos($_uri, '/products.php') !== false || strpos($_uri, '/product.php') !== false;
@@ -13,9 +15,8 @@ $_initial   = isset($_SESSION['user']) ? mb_strtoupper(mb_substr($_SESSION['user
 $_notifCount = 0;
 if (isset($_SESSION['user'])) {
     try {
-        require_once __DIR__ . '/db.php';
-        require_once __DIR__ . '/notify_helper.php';
         ensureNotificationsTable($pdo);
+
         $ns = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE recipient = ? AND is_read = FALSE");
         $ns->execute([$_SESSION['user']]);
         $_notifCount = (int)$ns->fetchColumn();
