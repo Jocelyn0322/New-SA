@@ -1,6 +1,6 @@
 <?php
 session_start();
-require 'db.php';
+require __DIR__ . '/../db.php';
 
 if (($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: products.php');
@@ -121,7 +121,7 @@ $typeLabel = [
     </style>
 </head>
 <body>
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../header.php'; ?>
 
 <div class="report-page">
     <h2>問題回報管理</h2>
@@ -213,6 +213,6 @@ $typeLabel = [
     <?php endif; ?>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include __DIR__ . '/../產品/footer.php'; ?>
 </body>
 </html>
