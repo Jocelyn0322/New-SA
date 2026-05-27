@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../auth_check.php';
 session_start();
 
 if (!isset($_SESSION['user'])) {
@@ -274,7 +275,8 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
         </div>
         <div class="form-group">
           <label class="form-label">新密碼</label>
-          <input class="form-input" id="pwdNew" type="password" placeholder="至少 8 個字元">
+          <input class="form-input" id="pwdNew" type="password" placeholder="至少 6 個字元">
+          <div style="font-size:12px;color:#aaa;margin-top:4px;">密碼需至少 6 個字元</div>
         </div>
       </div>
       <button class="btn btn-primary btn-sm" onclick="savePwd()">更新密碼</button>
@@ -527,8 +529,14 @@ async function saveEmail() {
 async function savePwd() {
   const msg = document.getElementById('pwdMsg');
   msg.className = 'inline-msg';
+  const newPwd = document.getElementById('pwdNew').value;
+  if (newPwd.length < 6) {
+    msg.className = 'inline-msg err';
+    msg.textContent = '新密碼至少需要 6 個字元';
+    return;
+  }
   try {
-    const res  = await fetch('update_account.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'update_password', current_password: document.getElementById('pwdCurrent').value, new_password: document.getElementById('pwdNew').value, confirm_password: document.getElementById('pwdNew').value }) });
+    const res  = await fetch('update_account.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'update_password', current_password: document.getElementById('pwdCurrent').value, new_password: newPwd, confirm_password: newPwd }) });
     const data = await res.json();
     if (data.success) {
       msg.className = 'inline-msg ok'; msg.textContent = data.message;

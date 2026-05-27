@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../auth_check.php';
 // session 必須在所有 HTML 輸出之前啟動
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -327,6 +328,12 @@ $aiBase = '';
                 <div class="ail-hero__actions">
                     <a href="story1.php" class="ail-btn-primary">立即開始分析</a>
                     <a href="../產品/products.php" class="ail-btn-secondary">瀏覽產品</a>
+                </div>
+                <div style="display:inline-flex;align-items:center;gap:7px;
+                     background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+                     border-radius:99px;padding:6px 14px;font-size:12px;color:rgba(255,255,255,.85);
+                     margin-bottom:14px;">
+                  🔒 此系統不會儲存您臉部的照片或影片，請放心使用
                 </div>
                 <div class="ail-hero__tags">
                     <span class="ail-hero__tag">膚色偵測</span>

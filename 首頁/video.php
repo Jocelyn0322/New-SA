@@ -1744,16 +1744,13 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         .then(async response => {
             const data = await response.json();
             if (response.ok && data.success) {
-                messageBox.textContent = data.message || '檢舉已送出，我們會盡快處理';
-                messageBox.className = 'report-message success';
-                messageBox.style.display = 'block';
                 descriptionInput.value = '';
-                setTimeout(() => {
-                    const form = document.getElementById('reportForm');
-                    if (form) {
-                        form.classList.remove('active');
-                    }
-                }, 1800);
+                // 關閉檢舉表單，彈出確認框
+                const form = document.getElementById('reportForm');
+                if (form) form.classList.remove('active');
+                messageBox.style.display = 'none';
+                const overlay = document.getElementById('reportSuccessOverlay');
+                if (overlay) overlay.style.display = 'flex';
             } else {
                 messageBox.textContent = data.message || '檢舉失敗，請稍後再試';
                 messageBox.className = 'report-message error';
@@ -1766,6 +1763,15 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             messageBox.style.display = 'block';
         });
     }
+
+    function closeReportSuccess() {
+        const overlay = document.getElementById('reportSuccessOverlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+    // 點背景也可關閉
+    document.getElementById('reportSuccessOverlay')?.addEventListener('click', function(e) {
+        if (e.target === this) closeReportSuccess();
+    });
 
     // 上一則影片
     function prevVideo() {
@@ -2451,6 +2457,37 @@ document.getElementById('editHashtagTyping').addEventListener('keydown', functio
     }
 });
 </script>
+
+<!-- 檢舉成功確認框 -->
+<div id="reportSuccessOverlay" style="
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.45); z-index:9999;
+  justify-content:center; align-items:center;">
+  <div style="
+    background:#fff; border-radius:20px;
+    padding:36px 32px 28px; max-width:340px; width:90%;
+    box-shadow:0 20px 60px rgba(0,0,0,.25);
+    text-align:center; animation:rptFadeIn .2s ease;">
+    <div style="font-size:2.4rem; margin-bottom:12px;">✅</div>
+    <div style="font-size:17px; font-weight:700; color:#1a1a2e; margin-bottom:8px;">檢舉已送出</div>
+    <div style="font-size:13px; color:#888; line-height:1.7; margin-bottom:24px;">
+      感謝您的回報，<br>我們會盡快審查此影片。
+    </div>
+    <button onclick="closeReportSuccess()" style="
+      width:100%; padding:12px;
+      background:linear-gradient(135deg,#6b1e2e,#c26b7c);
+      color:#fff; border:none; border-radius:99px;
+      font-size:15px; font-weight:700; cursor:pointer;">
+      確認
+    </button>
+  </div>
+</div>
+<style>
+@keyframes rptFadeIn {
+  from { opacity:0; transform:scale(.92); }
+  to   { opacity:1; transform:scale(1); }
+}
+</style>
 
 </body>
 </html>

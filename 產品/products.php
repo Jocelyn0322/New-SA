@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../auth_check.php';
 session_start();
 include __DIR__ . '/../db.php';
 
@@ -14,7 +15,7 @@ $sql_count = "SELECT COUNT(DISTINCT p.id) AS total FROM data p";
 $joins    = "";
 $wheres   = [];
 
-if ($keyword)      $wheres[] = "(p.name LIKE '%$keyword%' OR p.brand LIKE '%$keyword%')";
+if ($keyword)      { $kw = strtolower($keyword); $wheres[] = "(LOWER(p.name) LIKE '%$kw%' OR LOWER(p.brand) LIKE '%$kw%')"; }
 if ($category)     $wheres[] = "p.category='$category'";
 if ($color_filter) { $joins .= " LEFT JOIN product_colors pc ON p.id = pc.p_id"; $wheres[] = "pc.color_name='$color_filter'"; }
 
@@ -86,8 +87,55 @@ function page_url($p) {
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-msg { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .product-card-img { height: 220px; }
-    .product-card-img img { object-fit: contain; background: #f5f5f5; padding: 8px; }
+    .product-card-img { height: 220px; overflow: hidden; }
+    .product-card-img img { width: 100%; height: 100%; object-fit: contain; background: #f5f5f5; padding: 8px; display: block; }
+    .product-card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 16px 16px;
+    }
+    .product-card-brand {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .product-card-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.8;
+      margin-bottom: 8px;
+    }
+    /* badge + 色號 區域固定高度，無論有無都佔位 */
+    .product-card-mid {
+      min-height: 58px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-start;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-rose {
+      background: #fce7ec;
+      color: #c26b7c;
+    }
+    .product-card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 12px;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
@@ -164,16 +212,18 @@ function page_url($p) {
         <div class="product-card-body">
           <div class="product-card-brand"><?= htmlspecialchars($row['brand']) ?></div>
           <div class="product-card-name"><?= htmlspecialchars($row['name']) ?></div>
-          <?php if (!empty($row['category'])): ?>
-            <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
-          <?php endif; ?>
-          <?php if (!empty($colors)): ?>
-            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
-              <?php foreach ($colors as $c): ?>
-                <div style="width:18px;height:18px;background:<?= htmlspecialchars($c['color_hex']) ?>;border-radius:50%;border:1.5px solid rgba(0,0,0,.1);" title="<?= htmlspecialchars($c['color_name']) ?>"></div>
-              <?php endforeach; ?>
-            </div>
-          <?php endif; ?>
+          <div class="product-card-mid">
+            <?php if (!empty($row['category'])): ?>
+              <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($colors)): ?>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <?php foreach ($colors as $c): ?>
+                  <div style="width:18px;height:18px;background:<?= htmlspecialchars($c['color_hex']) ?>;border-radius:50%;border:1.5px solid rgba(0,0,0,.1);" title="<?= htmlspecialchars($c['color_name']) ?>"></div>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+          </div>
           <div class="product-card-actions">
             <a href="product.php?id=<?= $row['p_id'] ?>" class="btn btn-primary">查看</a>
             <form action="add_compare.php" method="POST" style="flex:1;">
@@ -233,7 +283,18 @@ function page_url($p) {
 
 <!-- Compare float -->
 <?php if ($compare_count > 0): ?>
-  <a href="compare.php" class="compare-float">⚖ 比較 (<?= $compare_count ?>)</a>
+  <a href="compare.php" class="compare-float">
+    ⚖ 比較 (<?= $compare_count ?>)
+    <?php if ($compare_count >= 5): ?>
+      <span style="margin-left:8px;background:#fff3;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;">已達上限 5/5</span>
+    <?php endif; ?>
+  </a>
+<?php endif; ?>
+<?php if (!empty($_GET['compare_full'])): ?>
+  <div id="compareFullToast" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#c26b7c;color:#fff;padding:10px 22px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.18);z-index:9999;">
+    比較清單已滿，最多可加入 5 個產品
+  </div>
+  <script>setTimeout(()=>document.getElementById('compareFullToast')?.remove(), 3000);</script>
 <?php endif; ?>
 
 <!-- Add product FAB -->

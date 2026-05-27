@@ -100,7 +100,7 @@ if (isset($_SESSION['user'])) {
       <a href="<?= BASE_URL ?>/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M50,85 C35,75 10,60 10,35 C10,18 20,8 33,8 C42,8 48,13 50,20 C52,13 58,8 67,8 C80,8 90,18 90,35 C90,60 65,75 50,85 Z"/>
             </svg><?php if ($_favCount > 0): ?><span class="count"><?= $_favCount ?></span><?php endif; ?></a>
-      <a href="<?= BASE_URL ?>/產品/skinmatch.php" class="icon-btn" data-tip="膚色配對"><img src="<?= BASE_URL ?>/images/weather-icon.png" width="26" height="26" alt="膚色配對" style="display:block;opacity:.75;"></a>
+      <a href="<?= BASE_URL ?>/產品/skinmatch.php" class="icon-btn" data-tip="天氣-產品推薦"><img src="<?= BASE_URL ?>/images/weather-icon.png" width="26" height="26" alt="天氣-產品推薦" style="display:block;opacity:.75;"></a>
       <a href="<?= BASE_URL ?>/產品/compare.php"  class="icon-btn" data-tip="產品比較"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" width="20" height="20" fill="currentColor" aria-hidden="true">
               <!-- knob -->
               <circle cx="50" cy="7" r="6"/>

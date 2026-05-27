@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../auth_check.php';
 session_start();
 include __DIR__ . '/../db.php';
 
@@ -413,7 +414,7 @@ if (isset($_SESSION['user']) && !empty($attributes)) {
                     <?php if($halfStar)                  echo '<span class="filled">☆</span>'; ?>
                     <?php for($i=0;$i<$emptyStars;$i++)  echo '<span>★</span>'; ?>
                 </div>
-                <span class="rating-count"><?php echo $total > 0 ? number_format($avg,1)." ($total人)" : '尚無評分'; ?></span>
+                <span class="rating-count"><?php echo $total > 0 ? number_format($avg,1)." ({$total}人)" : '尚無評分'; ?></span>
             </div>
             <?php endforeach; ?>
         </div>

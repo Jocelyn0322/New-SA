@@ -54,7 +54,7 @@ function detectInappropriate(string $text): bool {
     }
 
     // 正則：連續星號替代敏感字
-    if (preg_match('/[幹操他媽妳媽][^\x00-\x7F]{0,3}[的你妳]/', $t)) return true;
+    if (preg_match('/[幹操他媽妳媽][^\x00-\x7F]{0,3}[的你妳]/u', $t)) return true;
 
     return false;
 }

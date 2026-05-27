@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../auth_check.php';
 session_start();
 require __DIR__ . '/../db.php';
 require_once __DIR__ . '/../notify_helper.php';

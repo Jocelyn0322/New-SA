@@ -49,6 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($username === '' || $email === '' || $password === '') {
             $error = "請完整填寫資料";
+        } elseif (strlen($password) < 6) {
+            $error = "密碼至少需要 6 個字元";
         } elseif (empty($_POST['consent'])) {
             $error = "請閱讀並勾選同意個人資料使用同意書";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
