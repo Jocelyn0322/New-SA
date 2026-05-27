@@ -66,6 +66,13 @@ function page_url($p) {
     .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 15px; pointer-events: none; }
     .filter-wrap { max-width: var(--max-w); margin: 20px auto 0; padding: 0 24px; }
     .filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* Mobile: horizontal scroll for filter pills */
+    @media(max-width:640px){
+      .filter-wrap { padding: 0; }
+      .filter-pills { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0 14px 8px; scrollbar-width: none; }
+      .filter-pills::-webkit-scrollbar { display: none; }
+      .filter-pill { flex-shrink: 0; }
+    }
     .filter-pill { padding: 6px 16px; border-radius: var(--r-full); font-size: 13px; font-weight: 500; border: 1.5px solid var(--border); background: var(--card); color: var(--text-2); cursor: pointer; text-decoration: none; transition: all var(--t); }
     .filter-pill:hover { border-color: var(--rose); color: var(--rose); }
     .filter-pill.active { background: var(--rose); color: white; border-color: var(--rose); }
@@ -87,6 +94,21 @@ function page_url($p) {
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-msg { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Mobile: search bar stacking ── */
+    @media (max-width: 640px) {
+      .search-hero-inner { flex-wrap: wrap; gap: 8px; padding: 0 12px; }
+      .search-input-wrap { flex: 1 1 100%; order: -1; }
+      .sort-select { flex: 1; min-width: 0; }
+      .btn-img-search { display: none; }
+      .filter-wrap { padding: 0 12px; }
+      .products-wrap { padding: 0 12px; margin-top: 16px; }
+    }
+    @media (max-width: 480px) {
+      .search-hero { padding: 14px 0; }
+      .nav-tabs-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    }
+
     .product-card-img { height: 220px; overflow: hidden; }
     .product-card-img img { width: 100%; height: 100%; object-fit: contain; background: #f5f5f5; padding: 8px; display: block; }
     .product-card-body {
@@ -156,7 +178,7 @@ function page_url($p) {
       <option value="oldest" <?= $sort==='oldest'?'selected':'' ?>>最早上架</option>
       <option value="brand"  <?= $sort==='brand' ?'selected':'' ?>>品牌 A→Z</option>
     </select>
-    <button type="button" onclick="openImgSearch()" class="btn btn-secondary btn-sm">📷 以圖搜尋</button>
+    <button type="button" onclick="openImgSearch()" class="btn btn-secondary btn-sm btn-img-search">📷 以圖搜尋</button>
   </div>
 </div>
 

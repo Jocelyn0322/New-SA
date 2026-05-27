@@ -272,6 +272,26 @@ if (isset($_GET['clear'])) {
       margin-bottom: 8px;
     }
     .cmp-empty p { color: var(--text-3); font-size: 14px; margin-bottom: 24px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      .cmp-wrap { padding: 0 14px; margin-top: 24px; }
+      .cmp-titlebar { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
+      .cmp-titlebar-right { margin-left: 0; width: 100%; }
+      .cmp-titlebar-right .btn { flex: 1; text-align: center; }
+      .cmp-table-wrap::before {
+        content: '← 左右滑動查看更多 →';
+        display: block;
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-3);
+        padding: 6px 0;
+        background: var(--bg);
+        border-radius: var(--r) var(--r) 0 0;
+      }
+      .cmp-prod-img { height: 120px; }
+      .cmp-prod-img-placeholder { height: 120px; }
+    }
   </style>
 </head>
 <body>

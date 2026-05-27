@@ -22,6 +22,7 @@ if (!empty($ids)) {
     .fav-header { margin-bottom: 24px; }
     .fav-header h2 { font-size: 1.4rem; font-weight: 700; }
     .fav-header p  { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+    @media(max-width:640px){ .fav-wrap { padding: 0 14px; margin-top: 24px; } }
   </style>
 </head>
 <body>

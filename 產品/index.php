@@ -56,7 +56,7 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
     }
     .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
     .hero-stats {
-      display: flex; gap: 40px; margin-top: 48px;
+      display: flex; flex-wrap: wrap; gap: 40px; margin-top: 48px;
       padding-top: 32px; border-top: 1px solid rgba(255,255,255,.12);
       padding-bottom: 32px;
     }
@@ -107,7 +107,21 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
 
     @media(max-width:768px){
       .feature-row { grid-template-columns: repeat(2,1fr); margin-top: -16px; }
-      .hero-stats { gap: 24px; flex-wrap: wrap; }
+      .hero-stats { gap: 20px; flex-wrap: wrap; }
+      .hero-content { padding: 60px 20px 48px; }
+      .hero-actions { gap: 10px; }
+    }
+    @media(max-width:480px){
+      .hero-content { padding: 44px 16px 36px; }
+      .hero-desc { font-size: 14px; margin-bottom: 24px; }
+      .hero-stats { gap: 12px 20px; }
+      .hero-stats > div { flex: 1 1 40%; }
+      .hero-stat-num { font-size: 1.4rem; }
+      .feature-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .feature-pill { padding: 14px 14px; gap: 10px; }
+      .feature-pill-icon { width: 36px; height: 36px; font-size: 17px; }
+      .feature-pill-title { font-size: 13px; }
+      .feature-pill-desc { display: none; }
     }
 
     /* ── Hero entrance ── */

@@ -186,6 +186,11 @@ if (isset($pdo)) {
     <title>COSMETIC — AI 專屬推薦</title>
     <style>
         .products-wrap { max-width: var(--max-w); margin: 24px auto 60px; padding: 0 24px; }
+        @media(max-width:640px){
+          .products-wrap { padding: 0 14px; margin-top: 16px; }
+          .ai-profile-card { padding: 20px 18px; }
+          .section-head { flex-direction: column; gap: 4px; }
+        }
         .ai-profile-card {
             background: linear-gradient(135deg, #6b2d3e 0%, #c26b7c 100%);
             border: 1px solid #c26b7c;

@@ -112,7 +112,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
     .profile-wrap { max-width: 820px; margin: 40px auto 80px; padding: 0 24px; }
 
     /* ── Header ── */
-    .profile-header { display: flex; align-items: flex-start; gap: 28px; margin-bottom: 32px; }
+    .profile-header { display: flex; align-items: flex-start; gap: 28px; margin-bottom: 32px; position: relative; }
     .profile-avatar-wrap { position: relative; flex-shrink: 0; cursor: pointer; }
     .profile-avatar { width: 96px; height: 96px; background: var(--rose-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 700; color: var(--rose); border: 3px solid var(--rose-200); overflow: hidden; }
     .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -182,6 +182,23 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
     .reason-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .reason-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--bg); border-radius: var(--r); font-size: 13px; cursor: pointer; }
     .reason-item input { accent-color: var(--rose); }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      .profile-wrap { padding: 0 14px; margin-top: 24px; }
+      .profile-header { flex-direction: column; align-items: center; text-align: center; gap: 16px; }
+      .profile-info { width: 100%; }
+      .profile-stats { justify-content: center; }
+      .profile-header > div:last-child { align-self: flex-end; position: absolute; top: 80px; right: 14px; }
+      .profile-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 0; }
+      .profile-tab { white-space: nowrap; padding: 10px 12px; }
+      .setting-card { padding: 20px 16px; }
+      .vid-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    }
+    @media (max-width: 480px) {
+      .profile-header { padding-top: 10px; }
+      .profile-avatar { width: 80px; height: 80px; font-size: 28px; }
+    }
   </style>
 </head>
 <body>

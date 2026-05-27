@@ -50,6 +50,90 @@ if (isset($_SESSION['user'])) {
 .icon-btn[data-tip]:hover::before, .notif-bell[data-tip]:hover::before, .user-chip[data-tip]:hover::before,
 .icon-btn[data-tip]:hover::after,  .notif-bell[data-tip]:hover::after,  .user-chip[data-tip]:hover::after { opacity: 1; }
 
+/* ── Mobile hamburger ── */
+.hamburger {
+  display: none; background: none; border: none; cursor: pointer;
+  width: 38px; height: 38px; border-radius: var(--r, 10px);
+  align-items: center; justify-content: center; color: #555;
+  transition: background .15s; flex-shrink: 0;
+}
+.hamburger:hover { background: #f4f3f8; }
+
+/* ── Mobile drawer overlay ── */
+.mob-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 1200;
+  backdrop-filter: blur(2px);
+}
+.mob-overlay.open { display: block; }
+
+/* ── Mobile drawer panel ── */
+.mob-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 280px;
+  background: #fff; z-index: 1201;
+  box-shadow: -6px 0 32px rgba(0,0,0,.15);
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto;
+}
+.mob-drawer.open { transform: translateX(0); }
+
+.mob-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #f0eef8;
+}
+.mob-drawer-logo { font-size: 17px; font-weight: 800; color: #1a1a2e; display:flex; align-items:center; gap:8px; }
+.mob-close {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  color: #999; width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.mob-close:hover { background: #f4f3f8; color: #333; }
+
+.mob-user {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px; background: #fdf9fb;
+  border-bottom: 1px solid #f0eef8;
+}
+.mob-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg,#c26b7c,#9d2942);
+  color: #fff; font-size: 17px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mob-username { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+.mob-username-sub { font-size: 12px; color: #aaa; }
+
+.mob-nav { padding: 12px 12px; flex: 1; }
+.mob-nav-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 10px;
+  font-size: 15px; font-weight: 500; color: #333;
+  text-decoration: none; transition: background .15s;
+}
+.mob-nav-link:hover, .mob-nav-link.active { background: #fce7ec; color: #c26b7c; }
+.mob-nav-link span.icon { font-size: 19px; width: 24px; text-align:center; }
+.mob-nav-divider { height: 1px; background: #f0eef8; margin: 8px 14px; }
+
+.mob-footer {
+  padding: 14px 20px;
+  border-top: 1px solid #f0eef8;
+}
+
+@media (max-width: 768px) {
+  .hamburger { display: flex; }
+  .nav { display: none !important; }
+  .header-actions .user-chip,
+  .header-actions .btn { display: none !important; }
+  .header-inner { padding: 0 16px; gap: 12px; }
+}
+/* On very small screens hide most header icons, keep only notif bell */
+@media (max-width: 480px) {
+  .header-actions .icon-btn { display: none !important; }
+}
+
 /* ── Notification bell ── */
 .notif-wrap { position: relative; }
 .notif-bell { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1;
@@ -96,6 +180,14 @@ if (isset($_SESSION['user'])) {
       <a href="<?= BASE_URL ?>/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
       <a href="<?= BASE_URL ?>/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
+    <!-- 漢堡鈕（手機才顯示） -->
+    <button class="hamburger" id="hamburger" onclick="openMobMenu()" aria-label="選單">
+      <svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor">
+        <rect width="20" height="2.5" rx="1.25"/>
+        <rect y="6.75" width="20" height="2.5" rx="1.25"/>
+        <rect y="13.5" width="20" height="2.5" rx="1.25"/>
+      </svg>
+    </button>
     <div class="header-actions">
       <a href="<?= BASE_URL ?>/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M50,85 C35,75 10,60 10,35 C10,18 20,8 33,8 C42,8 48,13 50,20 C52,13 58,8 67,8 C80,8 90,18 90,35 C90,60 65,75 50,85 Z"/>
@@ -167,7 +259,57 @@ if (isset($_SESSION['user'])) {
   </div>
 </header>
 
+<!-- ── Mobile Drawer ── -->
+<div class="mob-overlay" id="mobOverlay" onclick="closeMobMenu()"></div>
+<div class="mob-drawer" id="mobDrawer">
+  <div class="mob-drawer-head">
+    <div class="mob-drawer-logo">💄 COSMETIC</div>
+    <button class="mob-close" onclick="closeMobMenu()">✕</button>
+  </div>
+
+  <?php if (isset($_SESSION['user'])): ?>
+  <div class="mob-user">
+    <div class="mob-avatar"><?= htmlspecialchars($_initial) ?></div>
+    <div>
+      <div class="mob-username"><?= htmlspecialchars($_SESSION['user']) ?></div>
+      <div class="mob-username-sub">已登入</div>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <nav class="mob-nav">
+    <a href="<?= BASE_URL ?>/產品/index.php"    class="mob-nav-link <?= $_navHome  ? 'active':'' ?>"><span class="icon">🏠</span>首頁</a>
+    <a href="<?= BASE_URL ?>/AI/index.php"      class="mob-nav-link <?= $_navAI    ? 'active':'' ?>"><span class="icon">🤖</span>AI 檢測</a>
+    <a href="<?= BASE_URL ?>/產品/products.php" class="mob-nav-link <?= $_navProds ? 'active':'' ?>"><span class="icon">💄</span>產品</a>
+    <a href="<?= BASE_URL ?>/首頁/video.php"    class="mob-nav-link <?= $_navVideo ? 'active':'' ?>"><span class="icon">🎬</span>影片交流</a>
+    <div class="mob-nav-divider"></div>
+    <a href="<?= BASE_URL ?>/產品/favorite.php" class="mob-nav-link"><span class="icon">❤️</span>產品收藏<?php if($_favCount>0): ?> <span style="margin-left:auto;background:#fce7ec;color:#c26b7c;font-size:12px;padding:2px 8px;border-radius:99px;font-weight:700;"><?=$_favCount?></span><?php endif; ?></a>
+    <a href="<?= BASE_URL ?>/產品/compare.php"  class="mob-nav-link"><span class="icon">⚖️</span>產品比較</a>
+    <a href="<?= BASE_URL ?>/產品/skinmatch.php" class="mob-nav-link"><span class="icon">🌤️</span>天氣－產品推薦</a>
+    <?php if (isset($_SESSION['user'])): ?>
+    <div class="mob-nav-divider"></div>
+    <?php if(($_SESSION['role']??'')==='admin'): ?>
+    <a href="<?= BASE_URL ?>/首頁/admin.php"    class="mob-nav-link"><span class="icon">⚙️</span>管理後台</a>
+    <?php else: ?>
+    <a href="<?= BASE_URL ?>/首頁/profile.php"  class="mob-nav-link"><span class="icon">👤</span>個人資料</a>
+    <?php endif; ?>
+    <a href="<?= BASE_URL ?>/notifications.php" class="mob-nav-link"><span class="icon">🔔</span>通知<?php if($_notifCount>0): ?> <span style="margin-left:auto;background:#c26b7c;color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;font-weight:700;"><?=$_notifCount?></span><?php endif; ?></a>
+    <?php endif; ?>
+  </nav>
+
+  <div class="mob-footer">
+    <?php if (!isset($_SESSION['user'])): ?>
+      <a href="<?= BASE_URL ?>/首頁/login.php" class="btn btn-primary" style="width:100%;justify-content:center;">登入 / 註冊</a>
+    <?php else: ?>
+      <a href="<?= BASE_URL ?>/首頁/logout.php" style="display:block;text-align:center;color:#c26b7c;font-size:14px;padding:10px;">登出</a>
+    <?php endif; ?>
+  </div>
+</div>
+
 <script>
+window.openMobMenu  = function(){ document.getElementById('mobDrawer').classList.add('open'); document.getElementById('mobOverlay').classList.add('open'); document.body.style.overflow='hidden'; };
+window.closeMobMenu = function(){ document.getElementById('mobDrawer').classList.remove('open'); document.getElementById('mobOverlay').classList.remove('open'); document.body.style.overflow=''; };
+
 (function(){
   const BASE = '<?= BASE_URL ?>';
   function timeAgo(dateStr) {
