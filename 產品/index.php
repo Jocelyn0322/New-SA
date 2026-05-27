@@ -109,6 +109,34 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
       .feature-row { grid-template-columns: repeat(2,1fr); margin-top: -16px; }
       .hero-stats { gap: 24px; flex-wrap: wrap; }
     }
+
+    /* ── Hero entrance ── */
+    @keyframes gradFlow {
+      0%,100%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+    }
+    .hero {
+      background: linear-gradient(135deg,#3d1520,#6b2d3e,#a04060,#c26b7c,#6b2d3e,#3d1520);
+      background-size: 300% 300%;
+      animation: gradFlow 14s ease infinite;
+    }
+    .hero-eyebrow { animation: fadeInUp .6s .05s ease both; }
+    .hero-title   { animation: fadeInUp .7s .15s ease both; }
+    .hero-desc    { animation: fadeInUp .7s .25s ease both; }
+    .hero-actions { animation: fadeInUp .6s .35s ease both; }
+    .hero-stats   { animation: fadeInUp .6s .45s ease both; }
+
+    /* ── Feature pills stagger ── */
+    .feature-pill { animation: fadeInUp .6s ease both; }
+    .feature-pill:nth-child(1){animation-delay:.5s}
+    .feature-pill:nth-child(2){animation-delay:.6s}
+    .feature-pill:nth-child(3){animation-delay:.7s}
+    .feature-pill:nth-child(4){animation-delay:.8s}
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero { animation: none; }
+      [class*="hero-"], .feature-pill { animation: none; opacity:1; }
+    }
   </style>
 </head>
 <body>
@@ -117,6 +145,7 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
 
 <!-- Hero -->
 <section class="hero">
+  <canvas class="fw-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
   <div class="hero-content">
     <div class="hero-eyebrow">AI 驅動的美妝平台</div>
     <h1 class="hero-title">找到最適合<em>你</em>的<br>彩妝產品</h1>
@@ -164,12 +193,13 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
     </div>
 
     <div class="product-grid">
-    <?php while ($row = $result->fetch()):
+    <?php $cardIdx = 0; while ($row = $result->fetch()):
       $isFav = in_array($row['p_id'], $favorites);
       $colors_q = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$row['p_id']} LIMIT 4");
       $colors = $colors_q->fetchAll();
+      $cardIdx++;
     ?>
-      <div class="product-card">
+      <div class="product-card card-reveal sd-<?= min($cardIdx, 8) ?>">
         <div class="product-card-img">
           <?php if (!empty($row['image_url'])): ?>
             <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
@@ -223,6 +253,18 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
     </div>
   </div>
 </section>
+
+<script src="<?= BASE_URL ?>/fireworks.js"></script>
+<script>
+/* 捲動顯示卡片 */
+(function(){
+  const cards = document.querySelectorAll('.card-reveal');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+  }, { threshold: 0.08 });
+  cards.forEach(c => io.observe(c));
+})();
+</script>
 
 <?php if (isset($_SESSION['user'])): ?>
 <!-- Report Modal -->

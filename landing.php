@@ -318,6 +318,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       .hero-features { display: none; }
       .auth-panel { width: 100%; min-height: auto; box-shadow: none; padding: 36px 24px; }
     }
+
+    /* ── Animations ── */
+    @keyframes fadeInUp  { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeInLeft{ from{opacity:0;transform:translateX(-28px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes fadeInRight{from{opacity:0;transform:translateX(28px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes pulseDeco { 0%,100%{opacity:.06;transform:scale(1)} 50%{opacity:.14;transform:scale(1.08)} }
+    @keyframes shimmerShine { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
+    @keyframes gradFlow {
+      0%,100%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+    }
+
+    /* animated gradient hero bg */
+    .hero {
+      background: linear-gradient(145deg, #3d1520, #6b1e2e, #a04060, #c26b7c, #6b1e2e, #3d1520);
+      background-size: 300% 300%;
+      animation: gradFlow 12s ease infinite;
+    }
+
+    /* deco circles */
+    .hero-deco  { animation: pulseDeco 5s ease-in-out infinite; }
+    .hero-deco2 { animation: pulseDeco 7s 1.5s ease-in-out infinite; }
+
+    /* fireworks canvas */
+    .fw-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* entrance animations */
+    .anim-brand    { animation: fadeInLeft  .8s .05s ease both; }
+    .anim-title    { animation: fadeInUp    .8s .15s ease both; }
+    .anim-desc     { animation: fadeInUp    .7s .25s ease both; }
+    .anim-feat-1   { animation: fadeInUp    .6s .35s ease both; }
+    .anim-feat-2   { animation: fadeInUp    .6s .45s ease both; }
+    .anim-feat-3   { animation: fadeInUp    .6s .55s ease both; }
+    .anim-feat-4   { animation: fadeInUp    .6s .65s ease both; }
+    .anim-panel    { animation: fadeInRight .75s .1s  ease both; }
+
+    /* btn shimmer */
+    .btn-submit { position:relative; overflow:hidden; }
+    .btn-submit::after {
+      content:'';
+      position:absolute; inset:0;
+      background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%);
+      transform:translateX(-100%);
+      transition:transform .45s ease;
+      pointer-events:none;
+    }
+    .btn-submit:hover::after { transform:translateX(120%); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero { animation: none; }
+      [class*="anim-"] { animation: none; opacity:1; }
+    }
   </style>
 </head>
 <body>
@@ -326,43 +384,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="hero">
     <div class="hero-deco"></div>
     <div class="hero-deco2"></div>
+    <!-- canvas 煙火 -->
+    <canvas class="fw-canvas"></canvas>
 
-    <div class="hero-brand">
+    <div class="hero-brand anim-brand">
       <span class="hero-brand-icon">💄</span>
       <span class="hero-brand-name">COSMETIC</span>
     </div>
 
-    <div class="hero-title">
+    <div class="hero-title anim-title">
       找到<span>最適合你</span><br>的彩妝世界
     </div>
-    <p class="hero-desc">
+    <p class="hero-desc anim-desc">
       AI 膚色分析、智慧產品推薦、影片交流社群，<br>
       一站式彩妝探索平台，讓每次上妝都更有自信。
     </p>
 
     <div class="hero-features">
-      <div class="hero-feature">
+      <div class="hero-feature anim-feat-1">
         <div class="hero-feature-icon">🤖</div>
         <div class="hero-feature-text">
           <strong>AI 膚色檢測</strong>
           <span>上傳照片，精準分析最適合你的色號</span>
         </div>
       </div>
-      <div class="hero-feature">
+      <div class="hero-feature anim-feat-2">
         <div class="hero-feature-icon">🌤️</div>
         <div class="hero-feature-text">
           <strong>天氣－產品推薦</strong>
           <span>依當日天氣智慧推薦最佳彩妝品</span>
         </div>
       </div>
-      <div class="hero-feature">
+      <div class="hero-feature anim-feat-3">
         <div class="hero-feature-icon">⚖️</div>
         <div class="hero-feature-text">
           <strong>多產品比較</strong>
           <span>成分、色號、品牌一目了然</span>
         </div>
       </div>
-      <div class="hero-feature">
+      <div class="hero-feature anim-feat-4">
         <div class="hero-feature-icon">🎬</div>
         <div class="hero-feature-text">
           <strong>影片交流社群</strong>
@@ -373,7 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <!-- ── RIGHT AUTH ── -->
-  <div class="auth-panel">
+  <div class="auth-panel anim-panel">
     <div class="auth-inner">
       <div class="auth-greeting"><?= $mode === 'register' ? '建立帳號 👋' : '歡迎回來 👋' ?></div>
       <div class="auth-sub"><?= $mode === 'register' ? '填寫資料，開啟彩妝探索之旅' : '登入以使用所有功能' ?></div>
@@ -461,5 +521,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 </div>
 
+<script src="<?= BASE_URL ?>/fireworks.js"></script>
+<script src="<?= BASE_URL ?>/interactions.js"></script>
 </body>
 </html>

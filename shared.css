@@ -260,3 +260,89 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
   .section { padding: 40px 0; }
   .section-header { flex-direction: column; align-items: flex-start; gap: 12px; }
 }
+
+/* ════════════════════════════════════════
+   ANIMATIONS
+════════════════════════════════════════ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes shimmerSlide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+@keyframes pulseSoft {
+  0%, 100% { opacity: .06; transform: scale(1); }
+  50%       { opacity: .13; transform: scale(1.06); }
+}
+@keyframes rotateSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Scroll reveal ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity .55s ease, transform .55s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+.reveal.from-right { transform: translateX(20px); }
+.reveal.from-right.visible { transform: none; }
+
+/* ── Stagger delays ── */
+.sd-1 { transition-delay: .06s; }
+.sd-2 { transition-delay: .12s; }
+.sd-3 { transition-delay: .18s; }
+.sd-4 { transition-delay: .24s; }
+.sd-5 { transition-delay: .30s; }
+.sd-6 { transition-delay: .36s; }
+.sd-7 { transition-delay: .42s; }
+.sd-8 { transition-delay: .48s; }
+
+/* ── Button shimmer on hover ── */
+.btn-primary { position: relative; overflow: hidden; }
+.btn-primary::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.28) 50%, transparent 65%);
+  transform: translateX(-100%);
+  transition: transform .45s ease;
+  pointer-events: none;
+}
+.btn-primary:hover::after { transform: translateX(100%); }
+
+/* ── Card entrance (used with IntersectionObserver) ── */
+.card-reveal {
+  opacity: 0;
+  transform: translateY(18px) scale(.98);
+  transition: opacity .5s ease, transform .5s ease;
+}
+.card-reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal.from-right, .card-reveal {
+    opacity: 1; transform: none; transition: none;
+  }
+  * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
