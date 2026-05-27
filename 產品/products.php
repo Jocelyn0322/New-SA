@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 include __DIR__ . '/../db.php';
 
 $keyword      = $_GET['keyword']  ?? '';

@@ -1,9 +1,9 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 include __DIR__ . '/../db.php';
 
-$sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 6";
+$sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 8";
 $result = $conn->query($sql);
 $favorites = $_SESSION['favorite'] ?? [];
 
@@ -82,6 +82,29 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
     .feature-pill-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
     .feature-pill-desc { font-size: 12px; color: var(--text-3); }
 
+    /* ── Product Cards (同 products.php) ── */
+    .product-card-img { height: 220px; overflow: hidden; }
+    .product-card-img img { width: 100%; height: 100%; object-fit: contain; background: #f5f5f5; padding: 8px; display: block; }
+    .product-card-body { flex: 1; display: flex; flex-direction: column; padding: 14px 16px 16px; }
+    .product-card-brand { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-3); text-transform: uppercase; margin-bottom: 4px; }
+    .product-card-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.8; margin-bottom: 8px; }
+    .product-card-mid { min-height: 58px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+    .badge { display: inline-block; padding: 3px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+    .badge-rose { background: #fce7ec; color: #c26b7c; }
+    .product-card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; align-items: center; }
+
+    /* ── Modal (回報) ── */
+    .modal-ov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+    .modal-ov.active { display: flex; }
+    .modal-box2 { background: var(--card); border-radius: var(--r-xl); padding: 28px; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); position: relative; }
+    .modal-box2 h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .modal-box2 p.desc { font-size: 13px; color: var(--text-3); margin-bottom: 18px; }
+    .modal-box2 label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin: 12px 0 4px; }
+    .modal-box2 select, .modal-box2 textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 14px; font-family: inherit; outline: none; transition: border var(--t); box-sizing: border-box; }
+    .modal-box2 select:focus, .modal-box2 textarea:focus { border-color: var(--rose); }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-msg { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
+
     @media(max-width:768px){
       .feature-row { grid-template-columns: repeat(2,1fr); margin-top: -16px; }
       .hero-stats { gap: 24px; flex-wrap: wrap; }
@@ -135,24 +158,22 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
 <!-- Products -->
 <section class="section">
   <div class="section-inner">
-    <div class="section-header">
-      <div>
-        <div class="section-eyebrow">熱門推薦</div>
-        <div class="section-title">最新上架精選</div>
-      </div>
-      <a href="<?= BASE_URL ?>/產品/products.php" class="btn btn-outline btn-sm">查看全部 →</a>
+    <div style="margin-bottom:24px;">
+      <div style="font-size:12px;color:var(--rose);font-weight:600;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px;">熱門推薦</div>
+      <div style="font-size:1.3rem;font-weight:700;white-space:nowrap;color:var(--text);">最新上架精選</div>
     </div>
 
     <div class="product-grid">
-    <?php while ($row = $result->fetch()): ?>
-      <?php $isFav = in_array($row['p_id'], $favorites); ?>
+    <?php while ($row = $result->fetch()):
+      $isFav = in_array($row['p_id'], $favorites);
+      $colors_q = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$row['p_id']} LIMIT 4");
+      $colors = $colors_q->fetchAll();
+    ?>
       <div class="product-card">
         <div class="product-card-img">
           <?php if (!empty($row['image_url'])): ?>
-            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'">
-          <?php else: ?>
-            💄
-          <?php endif; ?>
+            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
+          <?php else: ?>💄<?php endif; ?>
         </div>
 
         <?php if ($isFav): ?>
@@ -170,22 +191,92 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
         <div class="product-card-body">
           <div class="product-card-brand"><?= htmlspecialchars($row['brand']) ?></div>
           <div class="product-card-name"><?= htmlspecialchars($row['name']) ?></div>
-          <?php if (!empty($row['category'])): ?>
-            <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
-          <?php endif; ?>
+          <div class="product-card-mid">
+            <?php if (!empty($row['category'])): ?>
+              <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($colors)): ?>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <?php foreach ($colors as $c): ?>
+                  <div style="width:18px;height:18px;background:<?= htmlspecialchars($c['color_hex']) ?>;border-radius:50%;border:1.5px solid rgba(0,0,0,.1);" title="<?= htmlspecialchars($c['color_name']) ?>"></div>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+          </div>
           <div class="product-card-actions">
             <a href="product.php?id=<?= $row['p_id'] ?>" class="btn btn-primary">查看</a>
             <form action="add_compare.php" method="POST" style="flex:1;">
               <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
               <button type="submit" class="btn btn-outline" style="width:100%;">比較</button>
             </form>
+            <?php if (isset($_SESSION['user'])): ?>
+              <button type="button" class="btn btn-danger" style="padding:7px 10px;" onclick="openReportModal(<?= $row['p_id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>')">回報</button>
+            <?php endif; ?>
           </div>
         </div>
       </div>
     <?php endwhile; ?>
     </div>
+
+    <div style="text-align:center;margin-top:32px;">
+      <a href="<?= BASE_URL ?>/產品/products.php" class="btn btn-outline">查看全部 →</a>
+    </div>
   </div>
 </section>
+
+<?php if (isset($_SESSION['user'])): ?>
+<!-- Report Modal -->
+<div id="reportModal" class="modal-ov" onclick="if(event.target===this)closeReportModal()">
+  <div class="modal-box2">
+    <h3>回報產品狀況</h3>
+    <p class="desc" id="reportProductName"></p>
+    <input type="hidden" id="report_product_id">
+    <label>回報類型 <span style="color:var(--red)">*</span></label>
+    <select id="report_type">
+      <option value="">請選擇回報類型</option>
+      <option value="discontinued">產品已停產</option>
+      <option value="new_version">已出新版本</option>
+      <option value="wrong_info">資訊有誤</option>
+      <option value="other">其他</option>
+    </select>
+    <label>補充說明</label>
+    <textarea id="report_desc" rows="3" placeholder="請描述詳細狀況（選填）"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeReportModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitReport()">送出回報</button>
+    </div>
+    <p id="reportMsg" class="modal-msg"></p>
+  </div>
+</div>
+<script>
+function openReportModal(id, name) {
+  document.getElementById('report_product_id').value = id;
+  document.getElementById('reportProductName').textContent = '產品：' + name;
+  document.getElementById('report_type').value = '';
+  document.getElementById('report_desc').value = '';
+  document.getElementById('reportMsg').textContent = '';
+  document.getElementById('reportModal').classList.add('active');
+}
+function closeReportModal() { document.getElementById('reportModal').classList.remove('active'); }
+async function submitReport() {
+  const type = document.getElementById('report_type').value;
+  const msg = document.getElementById('reportMsg');
+  if (!type) { msg.style.color = 'var(--red)'; msg.textContent = '請選擇回報類型'; return; }
+  const payload = {
+    product_id: document.getElementById('report_product_id').value,
+    report_type: type,
+    description: document.getElementById('report_desc').value.trim()
+  };
+  try {
+    const resp = await fetch('report_product.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await resp.json();
+    msg.style.color = result.success ? 'var(--green)' : 'var(--red)';
+    msg.textContent = result.message;
+    if (result.success) setTimeout(closeReportModal, 2000);
+  } catch(e) { msg.textContent = '網路錯誤，請稍後再試'; }
+}
+</script>
+<?php endif; ?>
 
 <?php include 'footer.php'; ?>
 </body>
