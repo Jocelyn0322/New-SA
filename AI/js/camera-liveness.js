@@ -39,6 +39,7 @@ const stopCamera = () => {
         video.value.srcObject.getTracks().forEach(track => track.stop());
         video.value.srcObject = null;
     }
+    video.value = null;
     cameraActive.value = false;
 };
 
