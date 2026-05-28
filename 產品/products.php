@@ -34,7 +34,7 @@ $offset = ($page - 1) * $per_page;
 
 $result = $conn->query($sql_base . $joins . $where_clause . " $order LIMIT $per_page OFFSET $offset");
 
-$categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT category FROM data) sub ORDER BY CASE category
+$categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT category FROM data WHERE category IS NOT NULL AND category != '') sub ORDER BY CASE category
     WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2
     WHEN '眼影' THEN 3 WHEN '眼線' THEN 4 WHEN '睫毛膏' THEN 5
     WHEN '腮紅' THEN 6 WHEN '修容' THEN 7 WHEN '打亮' THEN 8
