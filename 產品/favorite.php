@@ -43,8 +43,8 @@ if (!empty($ids)) {
     .product-card-img img { width: 100%; height: 100%; object-fit: contain; background: #f5f5f5; padding: 8px; display: block; }
     .product-card-body { flex: 1; display: flex; flex-direction: column; padding: 14px 16px 16px; }
     .product-card-brand { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-3); text-transform: uppercase; margin-bottom: 4px; }
-    .product-card-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.8; margin-bottom: 8px; }
-    .product-card-mid { min-height: 58px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+    .product-card-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.8; margin-bottom: 8px; min-height: calc(15px * 1.8 * 2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-card-mid { min-height: 32px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
     .badge { display: inline-block; padding: 3px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; }
     .badge-rose { background: #fce7ec; color: #c26b7c; }
     .product-card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; align-items: center; }
@@ -73,7 +73,7 @@ if (!empty($ids)) {
       <div class="product-card">
         <div class="product-card-img">
           <?php if (!empty($row['image_url'])): ?>
-            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:cover;">
+            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
           <?php else: ?>💄<?php endif; ?>
         </div>
 

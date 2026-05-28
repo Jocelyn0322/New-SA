@@ -140,6 +140,11 @@ function page_url($p) {
       color: var(--text);
       line-height: 1.8;
       margin-bottom: 8px;
+      min-height: calc(15px * 1.8 * 2);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     /* badge + 色號 區域固定高度，無論有無都佔位 */
     .product-card-mid {
