@@ -219,7 +219,84 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
 @keyframes slideUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
 
 /* ── Footer ── */
-.footer { border-top: 1px solid var(--border); background: var(--card); padding: 28px 24px; text-align: center; font-size: 13px; color: var(--text-3); }
+.footer {
+  background: #14131c;
+  color: rgba(255,255,255,.6);
+  font-size: 13px;
+  margin-top: auto;
+}
+.footer-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 52px 40px 44px;
+  display: flex;
+  align-items: flex-start;
+  gap: 80px;
+}
+.footer-brand { flex: 0 0 200px; }
+.footer-logo {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-tagline {
+  font-size: 13px;
+  color: rgba(255,255,255,.38);
+  line-height: 1.8;
+}
+.footer-cols {
+  flex: 1;
+  display: flex;
+  gap: 56px;
+  justify-content: flex-end;
+}
+.footer-col { display: flex; flex-direction: column; gap: 11px; min-width: 76px; }
+.footer-col-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.3);
+  margin-bottom: 2px;
+}
+.footer-col a {
+  color: rgba(255,255,255,.58);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color .15s;
+}
+.footer-col a:hover { color: #fff; }
+.footer-bar {
+  border-top: 1px solid rgba(255,255,255,.07);
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(255,255,255,.28);
+  max-width: 100%;
+}
+.footer-bar-slogan { color: rgba(255,255,255,.28); }
+@media (max-width: 768px) {
+  .footer-inner {
+    flex-direction: column;
+    gap: 36px;
+    padding: 38px 22px 30px;
+  }
+  .footer-brand { flex: none; }
+  .footer-cols { gap: 32px; justify-content: flex-start; flex-wrap: wrap; }
+  .footer-bar {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+    padding: 14px 22px;
+  }
+}
 
 /* ── Empty State ── */
 .empty { text-align: center; padding: 80px 24px; color: var(--text-3); }

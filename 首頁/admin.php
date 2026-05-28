@@ -489,6 +489,7 @@ if ($tab === 'comments') {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --sidebar-w: 220px;
+  --sidebar-collapsed-w: 64px;
   --topbar-h: 58px;
   --sidebar-bg: #5c1a2a;
   --sidebar-hover: #7a2038;
@@ -508,7 +509,7 @@ if ($tab === 'comments') {
 body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text-main); font-size: 14px; display: flex; min-height: 100vh; }
 
 /* ── Sidebar ── */
-.sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--sidebar-bg); position: fixed; top: 0; left: 0; z-index: 100; display: flex; flex-direction: column; box-shadow: 4px 0 20px rgba(0,0,0,.25); }
+.sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--sidebar-bg); position: fixed; top: 0; left: 0; z-index: 100; display: flex; flex-direction: column; box-shadow: 4px 0 20px rgba(0,0,0,.25); transition: width .28s cubic-bezier(.4,0,.2,1); overflow: hidden; }
 .sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
 .sidebar-logo-main { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 1px; }
 .sidebar-logo-sub { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; }
@@ -527,7 +528,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 .sidebar-user-role { font-size: 11px; color: rgba(255,255,255,.4); }
 
 /* ── Main ── */
-.main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; transition: margin-left .28s cubic-bezier(.4,0,.2,1); }
 
 /* ── Topbar ── */
 .topbar { height: var(--topbar-h); background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; display: flex; align-items: center; padding: 0 28px; box-shadow: 0 1px 4px rgba(0,0,0,.06); gap: 16px; }
@@ -677,6 +678,33 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 .badge-red { background: #fee2e2; color: #991b1b; }
 .badge-suspended { background: #fee2e2; color: #991b1b; }
 
+/* ── Collapsible Sidebar (Desktop) ── */
+.sidebar.collapsed { width: var(--sidebar-collapsed-w); }
+.main.sidebar-collapsed { margin-left: var(--sidebar-collapsed-w); }
+.sidebar.collapsed .nav-text,
+.sidebar.collapsed .nav-group-label { display: none; }
+.sidebar.collapsed .sidebar-logo { padding: 16px 0; text-align: center; }
+.sidebar.collapsed .sidebar-logo-sub { display: none; }
+.sidebar.collapsed .nav-item { justify-content: center; padding: 10px 0; }
+.sidebar.collapsed .nav-icon { width: 64px; text-align: center; font-size: 18px; }
+.sidebar.collapsed .nav-badge { display: none; }
+.sidebar.collapsed .sidebar-footer { justify-content: center; padding: 14px 0; }
+.sidebar.collapsed .sidebar-nav { padding: 6px 0; }
+
+/* Nav collapse toggle row */
+.nav-collapse-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; cursor: pointer;
+  color: rgba(255,255,255,.4); font-size: 13px;
+  transition: background .15s, color .15s;
+  border-top: 1px solid rgba(255,255,255,.08);
+  user-select: none; flex-shrink: 0;
+}
+.nav-collapse-row:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.75); }
+.nav-collapse-icon { font-size: 17px; width: 20px; text-align: center; flex-shrink: 0; display: inline-block; transition: transform .28s; }
+.sidebar.collapsed .nav-collapse-row { justify-content: center; padding: 10px 0; }
+@media (max-width: 768px) { .nav-collapse-row { display: none; } }
+
 /* ── Mobile sidebar ── */
 .sidebar-overlay {
   display: none; position: fixed; inset: 0;
@@ -719,28 +747,28 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 <!-- Sidebar -->
 <aside class="sidebar" id="adminSidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-main">💄 COSMETIC</div>
-    <div class="sidebar-logo-sub">管理後台</div>
+    <div class="sidebar-logo-main">💄<span class="nav-text"> COSMETIC</span></div>
+    <div class="sidebar-logo-sub nav-text">管理後台</div>
   </div>
 
   <nav class="sidebar-nav">
     <div class="nav-group-label">概覽</div>
     <a href="?tab=stats" class="nav-item <?php echo $tab==='stats' ? 'active':''; ?>">
-      <span class="nav-icon">📊</span> 數據統計
+      <span class="nav-icon">📊</span><span class="nav-text"> 數據統計</span>
     </a>
 
     <div class="nav-group-label">內容管理</div>
     <a href="?tab=videos" class="nav-item <?php echo $tab==='videos' ? 'active':''; ?>">
-      <span class="nav-icon">🎬</span> 影片管理
+      <span class="nav-icon">🎬</span><span class="nav-text"> 影片管理</span>
     </a>
     <a href="?tab=comments" class="nav-item <?php echo $tab==='comments' ? 'active':''; ?>">
-      <span class="nav-icon">💬</span> 留言管理
+      <span class="nav-icon">💬</span><span class="nav-text"> 留言管理</span>
     </a>
     <a href="?tab=reports" class="nav-item <?php echo $tab==='reports' ? 'active':''; ?>">
-      <span class="nav-icon">🚩</span> 檢舉管理
+      <span class="nav-icon">🚩</span><span class="nav-text"> 檢舉管理</span>
     </a>
     <a href="?tab=appeals" class="nav-item <?php echo $tab==='appeals' ? 'active':''; ?>">
-      <span class="nav-icon">📋</span> 申訴管理
+      <span class="nav-icon">📋</span><span class="nav-text"> 申訴管理</span>
       <?php try {
         $apCount = $pdo->query("SELECT COUNT(*) FROM video_appeals WHERE status='pending'")->fetchColumn();
         if ($apCount > 0): ?><span class="nav-badge"><?php echo (int)$apCount; ?></span><?php endif;
@@ -749,13 +777,13 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 
     <div class="nav-group-label">產品管理</div>
     <a href="<?= BASE_URL ?>/產品/report_manage.php" class="nav-item">
-      <span class="nav-icon">⚠️</span> 商品回報
+      <span class="nav-icon">⚠️</span><span class="nav-text"> 商品回報</span>
     </a>
     <a href="?tab=data_products" class="nav-item <?php echo $tab==='data_products' ? 'active':''; ?>">
-      <span class="nav-icon">🗄️</span> 資料庫產品
+      <span class="nav-icon">🗄️</span><span class="nav-text"> 資料庫產品</span>
     </a>
     <a href="?tab=products" class="nav-item <?php echo $tab==='products' ? 'active':''; ?>">
-      <span class="nav-icon">🛍️</span> 商品審核
+      <span class="nav-icon">🛍️</span><span class="nav-text"> 商品審核</span>
       <?php
       $badgeCount = $pdo->query("SELECT COUNT(*) FROM product_submissions WHERE status='pending'")->fetchColumn();
       if ($badgeCount > 0): ?>
@@ -765,13 +793,19 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 
     <div class="nav-group-label">會員</div>
     <a href="?tab=users" class="nav-item <?php echo $tab==='users' ? 'active':''; ?>">
-      <span class="nav-icon">👥</span> 使用者管理
+      <span class="nav-icon">👥</span><span class="nav-text"> 使用者管理</span>
     </a>
   </nav>
 
+  <!-- 收合按鈕（桌面版） -->
+  <div class="nav-collapse-row" id="navCollapseRow" onclick="collapseAdminSidebar()" title="收起/展開選單">
+    <span class="nav-collapse-icon" id="navCollapseIcon">‹</span>
+    <span class="nav-text">收起選單</span>
+  </div>
+
   <div class="sidebar-footer">
     <div class="sidebar-avatar"><?php echo strtoupper(substr($adminUser, 0, 1)); ?></div>
-    <div>
+    <div class="nav-text">
       <div class="sidebar-user-name"><?php echo htmlspecialchars($adminUser); ?></div>
       <div class="sidebar-user-role">超級管理員</div>
     </div>
@@ -1779,6 +1813,35 @@ document.querySelectorAll('.nav-item').forEach(function(el) {
     if (window.innerWidth <= 768) closeAdminSidebar();
   });
 });
+
+// ── 桌面 Sidebar 收合 ──
+function collapseAdminSidebar() {
+  var sidebar   = document.getElementById('adminSidebar');
+  var main      = document.querySelector('.main');
+  var icon      = document.getElementById('navCollapseIcon');
+  var collapsed = sidebar.classList.toggle('collapsed');
+  if (collapsed) {
+    main.classList.add('sidebar-collapsed');
+    if (icon) icon.textContent = '›';
+    localStorage.setItem('adminSidebarCollapsed', '1');
+  } else {
+    main.classList.remove('sidebar-collapsed');
+    if (icon) icon.textContent = '‹';
+    localStorage.setItem('adminSidebarCollapsed', '0');
+  }
+}
+// 恢復上次收合狀態
+(function() {
+  if (window.innerWidth <= 768) return;
+  if (localStorage.getItem('adminSidebarCollapsed') === '1') {
+    var sidebar = document.getElementById('adminSidebar');
+    var main    = document.querySelector('.main');
+    var icon    = document.getElementById('navCollapseIcon');
+    if (sidebar) sidebar.classList.add('collapsed');
+    if (main)    main.classList.add('sidebar-collapsed');
+    if (icon)    icon.textContent = '›';
+  }
+})();
 </script>
 </body>
 </html>
