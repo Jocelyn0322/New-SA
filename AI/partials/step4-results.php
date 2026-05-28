@@ -20,11 +20,19 @@
     <div class="p-5 rounded-2xl shadow-sm" style="background:linear-gradient(135deg,#fce8ec,#fdf2f4); border:1px solid #f5c6d0;">
         <h3 class="font-extrabold mb-2" style="color:#6b2d3e;">🧴 膚質分析結果</h3>
         <p class="text-lg font-bold" style="color:#3d1520;">{{ skinTypeResult.profile?.displayName || skinTypeResult || manualSkinType || '尚未判定' }}</p>
-        <p class="text-sm mt-1" style="color:#6b2d3e;">膚質：{{ manualSkinType || skinTypeResult || '尚未判定' }}{{ manualSensitiveSkin ? ' + 敏感肌' : '' }}</p>
-        <p class="text-xs mt-1" style="color:#c09aaa;">若這裡還是空白，請先選擇下方膚質再按「套用這個膚質」。</p>
-        <p v-if="fusionNote" class="text-xs mt-1" style="color:#c26b7c;">{{ fusionNote }}</p>
-        <p v-if="confidenceScore !== null" class="text-sm mt-2" style="color:#6b2d3e;">信心分數: {{ confidenceScore }}</p>
-        <p v-if="consistencyScoreValue !== null" class="text-xs mt-1" style="color:#c26b7c;">一致性分數: {{ consistencyScoreValue }}</p>
+        <p class="text-sm mt-1" style="color:#6b2d3e;">
+            膚質：{{ manualSkinType || skinTypeResult || '尚未判定' }}{{ manualSensitiveSkin ? ' + 敏感肌' : '' }}
+            <span v-if="fusionNote || confidenceScore !== null || consistencyScoreValue !== null"
+                  style="position:relative;display:inline-block;margin-left:6px;cursor:help;"
+                  class="detail-hint">
+                <span style="font-size:11px;color:#c09aaa;border-bottom:1px dashed #c09aaa;">詳細資訊</span>
+                <span class="detail-tooltip">
+                    <span v-if="fusionNote" style="display:block;">{{ fusionNote }}</span>
+                    <span v-if="confidenceScore !== null" style="display:block;">信心分數：{{ confidenceScore }}</span>
+                    <span v-if="consistencyScoreValue !== null" style="display:block;">一致性分數：{{ consistencyScoreValue }}</span>
+                </span>
+            </span>
+        </p>
         <div class="mt-4 rounded-2xl border border-purple-100 bg-white/90 p-4 space-y-3">
             <div>
                 <p class="text-sm font-semibold text-gray-800 mb-2">可直接沿用前面判定，或自行修改膚質</p>
