@@ -252,6 +252,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a href="login.php" class="back-link">← 返回登入</a>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include __DIR__ . '/../footer.php'; ?>
 </body>
 </html>

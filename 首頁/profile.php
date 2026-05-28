@@ -495,7 +495,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
   </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include __DIR__ . '/../footer.php'; ?>
 
 <script>
 /* ── Skin form AJAX save ── */

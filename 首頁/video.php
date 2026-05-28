@@ -1444,7 +1444,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
     </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include __DIR__ . '/../footer.php'; ?>
 
 <div class="share-toast" id="shareToast">🔗 已複製連結！</div>
 
