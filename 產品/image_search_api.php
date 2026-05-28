@@ -137,14 +137,16 @@ if (empty($scoreParts)) {
 $scoreExpr = '(' . implode(' + ', $scoreParts) . ')';
 
 // WHERE 策略：
-//   使用者手選了類別 → category 為主要 filter，brand 只加分（AI 可能猜錯品牌）
-//   使用者沒選類別 + AI 有識別 brand → 以 brand 過濾
-//   使用者沒選類別 + 只有 AI category → 以 category 過濾
+//   使用者手選了類別  → category 為主要 filter，brand 只加分
+//   AI 識別到 brand + category → category 為主要 filter，brand 只加分（顯示全分類，品牌排前）
+//   AI 只識別到 brand → 以 brand 過濾
+//   AI 只識別到 category → 以 category 過濾
 $whereParts  = [];
 $whereParams = [];
-if ($userCategory) {
+if ($userCategory || ($brand && $category)) {
+    // 有 category（來自使用者或 AI 兩者都識別到）→ category 為主
     $whereParts[]  = "p.category = ?";
-    $whereParams[] = $category;   // $category 已被 userCategory 覆蓋
+    $whereParams[] = $category;
 } elseif ($brand) {
     $whereParts[]  = "(p.brand ILIKE ? OR p.name ILIKE ?)";
     $whereParams   = array_merge($whereParams, ["%$brand%", "%$brand%"]);
