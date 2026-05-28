@@ -429,7 +429,10 @@ function page_url($p) {
         <option value="防曬">防曬</option>
       </select>
     </div>
-    <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="width:100%;margin-top:12px;opacity:.5;cursor:not-allowed;">開始搜尋</button>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="flex:1;opacity:.5;cursor:not-allowed;">開始搜尋</button>
+      <button id="imgResetBtn" onclick="resetImgSearch()" class="btn btn-outline" style="display:none;flex-shrink:0;">換張圖片</button>
+    </div>
     <div id="imgLoading" style="display:none;text-align:center;padding:20px 0;">
       <div style="display:inline-block;width:28px;height:28px;border:3px solid var(--rose-100);border-top-color:var(--rose);border-radius:50%;animation:spin .8s linear infinite;"></div>
       <p style="font-size:13px;color:var(--text-3);margin:10px 0 0;">AI 正在識別產品…</p>
@@ -480,6 +483,7 @@ function resetImgSearch() {
   ['imgLoading','imgParsedTags','imgResults','imgNoResult'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('imgFileInput').value='';
   document.getElementById('imgCategoryFilter').value='';
+  document.getElementById('imgResetBtn').style.display='none';
 }
 function handleImgDrop(e) {
   e.preventDefault();
@@ -500,6 +504,7 @@ function handleImgFile(file) {
     document.getElementById('imgDropZoneContent').style.display='none';
     const btn=document.getElementById('imgAnalyzeBtn');
     btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer';
+    document.getElementById('imgResetBtn').style.display='';
     ['imgResults','imgNoResult','imgParsedTags'].forEach(id=>document.getElementById(id).style.display='none');
   };
   reader.readAsDataURL(file);
