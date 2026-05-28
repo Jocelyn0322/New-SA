@@ -366,6 +366,7 @@ function page_url($p) {
         <option value="discontinued">產品已停產</option>
         <option value="new_version">已出新版本</option>
         <option value="wrong_info">資訊有誤</option>
+        <option value="ai_not_suitable">AI 推薦不適合我的膚質</option>
         <option value="other">其他</option>
       </select>
       <label>補充說明</label>

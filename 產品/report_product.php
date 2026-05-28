@@ -25,7 +25,7 @@ $productId  = intval($data['product_id']  ?? 0);
 $reportType = trim($data['report_type']   ?? '');
 $description = trim($data['description'] ?? '');
 
-$allowedTypes = ['discontinued', 'new_version', 'wrong_info', 'other'];
+$allowedTypes = ['discontinued', 'new_version', 'wrong_info', 'ai_not_suitable', 'other'];
 
 if (!$productId || !in_array($reportType, $allowedTypes)) {
     echo json_encode(['success' => false, 'message' => '資料不完整']);

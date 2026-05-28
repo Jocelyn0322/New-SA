@@ -492,6 +492,7 @@ if (isset($pdo)) {
             <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:12px;">適合今天高溫的持妝產品</div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px;">
                 <?php foreach ($heatProducts as $hp): ?>
+                <div style="position:relative;">
                 <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:#fff; border-radius:16px; border:1.5px solid #f5c6d0; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
                     <div style="width:100%; aspect-ratio:1; background:#fdf2f4; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
                         <?php if (!empty($hp['image_url'])): ?>
@@ -507,6 +508,9 @@ if (isset($pdo)) {
                         <div style="margin-top:5px; font-size:11px; color:#c09aaa; line-height:1.4;"><?= htmlspecialchars(mb_substr($hp['purpose'], 0, 18)) ?>…</div>
                     </div>
                 </a>
+                <button onclick="openSkinReport(<?= $hp['id'] ?>, '<?= htmlspecialchars(addslashes($hp['name'])) ?>')"
+                  style="position:absolute;top:6px;right:6px;z-index:2;background:rgba(255,255,255,.92);border:1px solid #f5c6d0;border-radius:99px;padding:2px 8px;font-size:11px;color:#c26b7c;cursor:pointer;font-weight:600;line-height:1.6;">回報</button>
+                </div>
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>
@@ -559,6 +563,7 @@ if (isset($pdo)) {
             <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:12px;">適合今天低溫的保濕底妝</div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px;">
                 <?php foreach ($coldProducts as $cp): ?>
+                <div style="position:relative;">
                 <a href="product.php?id=<?= $cp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #d8e2ed; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
                     <div style="width:100%; aspect-ratio:1; background:#edf3f9; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
                         <?php if (!empty($cp['image_url'])): ?>
@@ -574,6 +579,9 @@ if (isset($pdo)) {
                         <div style="margin-top:5px; font-size:11px; color:#8a9bbf; line-height:1.4;"><?= htmlspecialchars(mb_substr($cp['purpose'], 0, 18)) ?>…</div>
                     </div>
                 </a>
+                <button onclick="openSkinReport(<?= $cp['id'] ?>, '<?= htmlspecialchars(addslashes($cp['name'])) ?>')"
+                  style="position:absolute;top:6px;right:6px;z-index:2;background:rgba(255,255,255,.92);border:1px solid #d8e2ed;border-radius:99px;padding:2px 8px;font-size:11px;color:#5a7299;cursor:pointer;font-weight:600;line-height:1.6;">回報</button>
+                </div>
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>
@@ -584,6 +592,33 @@ if (isset($pdo)) {
 <?php endif; ?>
 </div>
 </main>
+
+<!-- 回報 Modal (AI推薦頁用) -->
+<div id="skinReportModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px;width:min(440px,92vw);box-shadow:0 8px 32px rgba(0,0,0,.18);position:relative;">
+    <button onclick="closeSkinReport()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
+    <h3 style="margin:0 0 4px;font-size:17px;font-weight:700;">回報產品狀況</h3>
+    <p id="skinReportName" style="font-size:13px;color:#999;margin:0 0 18px;"></p>
+    <input type="hidden" id="skinReportProductId">
+    <label style="display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:6px;">回報類型 <span style="color:#e74c3c">*</span></label>
+    <select id="skinReportType" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:14px;">
+      <option value="">請選擇回報類型</option>
+      <option value="ai_not_suitable">AI 推薦不適合我的膚質</option>
+      <option value="discontinued">產品已停產</option>
+      <option value="new_version">已出新版本</option>
+      <option value="wrong_info">資訊有誤</option>
+      <option value="other">其他</option>
+    </select>
+    <label style="display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:6px;">補充說明（選填）</label>
+    <textarea id="skinReportDesc" rows="3" placeholder="請說明不適合的原因，例如：太油膩、會過敏、遮瑕力不夠等"
+      style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:18px;">
+      <button onclick="closeSkinReport()" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-size:14px;font-weight:600;cursor:pointer;color:#555;">取消</button>
+      <button onclick="submitSkinReport()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#c26b7c;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">送出回報</button>
+    </div>
+    <p id="skinReportMsg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px;"></p>
+  </div>
+</div>
 
 <?php include 'footer.php'; ?>
 
@@ -698,6 +733,39 @@ if (isset($pdo)) {
         checkWeather(parseFloat(lat), parseFloat(lon));
     }
 })();
+
+function openSkinReport(id, name) {
+  document.getElementById('skinReportProductId').value = id;
+  document.getElementById('skinReportName').textContent = '產品：' + name;
+  document.getElementById('skinReportType').value = '';
+  document.getElementById('skinReportDesc').value = '';
+  document.getElementById('skinReportMsg').textContent = '';
+  const m = document.getElementById('skinReportModal');
+  m.style.display = 'flex';
+}
+function closeSkinReport() {
+  document.getElementById('skinReportModal').style.display = 'none';
+}
+document.getElementById('skinReportModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSkinReport();
+});
+async function submitSkinReport() {
+  const type = document.getElementById('skinReportType').value;
+  const msg  = document.getElementById('skinReportMsg');
+  if (!type) { msg.style.color = '#e74c3c'; msg.textContent = '請選擇回報類型'; return; }
+  const payload = {
+    product_id:   document.getElementById('skinReportProductId').value,
+    report_type:  type,
+    description:  document.getElementById('skinReportDesc').value.trim()
+  };
+  try {
+    const resp   = await fetch('report_product.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await resp.json();
+    msg.style.color = result.success ? '#16a34a' : '#e74c3c';
+    msg.textContent = result.message;
+    if (result.success) setTimeout(closeSkinReport, 1800);
+  } catch (e) { msg.style.color = '#e74c3c'; msg.textContent = '網路錯誤，請稍後再試'; }
+}
 </script>
 </body>
 </html>

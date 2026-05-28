@@ -69,16 +69,18 @@ $totalCount    = (int)$pdo->query("SELECT COUNT(*) FROM product_reports")->fetch
 $resolvedCount = $totalCount - $pendingCount;
 
 $typeLabel = [
-    'discontinued' => '已停產',
-    'new_version'  => '有新版本',
-    'wrong_info'   => '資訊有誤',
-    'other'        => '其他',
+    'discontinued'   => '已停產',
+    'new_version'    => '有新版本',
+    'wrong_info'     => '資訊有誤',
+    'ai_not_suitable'=> 'AI推薦不適合',
+    'other'          => '其他',
 ];
 $typeBadge = [
-    'discontinued' => 'badge-red',
-    'new_version'  => 'badge-blue',
-    'wrong_info'   => 'badge-orange',
-    'other'        => 'badge-gray',
+    'discontinued'   => 'badge-red',
+    'new_version'    => 'badge-blue',
+    'wrong_info'     => 'badge-orange',
+    'ai_not_suitable'=> 'badge-purple',
+    'other'          => 'badge-gray',
 ];
 ?>
 <!DOCTYPE html>
@@ -168,6 +170,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 .badge-red    { background: #fde8e8; color: #c0392b; }
 .badge-blue   { background: #dbeafe; color: #1d4ed8; }
 .badge-orange { background: #fef3c7; color: #b45309; }
+.badge-purple { background: #f3e8ff; color: #7c3aed; }
 .badge-gray   { background: #f1f5f9; color: #64748b; }
 .badge-green  { background: #d1fae5; color: #065f46; }
 .rp-desc    { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 8px; }
