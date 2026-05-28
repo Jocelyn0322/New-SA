@@ -153,7 +153,7 @@
         <div class="flex flex-wrap gap-2 justify-between items-center">
             <button type="button" @click="restartFromBeginning"
                 class="rounded-xl px-4 py-2.5 text-sm font-bold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all duration-200">
-                ← 重新開始
+                ← 重新檢測
             </button>
             <div class="flex flex-wrap gap-2">
                 <button type="button" @click="goToMakeupStep"

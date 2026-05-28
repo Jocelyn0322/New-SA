@@ -295,6 +295,7 @@ const analyzeWithGroq = async () => {
 
         await loadFeedbackHistory();
         await loadAnalysisHistory();
+        if (!isAnalyzing.value) return;
         currentStep.value = 4;
         await saveProfileSilent();
     } catch (error) {
