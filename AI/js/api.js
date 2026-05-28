@@ -501,5 +501,6 @@ const analyzeSkinTone = async () => {
         await fetchIngredientAdvice(fused.secondaryType || fused.finalType);
     }
 
+    isAnalyzing.value = false;
     currentStep.value = 4;
 };

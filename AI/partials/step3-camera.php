@@ -1,4 +1,13 @@
-<div v-if="currentStep === 3" class="p-5 md:p-6 border border-violet-100 rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 shadow-sm">
+<div v-if="currentStep === 3" class="p-5 md:p-6 border border-violet-100 rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 shadow-sm" style="position:relative;">
+
+    <!-- 分析中 overlay -->
+    <div v-if="isAnalyzing" style="position:absolute;inset:0;z-index:20;border-radius:1rem;background:rgba(253,242,244,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+        <svg style="width:44px;height:44px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="#f5c6d0" stroke-width="3"/>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke="#6b2d3e" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <p style="font-size:15px;font-weight:700;color:#6b2d3e;">正在分析中，請稍候…</p>
+    </div>
     <div class="flex items-center justify-between mb-4">
         <h3 class="font-extrabold text-gray-900 text-lg">📸 第 3 頁：相機拍照</h3>
         <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-violet-700 border border-violet-200">Camera</span>

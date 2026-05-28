@@ -1,7 +1,7 @@
 // state.js — Vue reactive state, computed, and alert modal
 // Must be the FIRST script loaded (all other modules depend on these refs).
 
-const { createApp, ref, nextTick, onUnmounted, computed } = Vue;
+const { createApp, ref, nextTick, onUnmounted, computed, watch } = Vue;
 
 const dataLoaded            = ref(false);
 const currentStep           = ref(1);
