@@ -8,6 +8,7 @@ const app = createApp({
 
         initSkinToneData();
         loadFeedbackHistory();
+        loadAnalysisHistory();
 
         return {
             // ── State refs ──────────────────────────────────────
@@ -51,6 +52,11 @@ const app = createApp({
             ingredientAdvice,
             ingredientLoading,
             feedbackHistory,
+            quizDerivedSkinType,
+            aiDetectedSkinType,
+            analysisHistory,
+            consistencyRate,
+            quizAiMatch,
             isAnalyzing,
             faceDetectionBusy,
             showResultModal,
@@ -101,6 +107,8 @@ const app = createApp({
             analyzeManual,
             analyzeWithGroq,
             finishAndSave,
+            skinFamilyMatch,
+            formatDate,
         };
     }
 });

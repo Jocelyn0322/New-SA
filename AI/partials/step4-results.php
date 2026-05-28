@@ -58,6 +58,61 @@
         </div>
     </div>
 
+    <!-- 準確度驗證：問卷 vs AI 對照 -->
+    <div v-if="quizDerivedSkinType || aiDetectedSkinType" class="p-5 rounded-2xl shadow-sm" style="background:linear-gradient(135deg,#f0f4ff,#e8eeff);border:1px solid #c7d2fe;">
+        <h3 class="font-extrabold mb-3" style="color:#3730a3;">📊 準確度驗證：問卷 vs AI 對照</h3>
+        <div class="grid gap-2 text-sm">
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/80">
+                <span style="color:#6366f1;font-weight:600;">問卷推測膚質</span>
+                <span class="font-bold" style="color:#1e1b4b;">{{ quizDerivedSkinType || '未偵測' }}</span>
+            </div>
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/80">
+                <span style="color:#6366f1;font-weight:600;">AI 相機偵測</span>
+                <span class="font-bold" style="color:#1e1b4b;">{{ aiDetectedSkinType || '未偵測' }}</span>
+            </div>
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/80">
+                <span style="color:#6366f1;font-weight:600;">最終判定</span>
+                <span class="font-bold" style="color:#1e1b4b;">{{ manualSkinType || '尚未確認' }}</span>
+            </div>
+            <div class="flex items-center justify-between p-2.5 rounded-xl"
+                 :style="quizAiMatch === true ? 'background:#d1fae5;' : quizAiMatch === false ? 'background:#fee2e2;' : 'background:#f3f4f6;'">
+                <span style="font-weight:600;">問卷與 AI 吻合度</span>
+                <span class="font-bold text-base">
+                    <template v-if="quizAiMatch === true">✓ 吻合</template>
+                    <template v-else-if="quizAiMatch === false">⚠ 差異</template>
+                    <template v-else>—</template>
+                </span>
+            </div>
+        </div>
+        <p class="text-xs mt-3" style="color:#818cf8;">問卷與 AI 吻合表示結果較可靠。若出現差異，可嘗試重新填寫問卷或重拍照片。</p>
+    </div>
+
+    <!-- 自我一致性：歷史分析紀錄 -->
+    <div v-if="analysisHistory.length > 0" class="p-5 rounded-2xl shadow-sm" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;">
+        <h3 class="font-extrabold mb-3" style="color:#166534;">📈 自我一致性：歷史分析紀錄</h3>
+        <div class="space-y-2">
+            <div v-for="(item, index) in analysisHistory" :key="index"
+                 class="flex items-center justify-between p-2.5 rounded-xl bg-white/80 text-sm">
+                <div>
+                    <span class="font-semibold" style="color:#166534;">{{ item.skin_type || '—' }}</span>
+                    <span class="text-xs ml-2" style="color:#6b7280;">{{ formatDate(item.analyzed_at) }}</span>
+                </div>
+                <span v-if="item.quiz_skin_type && item.ai_skin_type"
+                      class="text-xs px-2 py-0.5 rounded-full font-semibold"
+                      :style="skinFamilyMatch(item.quiz_skin_type, item.ai_skin_type) ? 'background:#d1fae5;color:#065f46;' : 'background:#fee2e2;color:#991b1b;'">
+                    {{ skinFamilyMatch(item.quiz_skin_type, item.ai_skin_type) ? '吻合' : '差異' }}
+                </span>
+            </div>
+        </div>
+        <p class="text-xs mt-3" style="color:#16a34a;">
+            共 {{ analysisHistory.length }} 次分析，
+            <span :style="consistencyRate >= 0.8 ? 'color:#15803d;font-weight:700;' : 'color:#b45309;font-weight:700;'">
+                吻合率 {{ Math.round(consistencyRate * 100) }}%
+            </span>
+            {{ consistencyRate >= 0.8 ? '— 結果穩定可信 ✓' : '— 建議重新確認問卷或重拍照片' }}
+        </p>
+    </div>
+
     <!-- 歷史回饋 -->
     <div v-if="feedbackHistory.length > 0" class="p-5 border border-cyan-100 rounded-2xl bg-gradient-to-br from-cyan-50 to-sky-50 shadow-sm">
         <h3 class="font-extrabold mb-3 text-gray-900">🧾 歷史回饋清單</h3>

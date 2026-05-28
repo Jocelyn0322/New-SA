@@ -168,7 +168,7 @@ const isSkinPixel = (r, g, b) => {
     const y  = 0.299 * r + 0.587 * g + 0.114 * b;
     const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
     const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-    return (cb >= 77 && cb <= 127) && (cr >= 133 && cr <= 173) && y > 40;
+    return (cb >= 70 && cb <= 135) && (cr >= 128 && cr <= 180) && y > 35;
 };
 
 const sampleFacePatch = (face, size = 128) => {
@@ -189,8 +189,10 @@ const computeSkinRatioRegion = (imageData, region = 'lower') => {
     const mid = Math.floor(height * 0.5);
     const y0  = region === 'upper' ? 0   : mid;
     const y1  = region === 'upper' ? mid : height;
+    // For lower region, only sample the center 60% horizontally to ignore side hair
+    const xPad = region === 'lower' ? Math.floor(width * 0.20) : 0;
     for (let y = y0; y < y1; y += 3) {
-        for (let x = 0; x < width; x += 3) {
+        for (let x = xPad; x < width - xPad; x += 3) {
             const i = (y * width + x) * 4;
             if (isSkinPixel(data[i], data[i + 1], data[i + 2])) skinCount++;
             total++;
@@ -532,11 +534,11 @@ const checkObstacleAndLiveness = async (face) => {
     const skinRatioLower = computeSkinRatioRegion(patch, 'lower');
     const skinRatioUpper = computeSkinRatioRegion(patch, 'upper');
 
-    if (skinRatioLower < 0.6) {
+    if (skinRatioLower < 0.38) {
         alert('❌ 檢測到口罩或下方遮擋物。\n請移除口罩/圍巾以便系統讀取真正的臉部肌膚。');
         return false;
     }
-    if (skinRatioUpper < 0.6) {
+    if (skinRatioUpper < 0.38) {
         alert('❌ 檢測到瀏海、眼鏡或眼部遮擋。\n請撥開頭髮或移除眼部遮擋物再重試。');
         return false;
     }
