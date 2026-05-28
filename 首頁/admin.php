@@ -155,7 +155,7 @@ if (isset($_POST['review_submission'])) {
                 ")->execute([
                     ':name'        => $subRow['product_name'] ?? '',
                     ':brand'       => $subRow['brand']        ?? '',
-                    ':category'    => $subRow['category']     ?? '',
+                    ':category'    => $subRow['category'] ?: '未分類',
                     ':purpose'     => $subRow['description']  ?? '',
                     ':image_url'   => '',
                     ':ingredients' => '',
