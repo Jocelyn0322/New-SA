@@ -131,6 +131,17 @@ if ($hasProfile) {
     $products = array_slice($ranked, 0, 8);
 }
 
+// ── 膚質關鍵字對照（天氣推薦個人化用） ────────────────────────────
+$_skinKwMap = [
+    '乾性皮' => ['保濕','潤澤','養膚','滋潤','水光'],
+    '混乾皮' => ['保濕','潤澤','輕薄','服貼'],
+    '油性皮' => ['控油','霧面','柔霧','無油','抗汗'],
+    '混油皮' => ['控油','霧面','平衡','輕薄'],
+    '中性皮' => ['自然','輕薄','通用'],
+    '敏感肌' => ['溫和','舒敏','無香料','低刺激'],
+];
+$_userSkinKw = $_skinKwMap[$profile['skin_type'] ?? ''] ?? [];
+
 // ── 天氣推薦產品（控油／持妝，高溫時顯示） ───────────────────────
 $heatProducts = [];
 if (isset($pdo)) {
@@ -145,10 +156,14 @@ if (isset($pdo)) {
         }
         $st->execute();
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-        usort($rows, function($a, $b) use ($heatKw) {
-            $scoreA = array_sum(array_map(fn($k) => (mb_strpos($a['purpose'].$a['name'], $k) !== false) ? 1 : 0, $heatKw));
-            $scoreB = array_sum(array_map(fn($k) => (mb_strpos($b['purpose'].$b['name'], $k) !== false) ? 1 : 0, $heatKw));
-            return $scoreB <=> $scoreA;
+        usort($rows, function($a, $b) use ($heatKw, $_userSkinKw) {
+            $tA = $a['purpose'] . $a['name'];
+            $tB = $b['purpose'] . $b['name'];
+            $wA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 2 : 0, $heatKw));
+            $sA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 1 : 0, $_userSkinKw));
+            $wB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 2 : 0, $heatKw));
+            $sB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 1 : 0, $_userSkinKw));
+            return ($wB + $sB) <=> ($wA + $sA);
         });
         $heatProducts = array_slice($rows, 0, 4);
     } catch (Exception $e) {}
@@ -168,10 +183,14 @@ if (isset($pdo)) {
         }
         $st->execute();
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-        usort($rows, function($a, $b) use ($coldKw) {
-            $scoreA = array_sum(array_map(fn($k) => (mb_strpos($a['purpose'].$a['name'], $k) !== false) ? 1 : 0, $coldKw));
-            $scoreB = array_sum(array_map(fn($k) => (mb_strpos($b['purpose'].$b['name'], $k) !== false) ? 1 : 0, $coldKw));
-            return $scoreB <=> $scoreA;
+        usort($rows, function($a, $b) use ($coldKw, $_userSkinKw) {
+            $tA = $a['purpose'] . $a['name'];
+            $tB = $b['purpose'] . $b['name'];
+            $wA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 2 : 0, $coldKw));
+            $sA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 1 : 0, $_userSkinKw));
+            $wB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 2 : 0, $coldKw));
+            $sB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 1 : 0, $_userSkinKw));
+            return ($wB + $sB) <=> ($wA + $sA);
         });
         $coldProducts = array_slice($rows, 0, 4);
     } catch (Exception $e) {}
@@ -490,11 +509,10 @@ if (isset($pdo)) {
             <?php if (!empty($heatProducts)): ?>
             <!-- 天氣推薦產品 -->
             <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:12px;">適合今天高溫的持妝產品</div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; align-items:stretch;">
                 <?php foreach ($heatProducts as $hp): ?>
-                <div style="position:relative;">
-                <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:#fff; border-radius:16px; border:1.5px solid #f5c6d0; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
-                    <div style="width:100%; aspect-ratio:1; background:#fdf2f4; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
+                <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:#fff; border-radius:16px; border:1.5px solid #f5c6d0; overflow:hidden; display:flex; flex-direction:column; height:100%; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                    <div style="width:100%; aspect-ratio:1; background:#fdf2f4; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0;">
                         <?php if (!empty($hp['image_url'])): ?>
                         <img src="<?= htmlspecialchars($hp['image_url']) ?>"
                              alt="<?= htmlspecialchars($hp['name']) ?>"
@@ -502,15 +520,11 @@ if (isset($pdo)) {
                              onerror="this.parentElement.innerHTML='💄';">
                         <?php else: ?>💄<?php endif; ?>
                     </div>
-                    <div style="padding:10px 12px;">
-                        <div style="font-size:10px; color:#c09aaa; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($hp['brand']) ?></div>
-                        <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4;"><?= htmlspecialchars($hp['name']) ?></div>
-                        <div style="margin-top:5px; font-size:11px; color:#c09aaa; line-height:1.4;"><?= htmlspecialchars(mb_substr($hp['purpose'], 0, 18)) ?>…</div>
+                    <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
+                        <div style="font-size:10px; color:#c09aaa; font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($hp['brand']) ?></div>
+                        <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;"><?= htmlspecialchars($hp['name']) ?></div>
                     </div>
                 </a>
-                <button onclick="openSkinReport(<?= $hp['id'] ?>, '<?= htmlspecialchars(addslashes($hp['name'])) ?>')"
-                  style="position:absolute;top:6px;right:6px;z-index:2;background:rgba(255,255,255,.92);border:1px solid #f5c6d0;border-radius:99px;padding:2px 8px;font-size:11px;color:#c26b7c;cursor:pointer;font-weight:600;line-height:1.6;">回報</button>
-                </div>
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>
@@ -561,11 +575,10 @@ if (isset($pdo)) {
             <?php if (!empty($coldProducts)): ?>
             <!-- 冷天推薦產品 -->
             <div style="font-size:13px; font-weight:700; color:#3a4f6a; margin-bottom:12px;">適合今天低溫的保濕底妝</div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; align-items:stretch;">
                 <?php foreach ($coldProducts as $cp): ?>
-                <div style="position:relative;">
-                <a href="product.php?id=<?= $cp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #d8e2ed; overflow:hidden; display:block; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
-                    <div style="width:100%; aspect-ratio:1; background:#edf3f9; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px;">
+                <a href="product.php?id=<?= $cp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #d8e2ed; overflow:hidden; display:flex; flex-direction:column; height:100%; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                    <div style="width:100%; aspect-ratio:1; background:#edf3f9; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0;">
                         <?php if (!empty($cp['image_url'])): ?>
                         <img src="<?= htmlspecialchars($cp['image_url']) ?>"
                              alt="<?= htmlspecialchars($cp['name']) ?>"
@@ -573,15 +586,11 @@ if (isset($pdo)) {
                              onerror="this.parentElement.innerHTML='💄';">
                         <?php else: ?>💄<?php endif; ?>
                     </div>
-                    <div style="padding:10px 12px;">
-                        <div style="font-size:10px; color:#8a9bbf; font-weight:600; margin-bottom:3px;"><?= htmlspecialchars($cp['brand']) ?></div>
-                        <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4;"><?= htmlspecialchars($cp['name']) ?></div>
-                        <div style="margin-top:5px; font-size:11px; color:#8a9bbf; line-height:1.4;"><?= htmlspecialchars(mb_substr($cp['purpose'], 0, 18)) ?>…</div>
+                    <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
+                        <div style="font-size:10px; color:#8a9bbf; font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($cp['brand']) ?></div>
+                        <div style="font-size:12px; color:#333; font-weight:700; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;"><?= htmlspecialchars($cp['name']) ?></div>
                     </div>
                 </a>
-                <button onclick="openSkinReport(<?= $cp['id'] ?>, '<?= htmlspecialchars(addslashes($cp['name'])) ?>')"
-                  style="position:absolute;top:6px;right:6px;z-index:2;background:rgba(255,255,255,.92);border:1px solid #d8e2ed;border-radius:99px;padding:2px 8px;font-size:11px;color:#5a7299;cursor:pointer;font-weight:600;line-height:1.6;">回報</button>
-                </div>
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>
