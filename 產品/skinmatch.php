@@ -659,7 +659,14 @@ if (isset($pdo)) {
         setStatus('定位中...');
         navigator.geolocation.getCurrentPosition(
             ({ coords }) => checkWeather(coords.latitude, coords.longitude),
-            () => setStatus('請手動選擇地區')
+            (err) => {
+                if (err.code === 1) {
+                    setStatus('定位被拒絕，請手動選擇地區');
+                } else {
+                    setStatus('定位失敗，請手動選擇地區');
+                }
+            },
+            { timeout: 10000, maximumAge: 300000 }
         );
     }
 
@@ -683,9 +690,17 @@ if (isset($pdo)) {
 
     select.addEventListener('change', onCityChange);
 
-    // 初始執行
+    // 初始執行：auto 需等使用者主動點擊才觸發定位（iOS Safari 限制）
     if (select.value === 'auto') {
-        runAuto();
+        setStatus('📍 點擊以偵測位置');
+        status.style.cursor = 'pointer';
+        status.style.textDecoration = 'underline';
+        status.addEventListener('click', function handler() {
+            status.style.cursor = '';
+            status.style.textDecoration = '';
+            status.removeEventListener('click', handler);
+            runAuto();
+        }, { once: true });
     } else {
         const [lat, lon] = select.value.split(',');
         checkWeather(parseFloat(lat), parseFloat(lon));
