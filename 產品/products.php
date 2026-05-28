@@ -70,7 +70,7 @@ function page_url($p) {
     .search-hero { background: var(--card); border-bottom: 1px solid var(--border); padding: 20px 0; position: sticky; top: var(--header-h); z-index: 50; }
     .search-hero-inner { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; display: flex; gap: 10px; align-items: center; }
     .search-input-wrap { flex: 1; position: relative; }
-    .search-input-wrap input { width: 100%; padding: 10px 14px 10px 40px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 14px; font-family: inherit; outline: none; transition: border var(--t); background: var(--bg); }
+    .search-input-wrap input { width: 100%; padding: 10px 36px 10px 40px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 14px; font-family: inherit; outline: none; transition: border var(--t); background: var(--bg); }
     .search-input-wrap input:focus { border-color: var(--rose); background: white; }
     .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 15px; pointer-events: none; }
     .filter-wrap { max-width: var(--max-w); margin: 20px auto 0; padding: 0 24px; }
@@ -178,7 +178,11 @@ function page_url($p) {
   <div class="search-hero-inner">
     <form class="search-input-wrap" method="GET" id="searchForm">
       <span class="search-icon">🔍</span>
-      <input type="text" name="keyword" placeholder="搜尋品牌、產品名稱..." value="<?= htmlspecialchars($keyword) ?>">
+      <input type="text" name="keyword" id="keywordInput" placeholder="搜尋品牌、產品名稱..."
+             value="<?= htmlspecialchars($keyword) ?>"
+             oninput="document.getElementById('clearSearchBtn').style.display=this.value?'flex':'none'">
+      <button type="button" id="clearSearchBtn" onclick="clearKeyword()"
+              style="display:<?= $keyword ? 'flex' : 'none' ?>;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-3);cursor:pointer;font-size:18px;line-height:1;padding:4px;align-items:center;justify-content:center;">×</button>
       <?php if ($category): ?><input type="hidden" name="category" value="<?= htmlspecialchars($category) ?>"><?php endif; ?>
       <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
     </form>
@@ -466,6 +470,12 @@ document.getElementById('searchForm').addEventListener('submit', function() {
   const url = new URL(window.location.href);
   this.querySelectorAll('input[name="page"]').forEach(el => el.remove());
 });
+
+function clearKeyword() {
+  document.getElementById('keywordInput').value = '';
+  document.getElementById('clearSearchBtn').style.display = 'none';
+  document.getElementById('searchForm').submit();
+}
 
 /* ── Sort ── */
 function applySort(val) {
