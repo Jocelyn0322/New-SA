@@ -79,6 +79,7 @@ const app = createApp({
             confirmSkinTone,
             confirmSkinType,
             backToToneAndSkinPage,
+            restartFromBeginning,
             backToResultsPage,
             goToConfirmStep,
             goToMakeupStep,

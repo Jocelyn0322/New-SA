@@ -92,6 +92,45 @@ const confirmSkinTone = () => { confirmedSkinTone.value = !confirmedSkinTone.val
 const confirmSkinType = () => { confirmedSkinType.value = !confirmedSkinType.value; };
 
 const backToToneAndSkinPage = () => { stopCamera(); currentStep.value = 3; };
+
+const restartFromBeginning = () => {
+    stopCamera();
+    // quiz state
+    toneQuizAnswers.value     = { t1: '', t2: '', t3: '' };
+    quizAnswers.value         = { q1: '', q2: '', q3: '', q4: '' };
+    toneQuizStep.value        = 1;
+    skinQuizStep.value        = 1;
+    toneQuizTyping.value      = false;
+    skinQuizTyping.value      = false;
+    toneGuess.value           = '';
+    toneFusionNote.value      = '';
+    // skin results
+    skinTone.value            = '';
+    skinCoordinate.value      = null;
+    skinTypeResult.value      = '';
+    skinTypeSecondary.value   = '';
+    skinFeatures.value        = null;
+    fusionNote.value          = '';
+    confidenceScore.value     = null;
+    consistencyScoreValue.value = null;
+    toneMismatchWarning.value = '';
+    needsRetest.value         = false;
+    retestMessage.value       = '';
+    recommendations.value     = [];
+    ingredientAdvice.value    = null;
+    quizDerivedSkinType.value = '';
+    aiDetectedSkinType.value  = '';
+    // confirm & preferences
+    confirmedSkinTone.value   = false;
+    confirmedSkinType.value   = false;
+    manualSkinType.value      = '';
+    manualSensitiveSkin.value = false;
+    makeupFinish.value        = '霧面';
+    makeupStyle.value         = '日常通勤';
+    makeupPreferenceNote.value = '';
+    showMakeupPreference.value = false;
+    currentStep.value         = 1;
+};
 const backToResultsPage     = () => { currentStep.value = 4; };
 const goToConfirmStep       = () => { currentStep.value = 5; };
 
