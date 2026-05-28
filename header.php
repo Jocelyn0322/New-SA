@@ -256,7 +256,13 @@ if (isset($_SESSION['user'])) {
           <a href="<?= BASE_URL ?>/首頁/admin.php" class="btn btn-outline btn-sm">管理後台</a>
         <?php else: ?>
           <a href="<?= BASE_URL ?>/首頁/profile.php" class="user-chip" data-tip="個人資料">
-            <div class="user-avatar"><?= htmlspecialchars($_initial) ?></div>
+            <div class="user-avatar" style="overflow:hidden;">
+              <?php if ($_avatarUrl !== ''): ?>
+                <img src="<?= htmlspecialchars($_avatarUrl) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
+              <?php else: ?>
+                <?= htmlspecialchars($_initial) ?>
+              <?php endif; ?>
+            </div>
             <span><?= htmlspecialchars($_SESSION['user']) ?></span>
           </a>
         <?php endif; ?>
