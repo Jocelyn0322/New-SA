@@ -127,6 +127,7 @@ const showAlert = (msg) => {
 
     const p = document.createElement('p');
     p.className = 'morandi-modal-msg';
+    p.style.whiteSpace = 'pre-line';
     p.textContent = String(msg);
 
     const btn = document.createElement('button');

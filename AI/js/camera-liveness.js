@@ -5,7 +5,7 @@
 const startCamera = async () => {
     try {
         if (!hasShownNaturalLightReminder.value) {
-            alert('提醒：請在自然光下拍攝，結果會更準確。');
+            alert('💡 建議在自然光下拍攝，效果最好。\n⏰ 避免下午出油時段；建議洗臉後 30 分鐘、在相同條件下拍攝，結果更準確。');
             hasShownNaturalLightReminder.value = true;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
