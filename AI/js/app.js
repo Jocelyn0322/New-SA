@@ -105,6 +105,7 @@ const app = createApp({
             feedbackTypeText,
             submitProductFeedback,
             analyzeManual,
+            analyzeSkinTone,
             analyzeWithGroq,
             finishAndSave,
             skinFamilyMatch,
