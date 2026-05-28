@@ -12,7 +12,16 @@ require __DIR__ . '/../db.php';
 $message = '';
 $messageType = '';
 
-$pdo->exec("ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT");
+// 確保所有欄位存在（Railway 冷啟動時可能缺欄位）
+foreach ([
+    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT",
+    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS allergies TEXT",
+    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS age INTEGER",
+    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS gender VARCHAR(20)",
+    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS skin_concerns TEXT",
+    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS makeup_finish VARCHAR(50)",
+    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS makeup_style VARCHAR(50)",
+] as $_sql) { try { $pdo->exec($_sql); } catch(Exception $_e) {} }
 
 $isNewUser = isset($_GET['new']);
 
@@ -32,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $skinType     = $_POST['skin_type'] ?? '';
     $skinTone     = $_POST['skin_tone'] ?? '';
     $skinConcerns = implode(', ', $_POST['skin_concerns'] ?? []);
-    $age          = $_POST['age'] ?? null;
+    $age          = isset($_POST['age']) && $_POST['age'] !== '' ? intval($_POST['age']) : null;
     $allergies    = $_POST['allergies'] ?? '';
 
     try {
@@ -46,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
         $message = '個人資料儲存成功！';
         $messageType = 'success';
     } catch (Exception $e) {
-        $message = '儲存失敗，請稍後再試';
+        $message = '儲存失敗：' . $e->getMessage();
         $messageType = 'error';
     }
 
