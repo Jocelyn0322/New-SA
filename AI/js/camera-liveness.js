@@ -551,7 +551,7 @@ const checkObstacleAndLiveness = async (face) => {
         alert('❌ 檢測到口罩或下方遮擋物。\n請移除口罩/圍巾以便系統讀取真正的臉部肌膚。');
         return false;
     }
-    if (skinRatioUpper < 0.42) {
+    if (skinRatioUpper < 0.55) {
         alert('❌ 檢測到帽子、瀏海或眼部遮擋。\n請移除帽子/撥開頭髮再重試。');
         return false;
     }
