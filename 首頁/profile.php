@@ -232,7 +232,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
 
   <!-- Profile Header -->
   <div class="profile-header">
-    <div class="profile-avatar-wrap" onclick="document.getElementById('avatarInput').click()" title="點擊更換頭貼">
+    <label for="avatarInput" class="profile-avatar-wrap" title="點擊更換頭貼" style="cursor:pointer;">
       <div class="profile-avatar" id="avatarCircle">
         <?php if (!empty($profile['avatar_url'])): ?>
           <img src="<?= htmlspecialchars($profile['avatar_url']) ?>" id="avatarImg">
@@ -242,7 +242,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
         <?php endif; ?>
       </div>
       <div class="avatar-edit-icon">✎</div>
-    </div>
+    </label>
     <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="uploadAvatar(this)">
 
     <div class="profile-info">
