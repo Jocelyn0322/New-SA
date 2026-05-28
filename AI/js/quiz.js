@@ -91,7 +91,7 @@ const goToCameraStep = () => {
 const confirmSkinTone = () => { confirmedSkinTone.value = !confirmedSkinTone.value; };
 const confirmSkinType = () => { confirmedSkinType.value = !confirmedSkinType.value; };
 
-const backToToneAndSkinPage = () => { currentStep.value = 3; };
+const backToToneAndSkinPage = () => { stopCamera(); currentStep.value = 3; };
 const backToResultsPage     = () => { currentStep.value = 4; };
 const goToConfirmStep       = () => { currentStep.value = 5; };
 

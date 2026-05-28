@@ -11,8 +11,9 @@ $_navSkin   = strpos($_uri, '/skinmatch.php') !== false || strpos($_uri, '/skin-
 $_favCount  = count($_SESSION['favorite'] ?? []);
 $_initial   = isset($_SESSION['user']) ? mb_strtoupper(mb_substr($_SESSION['user'], 0, 1)) : '';
 
-// 通知未讀數（只在登入時查）
+// 通知未讀數 & 大頭照（只在登入時查）
 $_notifCount = 0;
+$_avatarUrl  = '';
 if (isset($_SESSION['user'])) {
     try {
         ensureNotificationsTable($pdo);
@@ -21,6 +22,12 @@ if (isset($_SESSION['user'])) {
         $ns->execute([$_SESSION['user']]);
         $_notifCount = (int)$ns->fetchColumn();
     } catch (Exception $e) { $_notifCount = 0; }
+
+    try {
+        $av = $pdo->prepare("SELECT avatar_url FROM user_profiles WHERE username = ?");
+        $av->execute([$_SESSION['user']]);
+        $_avatarUrl = (string)($av->fetchColumn() ?: '');
+    } catch (Exception $e) { $_avatarUrl = ''; }
 }
 ?>
 <style>
@@ -128,6 +135,7 @@ if (isset($_SESSION['user'])) {
   .header-actions .user-chip,
   .header-actions .btn { display: none !important; }
   .header-inner { padding: 0 16px; gap: 12px; }
+  .header-actions { margin-left: auto; }
 }
 /* On very small screens hide most header icons, keep only notif bell */
 @media (max-width: 480px) {
@@ -171,6 +179,14 @@ if (isset($_SESSION['user'])) {
 </style>
 <header class="header">
   <div class="header-inner">
+    <!-- 漢堡鈕（手機才顯示） -->
+    <button class="hamburger" id="hamburger" onclick="openMobMenu()" aria-label="選單">
+      <svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor">
+        <rect width="20" height="2.5" rx="1.25"/>
+        <rect y="6.75" width="20" height="2.5" rx="1.25"/>
+        <rect y="13.5" width="20" height="2.5" rx="1.25"/>
+      </svg>
+    </button>
     <a href="<?= BASE_URL ?>/產品/index.php" class="logo">
       <div class="logo-mark">💄</div>COSMETIC
     </a>
@@ -180,14 +196,6 @@ if (isset($_SESSION['user'])) {
       <a href="<?= BASE_URL ?>/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
       <a href="<?= BASE_URL ?>/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
-    <!-- 漢堡鈕（手機才顯示） -->
-    <button class="hamburger" id="hamburger" onclick="openMobMenu()" aria-label="選單">
-      <svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor">
-        <rect width="20" height="2.5" rx="1.25"/>
-        <rect y="6.75" width="20" height="2.5" rx="1.25"/>
-        <rect y="13.5" width="20" height="2.5" rx="1.25"/>
-      </svg>
-    </button>
     <div class="header-actions">
       <a href="<?= BASE_URL ?>/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M50,85 C35,75 10,60 10,35 C10,18 20,8 33,8 C42,8 48,13 50,20 C52,13 58,8 67,8 C80,8 90,18 90,35 C90,60 65,75 50,85 Z"/>
@@ -248,7 +256,13 @@ if (isset($_SESSION['user'])) {
           <a href="<?= BASE_URL ?>/首頁/admin.php" class="btn btn-outline btn-sm">管理後台</a>
         <?php else: ?>
           <a href="<?= BASE_URL ?>/首頁/profile.php" class="user-chip" data-tip="個人資料">
-            <div class="user-avatar"><?= htmlspecialchars($_initial) ?></div>
+            <div class="user-avatar" style="overflow:hidden;">
+              <?php if ($_avatarUrl !== ''): ?>
+                <img src="<?= htmlspecialchars($_avatarUrl) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
+              <?php else: ?>
+                <?= htmlspecialchars($_initial) ?>
+              <?php endif; ?>
+            </div>
             <span><?= htmlspecialchars($_SESSION['user']) ?></span>
           </a>
         <?php endif; ?>
@@ -269,7 +283,13 @@ if (isset($_SESSION['user'])) {
 
   <?php if (isset($_SESSION['user'])): ?>
   <div class="mob-user">
-    <div class="mob-avatar"><?= htmlspecialchars($_initial) ?></div>
+    <div class="mob-avatar">
+      <?php if ($_avatarUrl !== ''): ?>
+        <img src="<?= htmlspecialchars($_avatarUrl) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+      <?php else: ?>
+        <?= htmlspecialchars($_initial) ?>
+      <?php endif; ?>
+    </div>
     <div>
       <div class="mob-username"><?= htmlspecialchars($_SESSION['user']) ?></div>
       <div class="mob-username-sub">已登入</div>

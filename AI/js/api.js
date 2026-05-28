@@ -1,6 +1,47 @@
 // api.js — All fetch/API calls: skin tone data, product recommendations, feedback, ingredient advice, Groq AI analysis.
 // Depends on: state.js, skin-engine.js (getCalibratedSkinType), skin-analysis.js (selectToneByFamilyPreference, hexToRgb, updateToneMismatchWarning, getToneGuessFamily)
 
+// ── Skin family helpers ───────────────────────────────────────────
+const skinFamilyOf = (type) => {
+    if (['油性皮', '混油皮'].includes(type)) return 'oily';
+    if (['乾性皮', '混乾皮'].includes(type)) return 'dry';
+    if (type === '敏感肌') return 'sensitive';
+    return 'neutral';
+};
+
+const skinFamilyMatch = (typeA, typeB) => {
+    if (!typeA || !typeB) return false;
+    return skinFamilyOf(typeA) === skinFamilyOf(typeB);
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+const quizAiMatch = computed(() => {
+    if (!quizDerivedSkinType.value || !aiDetectedSkinType.value) return null;
+    return skinFamilyMatch(quizDerivedSkinType.value, aiDetectedSkinType.value);
+});
+
+const consistencyRate = computed(() => {
+    const h = analysisHistory.value;
+    if (!h.length) return 1;
+    const matched = h.filter(item => skinFamilyMatch(item.quiz_skin_type, item.ai_skin_type)).length;
+    return matched / h.length;
+});
+
+const loadAnalysisHistory = async () => {
+    try {
+        const resp = await fetch('./getAnalysisHistory.php');
+        const data = await resp.json().catch(() => ({}));
+        analysisHistory.value = Array.isArray(data.history) ? data.history : [];
+    } catch (e) {
+        console.warn('loadAnalysisHistory failed:', e);
+    }
+};
+
 // ── Data loading ─────────────────────────────────────────────────
 const initSkinToneData = () => {
     fetch('./getSkinTones.php')
@@ -230,6 +271,8 @@ const analyzeWithGroq = async () => {
 
         const baseSkinType = manualSkinType.value || analysis.skin_type || '';
         const fused        = getCalibratedSkinType(baseSkinType, Number(analysis.confidence_score ?? 0.5));
+        aiDetectedSkinType.value  = analysis.skin_type || '';
+        quizDerivedSkinType.value = fused.quizTopType  || '';
         skinTypeResult.value        = fused.finalType;
         skinTypeSecondary.value     = fused.secondaryType || skinTypeSecondary.value || '';
         manualSkinType.value        = fused.finalType;
@@ -251,6 +294,7 @@ const analyzeWithGroq = async () => {
         }
 
         await loadFeedbackHistory();
+        await loadAnalysisHistory();
         currentStep.value = 4;
         await saveProfileSilent();
     } catch (error) {
@@ -324,8 +368,10 @@ const finishAndSave = async () => {
                 skinType,
                 skinTone,
                 skinConcerns:  concerns.join(', '),
-                makeupFinish:  makeupFinish.value  || '',
-                makeupStyle:   makeupStyle.value   || '',
+                makeupFinish:  makeupFinish.value       || '',
+                makeupStyle:   makeupStyle.value        || '',
+                quizSkinType:  quizDerivedSkinType.value || '',
+                aiSkinType:    aiDetectedSkinType.value  || '',
             })
         });
         const result = await resp.json().catch(() => ({}));
@@ -374,7 +420,13 @@ const saveProfileSilent = async () => {
         const resp = await fetch('./saveAnalysisResult.php', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ skinType: skinTypeVal, skinTone: skinToneVal, skinConcerns: concerns.join(', ') })
+            body:    JSON.stringify({
+                skinType:     skinTypeVal,
+                skinTone:     skinToneVal,
+                skinConcerns: concerns.join(', '),
+                quizSkinType: quizDerivedSkinType.value || '',
+                aiSkinType:   aiDetectedSkinType.value  || '',
+            })
         });
         const result = await resp.json().catch(() => ({}));
         console.log('[saveProfileSilent]', result, { skinTypeVal, skinToneVal });

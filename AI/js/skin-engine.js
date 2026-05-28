@@ -147,6 +147,7 @@ const getCalibratedSkinType = (aiOrManualSkinType, aiConfidence = 0.5) => {
         finalType, secondaryType,
         scores: combinedScores, quizScores, aiScores,
         quizWeight, aiWeight,
+        quizTopType: quizTop.topType,
         consistencyScore, consistencyIssues,
         isOutlier, needsRetest: needsRetestFlag,
         blockRecommendation, sensitiveForced,

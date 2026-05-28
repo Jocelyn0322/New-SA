@@ -69,16 +69,18 @@ $totalCount    = (int)$pdo->query("SELECT COUNT(*) FROM product_reports")->fetch
 $resolvedCount = $totalCount - $pendingCount;
 
 $typeLabel = [
-    'discontinued' => '已停產',
-    'new_version'  => '有新版本',
-    'wrong_info'   => '資訊有誤',
-    'other'        => '其他',
+    'discontinued'   => '已停產',
+    'new_version'    => '有新版本',
+    'wrong_info'     => '資訊有誤',
+    'ai_not_suitable'=> 'AI推薦不適合',
+    'other'          => '其他',
 ];
 $typeBadge = [
-    'discontinued' => 'badge-red',
-    'new_version'  => 'badge-blue',
-    'wrong_info'   => 'badge-orange',
-    'other'        => 'badge-gray',
+    'discontinued'   => 'badge-red',
+    'new_version'    => 'badge-blue',
+    'wrong_info'     => 'badge-orange',
+    'ai_not_suitable'=> 'badge-purple',
+    'other'          => 'badge-gray',
 ];
 ?>
 <!DOCTYPE html>
@@ -168,6 +170,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 .badge-red    { background: #fde8e8; color: #c0392b; }
 .badge-blue   { background: #dbeafe; color: #1d4ed8; }
 .badge-orange { background: #fef3c7; color: #b45309; }
+.badge-purple { background: #f3e8ff; color: #7c3aed; }
 .badge-gray   { background: #f1f5f9; color: #64748b; }
 .badge-green  { background: #d1fae5; color: #065f46; }
 .rp-desc    { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 8px; }
@@ -190,12 +193,31 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 
 /* ── Error ── */
 .db-error { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: var(--r); padding: 16px 20px; color: #c0392b; font-size: 13px; }
+
+/* ── Mobile ── */
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 99; backdrop-filter: blur(2px); }
+.sidebar-overlay.open { display: block; }
+.mob-sidebar-toggle { display: none; background: none; border: none; cursor: pointer; width: 36px; height: 36px; border-radius: 8px; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; transition: background .15s; margin-right: 8px; }
+.mob-sidebar-toggle:hover { background: var(--bg); }
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); transition: transform .28s cubic-bezier(.4,0,.2,1); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .mob-sidebar-toggle { display: flex; }
+  .content { padding: 16px; }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-btn { padding: 0 8px; font-size: 12px; white-space: nowrap; }
+  .stat-row { grid-template-columns: repeat(3, 1fr); }
+  .rp-card { grid-template-columns: 1fr !important; }
+  .rp-actions { border-left: none !important; border-top: 1px solid var(--border); flex-direction: row; flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
 
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeAdminSidebar()"></div>
 <!-- Sidebar -->
-<aside class="sidebar">
+<aside class="sidebar" id="adminSidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-main">💄 COSMETIC</div>
     <div class="sidebar-logo-sub">管理後台</div>
@@ -234,6 +256,13 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 <!-- Main -->
 <div class="main">
   <div class="topbar">
+    <button class="mob-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="選單">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="currentColor">
+        <rect width="18" height="2.2" rx="1.1"/>
+        <rect y="5.9" width="18" height="2.2" rx="1.1"/>
+        <rect y="11.8" width="18" height="2.2" rx="1.1"/>
+      </svg>
+    </button>
     <div class="topbar-title">商品回報管理</div>
     <div class="topbar-spacer"></div>
     <a href="<?= BASE_URL ?>/首頁/admin.php" class="topbar-btn">← 返回後台</a>
@@ -334,5 +363,15 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 
   </div>
 </div>
+<script>
+function toggleAdminSidebar() {
+  document.getElementById('adminSidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeAdminSidebar() {
+  document.getElementById('adminSidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+</script>
 </body>
 </html>

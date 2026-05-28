@@ -5,7 +5,7 @@
 const startCamera = async () => {
     try {
         if (!hasShownNaturalLightReminder.value) {
-            alert('提醒：請在自然光下拍攝，結果會更準確。');
+            alert('💡 建議在自然光下拍攝，效果最好。\n⏰ 避免下午出油時段；建議洗臉後 30 分鐘、在相同條件下拍攝，結果更準確。');
             hasShownNaturalLightReminder.value = true;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -20,6 +20,9 @@ const startCamera = async () => {
         }
         video.value.srcObject = stream;
         video.value.onloadedmetadata = () => { video.value.play().catch(() => {}); };
+        stream.getTracks().forEach(track => {
+            track.addEventListener('ended', () => { cameraActive.value = false; });
+        });
     } catch (error) {
         let msg = '無法訪問相機: ';
         if (error.name === 'NotAllowedError')       msg += '請允許相機權限';
@@ -38,6 +41,16 @@ const stopCamera = () => {
     }
     cameraActive.value = false;
 };
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && cameraActive.value && video.value) {
+        const tracks = video.value.srcObject?.getTracks() ?? [];
+        if (!tracks.length || tracks.every(t => t.readyState === 'ended')) {
+            video.value.srcObject = null;
+            cameraActive.value = false;
+        }
+    }
+});
 
 // ── Face detection (BlazeFace fallback) ─────────────────────────
 const ensureFallbackFaceDetector = (() => {
@@ -168,7 +181,7 @@ const isSkinPixel = (r, g, b) => {
     const y  = 0.299 * r + 0.587 * g + 0.114 * b;
     const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
     const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-    return (cb >= 77 && cb <= 127) && (cr >= 133 && cr <= 173) && y > 40;
+    return (cb >= 70 && cb <= 135) && (cr >= 128 && cr <= 180) && y > 35;
 };
 
 const sampleFacePatch = (face, size = 128) => {
@@ -183,14 +196,47 @@ const sampleFacePatch = (face, size = 128) => {
     return ctx.getImageData(0, 0, size, size);
 };
 
+// 額頭採樣：在 bounding box 上方 0.5 倍高度的區域取 128×48 patch
+const sampleForeheadPatch = (face) => {
+    const bb     = face.boundingBox;
+    const fw     = Math.max(1, Math.floor(bb.width));
+    const fh     = Math.max(1, Math.floor(bb.height));
+    const pH     = Math.max(1, Math.floor(fh * 0.50));   // 取臉高的一半作為額頭採樣高度
+    const pY     = Math.max(0, Math.floor(bb.y) - pH);   // 從 bounding box 上方開始
+    const xPad   = Math.floor(fw * 0.20);
+    const pX     = Math.max(0, Math.floor(bb.x) + xPad);
+    const pW     = Math.max(1, fw - xPad * 2);
+    const W = 128, H = 48;
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const ctx = off.getContext('2d');
+    ctx.drawImage(video.value, pX, pY, pW, pH, 0, 0, W, H);
+    return ctx.getImageData(0, 0, W, H);
+};
+
+const computeSkinRatioFlat = (imageData) => {
+    const { data, width, height } = imageData;
+    let skinCount = 0, total = 0;
+    for (let y = 0; y < height; y += 2) {
+        for (let x = 0; x < width; x += 2) {
+            const i = (y * width + x) * 4;
+            if (isSkinPixel(data[i], data[i + 1], data[i + 2])) skinCount++;
+            total++;
+        }
+    }
+    return total > 0 ? (skinCount / total) : 0;
+};
+
 const computeSkinRatioRegion = (imageData, region = 'lower') => {
     const { data, width, height } = imageData;
     let skinCount = 0, total = 0;
     const mid = Math.floor(height * 0.5);
     const y0  = region === 'upper' ? 0   : mid;
     const y1  = region === 'upper' ? mid : height;
+    // For lower region, only sample the center 60% horizontally to ignore side hair
+    const xPad = region === 'lower' ? Math.floor(width * 0.20) : 0;
     for (let y = y0; y < y1; y += 3) {
-        for (let x = 0; x < width; x += 3) {
+        for (let x = xPad; x < width - xPad; x += 3) {
             const i = (y * width + x) * 4;
             if (isSkinPixel(data[i], data[i + 1], data[i + 2])) skinCount++;
             total++;
@@ -532,14 +578,24 @@ const checkObstacleAndLiveness = async (face) => {
     const skinRatioLower = computeSkinRatioRegion(patch, 'lower');
     const skinRatioUpper = computeSkinRatioRegion(patch, 'upper');
 
-    if (skinRatioLower < 0.6) {
+    if (skinRatioLower < 0.25) {
         alert('❌ 檢測到口罩或下方遮擋物。\n請移除口罩/圍巾以便系統讀取真正的臉部肌膚。');
         return false;
     }
-    if (skinRatioUpper < 0.6) {
-        alert('❌ 檢測到瀏海、眼鏡或眼部遮擋。\n請撥開頭髮或移除眼部遮擋物再重試。');
+    if (skinRatioUpper < 0.40) {
+        alert('❌ 檢測到眼部或上臉遮擋物。\n請撥開頭髮或移除遮擋物再重試。');
         return false;
     }
+
+    // 額頭專屬檢查：在臉的 bounding box 上方採樣，若膚色比例低表示有帽子遮住
+    try {
+        const foreheadPatch = sampleForeheadPatch(face);
+        const skinRatioForehead = computeSkinRatioFlat(foreheadPatch);
+        if (skinRatioForehead < 0.20) {
+            alert('❌ 偵測到額頭被遮住（帽子／頭帶）。\n請移除後再拍攝，以便正確讀取膚色。');
+            return false;
+        }
+    } catch (e) { /* 無法取得額頭區域時跳過此項檢查 */ }
 
     const rotationResult = await detectHeadRotation();
     if (!rotationResult.success) return false;

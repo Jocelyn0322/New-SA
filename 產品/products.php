@@ -34,7 +34,7 @@ $offset = ($page - 1) * $per_page;
 
 $result = $conn->query($sql_base . $joins . $where_clause . " $order LIMIT $per_page OFFSET $offset");
 
-$categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT category FROM data) sub ORDER BY CASE category
+$categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT category FROM data WHERE category IS NOT NULL AND category != '') sub ORDER BY CASE category
     WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2
     WHEN '眼影' THEN 3 WHEN '眼線' THEN 4 WHEN '睫毛膏' THEN 5
     WHEN '腮紅' THEN 6 WHEN '修容' THEN 7 WHEN '打亮' THEN 8
@@ -42,6 +42,15 @@ $categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT categor
     WHEN '護膚' THEN 10 WHEN '護唇' THEN 11 WHEN '防曬' THEN 12
     ELSE 99 END");
 $favorites = $_SESSION['favorite'] ?? [];
+// 若 session 空但已登入，從 DB 補回（避免 Railway 部署後愛心消失）
+if (empty($favorites) && isset($_SESSION['user'])) {
+    try {
+        $fStmt = $pdo->prepare("SELECT product_id FROM product_favorites WHERE username = ?");
+        $fStmt->execute([$_SESSION['user']]);
+        $favorites = array_column($fStmt->fetchAll(PDO::FETCH_ASSOC), 'product_id');
+        if (!empty($favorites)) $_SESSION['favorite'] = $favorites;
+    } catch (Exception $e) {}
+}
 $compare_count = count($_SESSION['compare'] ?? []);
 
 /* build pagination URL helper */
@@ -61,7 +70,7 @@ function page_url($p) {
     .search-hero { background: var(--card); border-bottom: 1px solid var(--border); padding: 20px 0; position: sticky; top: var(--header-h); z-index: 50; }
     .search-hero-inner { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; display: flex; gap: 10px; align-items: center; }
     .search-input-wrap { flex: 1; position: relative; }
-    .search-input-wrap input { width: 100%; padding: 10px 14px 10px 40px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 14px; font-family: inherit; outline: none; transition: border var(--t); background: var(--bg); }
+    .search-input-wrap input { width: 100%; padding: 10px 36px 10px 40px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 14px; font-family: inherit; outline: none; transition: border var(--t); background: var(--bg); }
     .search-input-wrap input:focus { border-color: var(--rose); background: white; }
     .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 15px; pointer-events: none; }
     .filter-wrap { max-width: var(--max-w); margin: 20px auto 0; padding: 0 24px; }
@@ -100,7 +109,7 @@ function page_url($p) {
       .search-hero-inner { flex-wrap: wrap; gap: 8px; padding: 0 12px; }
       .search-input-wrap { flex: 1 1 100%; order: -1; }
       .sort-select { flex: 1; min-width: 0; }
-      .btn-img-search { display: none; }
+      .btn-img-search { display: inline-flex; }
       .filter-wrap { padding: 0 12px; }
       .products-wrap { padding: 0 12px; margin-top: 16px; }
     }
@@ -131,6 +140,11 @@ function page_url($p) {
       color: var(--text);
       line-height: 1.8;
       margin-bottom: 8px;
+      min-height: calc(15px * 1.8 * 2);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     /* badge + 色號 區域固定高度，無論有無都佔位 */
     .product-card-mid {
@@ -169,7 +183,11 @@ function page_url($p) {
   <div class="search-hero-inner">
     <form class="search-input-wrap" method="GET" id="searchForm">
       <span class="search-icon">🔍</span>
-      <input type="text" name="keyword" placeholder="搜尋品牌、產品名稱..." value="<?= htmlspecialchars($keyword) ?>">
+      <input type="text" name="keyword" id="keywordInput" placeholder="搜尋品牌、產品名稱..."
+             value="<?= htmlspecialchars($keyword) ?>"
+             oninput="document.getElementById('clearSearchBtn').style.display=this.value?'flex':'none'">
+      <button type="button" id="clearSearchBtn" onclick="clearKeyword()"
+              style="display:<?= $keyword ? 'flex' : 'none' ?>;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-3);cursor:pointer;font-size:18px;line-height:1;padding:4px;align-items:center;justify-content:center;">×</button>
       <?php if ($category): ?><input type="hidden" name="category" value="<?= htmlspecialchars($category) ?>"><?php endif; ?>
       <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
     </form>
@@ -366,6 +384,7 @@ function page_url($p) {
         <option value="discontinued">產品已停產</option>
         <option value="new_version">已出新版本</option>
         <option value="wrong_info">資訊有誤</option>
+        <option value="ai_not_suitable">AI 推薦不適合我的膚質</option>
         <option value="other">其他</option>
       </select>
       <label>補充說明</label>
@@ -386,20 +405,52 @@ function page_url($p) {
     <h3 style="margin:0 0 6px;">📷 以圖搜尋產品</h3>
     <p style="font-size:13px;color:var(--text-3);margin:0 0 18px;">上傳產品照片，AI 自動識別並找出相似商品</p>
     <div id="imgDropZone"
-      onclick="document.getElementById('imgFileInput').click()"
       ondragover="event.preventDefault();this.style.borderColor='var(--rose)';this.style.background='var(--rose-50)'"
       ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg)'"
       ondrop="handleImgDrop(event)"
-      style="border:2px dashed var(--border);border-radius:var(--r-lg);background:var(--bg);padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;">
+      style="border:2px dashed var(--border);border-radius:var(--r-lg);background:var(--bg);padding:20px;text-align:center;transition:all .2s;">
       <div id="imgDropZoneContent">
         <div style="font-size:36px;margin-bottom:8px;">🖼️</div>
-        <p style="font-size:14px;font-weight:600;color:var(--rose);margin:0 0 4px;">點擊或拖曳圖片至此</p>
-        <p style="font-size:12px;color:var(--text-3);margin:0;">支援 JPG、PNG、WEBP</p>
+        <p class="img-drop-hint" style="font-size:14px;font-weight:600;color:var(--rose);margin:0 0 4px;">點擊或拖曳圖片至此</p>
+        <p style="font-size:12px;color:var(--text-3);margin:0 0 14px;">支援 JPG、PNG、WEBP</p>
+        <!-- 手機：相簿 + 拍照 兩個按鈕 -->
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button type="button" onclick="document.getElementById('imgFileInput').click()"
+            style="flex:1;max-width:160px;padding:10px 0;border-radius:var(--r-full,99px);border:1.5px solid var(--rose);background:#fff;color:var(--rose);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+            📁 選擇相簿
+          </button>
+          <button type="button" onclick="document.getElementById('imgCameraInput').click()"
+            style="flex:1;max-width:160px;padding:10px 0;border-radius:var(--r-full,99px);border:none;background:var(--rose);color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+            📸 直接拍照
+          </button>
+        </div>
       </div>
       <img id="imgPreview" src="" alt="" style="display:none;max-width:100%;max-height:200px;border-radius:var(--r);object-fit:contain;">
     </div>
     <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImgFile(this.files[0])">
-    <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="width:100%;margin-top:14px;opacity:.5;cursor:not-allowed;">開始搜尋</button>
+    <input type="file" id="imgCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImgFile(this.files[0])">
+    <div style="margin-top:14px;">
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;display:block;">產品類別（選填，可提高搜尋準確度）</label>
+      <select id="imgCategoryFilter" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--text-2);background:var(--bg);outline:none;transition:border var(--t);" onfocus="this.style.borderColor='var(--rose)'" onblur="this.style.borderColor='var(--border)'">
+        <option value="">讓 AI 自動判斷</option>
+        <option value="底妝">底妝</option>
+        <option value="遮瑕">遮瑕</option>
+        <option value="眼影">眼影</option>
+        <option value="眼線">眼線</option>
+        <option value="睫毛膏">睫毛膏</option>
+        <option value="腮紅">腮紅</option>
+        <option value="修容">修容</option>
+        <option value="打亮">打亮</option>
+        <option value="唇彩">唇彩</option>
+        <option value="護膚">護膚</option>
+        <option value="護唇">護唇</option>
+        <option value="防曬">防曬</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="flex:1;opacity:.5;cursor:not-allowed;">開始搜尋</button>
+      <button id="imgResetBtn" onclick="resetImgSearch()" class="btn btn-outline" style="display:none;flex-shrink:0;width:auto;">換張圖片</button>
+    </div>
     <div id="imgLoading" style="display:none;text-align:center;padding:20px 0;">
       <div style="display:inline-block;width:28px;height:28px;border:3px solid var(--rose-100);border-top-color:var(--rose);border-radius:50%;animation:spin .8s linear infinite;"></div>
       <p style="font-size:13px;color:var(--text-3);margin:10px 0 0;">AI 正在識別產品…</p>
@@ -425,6 +476,12 @@ document.getElementById('searchForm').addEventListener('submit', function() {
   this.querySelectorAll('input[name="page"]').forEach(el => el.remove());
 });
 
+function clearKeyword() {
+  document.getElementById('keywordInput').value = '';
+  document.getElementById('clearSearchBtn').style.display = 'none';
+  document.getElementById('searchForm').submit();
+}
+
 /* ── Sort ── */
 function applySort(val) {
   const url = new URL(window.location.href);
@@ -449,6 +506,8 @@ function resetImgSearch() {
   btn.disabled=true; btn.style.opacity='.5'; btn.style.cursor='not-allowed';
   ['imgLoading','imgParsedTags','imgResults','imgNoResult'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('imgFileInput').value='';
+  document.getElementById('imgCategoryFilter').value='';
+  document.getElementById('imgResetBtn').style.display='none';
 }
 function handleImgDrop(e) {
   e.preventDefault();
@@ -469,6 +528,7 @@ function handleImgFile(file) {
     document.getElementById('imgDropZoneContent').style.display='none';
     const btn=document.getElementById('imgAnalyzeBtn');
     btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer';
+    document.getElementById('imgResetBtn').style.display='';
     ['imgResults','imgNoResult','imgParsedTags'].forEach(id=>document.getElementById(id).style.display='none');
   };
   reader.readAsDataURL(file);
@@ -479,7 +539,8 @@ async function runImgSearch() {
   ['imgResults','imgNoResult','imgParsedTags'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('imgAnalyzeBtn').disabled=true;
   try {
-    const res=await fetch('image_search_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:imgBase64,mimeType:imgMime})});
+    const userCategory=document.getElementById('imgCategoryFilter').value;
+    const res=await fetch('image_search_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:imgBase64,mimeType:imgMime,userCategory:userCategory})});
     const data=await res.json();
     document.getElementById('imgLoading').style.display='none';
     document.getElementById('imgAnalyzeBtn').disabled=false;

@@ -3,9 +3,24 @@ require_once __DIR__ . '/../auth_check.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 include __DIR__ . '/../db.php';
 
-$ids = $_SESSION['favorite'] ?? [];
-$result = null;
+// 優先從 DB 讀取（session 可能因 Railway 部署而遺失）
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS product_favorites (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) NOT NULL,
+        product_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (username, product_id)
+    )");
+    $fStmt = $pdo->prepare("SELECT product_id FROM product_favorites WHERE username = ? ORDER BY created_at DESC");
+    $fStmt->execute([$_SESSION['user']]);
+    $ids = array_column($fStmt->fetchAll(PDO::FETCH_ASSOC), 'product_id');
+    $_SESSION['favorite'] = $ids;
+} catch (Exception $e) {
+    $ids = $_SESSION['favorite'] ?? [];
+}
 
+$result = null;
 if (!empty($ids)) {
     $id_list = implode(",", array_map('intval', $ids));
     $result  = $conn->query("SELECT *, id AS p_id FROM data WHERE id IN ($id_list)");
@@ -23,6 +38,16 @@ if (!empty($ids)) {
     .fav-header h2 { font-size: 1.4rem; font-weight: 700; }
     .fav-header p  { font-size: 13px; color: var(--text-3); margin-top: 4px; }
     @media(max-width:640px){ .fav-wrap { padding: 0 14px; margin-top: 24px; } }
+
+    .product-card-img { height: 220px; overflow: hidden; }
+    .product-card-img img { width: 100%; height: 100%; object-fit: contain; background: #f5f5f5; padding: 8px; display: block; }
+    .product-card-body { flex: 1; display: flex; flex-direction: column; padding: 14px 16px 16px; }
+    .product-card-brand { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-3); text-transform: uppercase; margin-bottom: 4px; }
+    .product-card-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.8; margin-bottom: 8px; min-height: calc(15px * 1.8 * 2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-card-mid { min-height: 32px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+    .badge { display: inline-block; padding: 3px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+    .badge-rose { background: #fce7ec; color: #c26b7c; }
+    .product-card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; align-items: center; }
   </style>
 </head>
 <body>
@@ -48,7 +73,7 @@ if (!empty($ids)) {
       <div class="product-card">
         <div class="product-card-img">
           <?php if (!empty($row['image_url'])): ?>
-            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:cover;">
+            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
           <?php else: ?>💄<?php endif; ?>
         </div>
 
@@ -60,9 +85,11 @@ if (!empty($ids)) {
         <div class="product-card-body">
           <div class="product-card-brand"><?= htmlspecialchars($row['brand']) ?></div>
           <div class="product-card-name"><?= htmlspecialchars($row['name']) ?></div>
-          <?php if (!empty($row['category'])): ?>
-            <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
-          <?php endif; ?>
+          <div class="product-card-mid">
+            <?php if (!empty($row['category'])): ?>
+              <span class="badge badge-rose"><?= htmlspecialchars($row['category']) ?></span>
+            <?php endif; ?>
+          </div>
           <div class="product-card-actions">
             <a href="product.php?id=<?= $row['p_id'] ?>" class="btn btn-primary">查看</a>
             <form action="add_compare.php" method="POST" style="flex:1;">

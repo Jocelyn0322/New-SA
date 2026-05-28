@@ -28,15 +28,27 @@ $groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
 $prompt = '你是彩妝產品識別專家。分析這張產品照片，只輸出 JSON，不要任何說明或 markdown。
 
+資料庫固定分類（category 只能填以下其中一個，或空字串）：
+底妝、遮瑕、眼影、眼線、睫毛膏、腮紅、修容、打亮、唇彩、護膚、護唇、防曬
+
 格式：
 {
-  "brand": "品牌名，優先辨識包裝上的文字（看不清楚填空字串）",
-  "product_type": "產品類型，如睫毛膏、粉底液、口紅、眼影盤、眼線筆、腮紅、氣墊粉餅等（不確定填空字串，寧可填空也不要猜錯）",
-  "shape": "外觀容器形狀，如細長管狀、扁平盒狀、調色盤、氣墊、粉條、膏狀管等",
-  "attributes": ["顏色或質地描述，如黑色、霧面、玫瑰色等"]
+  "brand": "品牌名",
+  "category": "分類",
+  "keywords": ["關鍵字1", "關鍵字2"]
 }
 
-重要：brand 辨識優先級最高；product_type 不確定時填空字串，不要猜測。';
+brand 規則（非常重要）：
+- 只填寫照片中肉眼能直接讀到的品牌文字，例如包裝上印著 CHANEL、DIOR、MAC 等字樣
+- 看不到清楚的品牌文字 → 一定要填空字串 ""
+- 絕對禁止從外觀顏色、設計風格、產品形狀去推測或猜測品牌
+- 寧可填空也不能猜錯
+
+category 規則：
+- 必須是固定分類中的一個詞，不確定填 ""
+- 眼影盤/眼影粉→眼影、口紅/唇膏/唇釉→唇彩、粉底/氣墊/BB霜→底妝、打亮/highlighter→打亮、修容/bronzer/contour→修容
+
+keywords：產品系列名或色號（如看到文字），最多2個，看不出來留 []';
 
 $requestBody = json_encode([
     'model'    => 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -84,38 +96,37 @@ if (!$parsed) {
     exit;
 }
 
-$productType = trim($parsed['product_type'] ?? '');
-$brand       = trim($parsed['brand']        ?? '');
-$shape       = trim($parsed['shape']        ?? '');
-$attributes  = array_filter(array_map('trim', $parsed['attributes'] ?? []));
+$brand    = trim($parsed['brand']    ?? '');
+$category = trim($parsed['category'] ?? '');
+$keywords = array_filter(array_map('trim', $parsed['keywords'] ?? []));
+
+$validCategories = ['底妝','遮瑕','眼影','眼線','睫毛膏','腮紅','修容','打亮','唇彩','護膚','護唇','防曬'];
+
+// 使用者手動選類別時直接覆蓋 AI 的判斷（更準確）
+$userCategory = trim($payload['userCategory'] ?? '');
+if ($userCategory && in_array($userCategory, $validCategories)) {
+    $category = $userCategory;
+} elseif ($category && !in_array($category, $validCategories)) {
+    $category = '';
+}
 
 // ── 相關度評分搜尋 ──────────────────────────────────────────────────
-// 品牌吻合 = 15分（最高），product_type 吻合 = 8分加分，shape/attributes 各 1分
-// 策略：brand 識別到 → 以 brand 為必要篩選條件，product_type 只影響排名
-//       brand 識別不到 → 以 product_type 為必要篩選條件
-
+// 品牌完全匹配 = 20分（最高），category 精確匹配 = 10分，keywords = 各2分
 $scoreParts = [];
 $params     = [];
 
 if ($brand) {
-    $scoreParts[] = "CASE WHEN p.brand ILIKE ? THEN 15 ELSE 0 END";    $params[] = "%$brand%";
-    $scoreParts[] = "CASE WHEN p.name  ILIKE ? THEN 5  ELSE 0 END";    $params[] = "%$brand%";
+    $scoreParts[] = "CASE WHEN p.brand ILIKE ? THEN 20 ELSE 0 END";  $params[] = "%$brand%";
+    $scoreParts[] = "CASE WHEN p.name  ILIKE ? THEN 5  ELSE 0 END";  $params[] = "%$brand%";
 }
 
-if ($productType) {
-    $scoreParts[] = "CASE WHEN p.name     ILIKE ? THEN 8 ELSE 0 END";  $params[] = "%$productType%";
-    $scoreParts[] = "CASE WHEN p.purpose  ILIKE ? THEN 6 ELSE 0 END";  $params[] = "%$productType%";
-    $scoreParts[] = "CASE WHEN p.category ILIKE ? THEN 4 ELSE 0 END";  $params[] = "%$productType%";
+if ($category) {
+    $scoreParts[] = "CASE WHEN p.category = ? THEN 10 ELSE 0 END";   $params[] = $category;
 }
 
-if ($shape) {
-    $scoreParts[] = "CASE WHEN p.name    ILIKE ? THEN 1 ELSE 0 END";   $params[] = "%$shape%";
-    $scoreParts[] = "CASE WHEN p.purpose ILIKE ? THEN 1 ELSE 0 END";   $params[] = "%$shape%";
-}
-
-foreach ($attributes as $attr) {
-    $scoreParts[] = "CASE WHEN p.name    ILIKE ? THEN 1 ELSE 0 END";   $params[] = "%$attr%";
-    $scoreParts[] = "CASE WHEN p.purpose ILIKE ? THEN 1 ELSE 0 END";   $params[] = "%$attr%";
+foreach ($keywords as $kw) {
+    $scoreParts[] = "CASE WHEN p.name    ILIKE ? THEN 2 ELSE 0 END"; $params[] = "%$kw%";
+    $scoreParts[] = "CASE WHEN p.purpose ILIKE ? THEN 2 ELSE 0 END"; $params[] = "%$kw%";
 }
 
 if (empty($scoreParts)) {
@@ -125,18 +136,26 @@ if (empty($scoreParts)) {
 
 $scoreExpr = '(' . implode(' + ', $scoreParts) . ')';
 
-// WHERE 條件：brand 識別到 → 以品牌篩選（product_type 只加分）；否則以 product_type 篩選
+// WHERE 策略：
+//   使用者手選了類別  → category 為主要 filter，brand 只加分
+//   AI 識別到 brand + category → category 為主要 filter，brand 只加分（顯示全分類，品牌排前）
+//   AI 只識別到 brand → 以 brand 過濾
+//   AI 只識別到 category → 以 category 過濾
 $whereParts  = [];
 $whereParams = [];
-if ($brand) {
+if ($userCategory || ($brand && $category)) {
+    // 有 category（來自使用者或 AI 兩者都識別到）→ category 為主
+    $whereParts[]  = "p.category = ?";
+    $whereParams[] = $category;
+} elseif ($brand) {
     $whereParts[]  = "(p.brand ILIKE ? OR p.name ILIKE ?)";
     $whereParams   = array_merge($whereParams, ["%$brand%", "%$brand%"]);
-} elseif ($productType) {
-    $whereParts[]  = "(p.name ILIKE ? OR p.purpose ILIKE ? OR p.category ILIKE ?)";
-    $whereParams   = array_merge($whereParams, ["%$productType%", "%$productType%", "%$productType%"]);
+} elseif ($category) {
+    $whereParts[]  = "p.category = ?";
+    $whereParams[] = $category;
 }
 
-$whereClause = implode(' OR ', $whereParts);
+$whereClause = implode(' AND ', $whereParts);
 $allParams   = array_merge($params, $whereParams);
 
 $sql = "SELECT p.id, p.name, p.brand, p.category, p.image_url,
@@ -150,11 +169,11 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($allParams);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 顯示給前端的標籤：brand + product_type + attributes
+// 顯示給前端的標籤
 $displayTerms = array_filter(array_merge(
-    $brand       ? [$brand]       : [],
-    $productType ? [$productType] : [],
-    $attributes
+    $brand    ? [$brand]    : [],
+    $category ? [$category] : [],
+    $keywords
 ));
 
 echo json_encode([

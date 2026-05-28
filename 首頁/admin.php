@@ -137,14 +137,34 @@ if (isset($_POST['review_submission'])) {
     $adminNote  = trim($_POST['admin_note'] ?? '');
 
     if ($subId && in_array($decision, ['approved', 'rejected'])) {
+        // 取得申請內容（需在更新前讀取）
+        $sub = $pdo->prepare("SELECT * FROM product_submissions WHERE id = ?");
+        $sub->execute([$subId]);
+        $subRow = $sub->fetch();
+
         // 更新申請狀態
         $pdo->prepare("UPDATE product_submissions SET status = ?, admin_note = ? WHERE id = ?")
             ->execute([$decision, $adminNote, $subId]);
 
-        // 取得申請者資訊以發送站內通知
-        $sub = $pdo->prepare("SELECT ps.product_name, ps.username FROM product_submissions ps WHERE ps.id = ?");
-        $sub->execute([$subId]);
-        $subRow = $sub->fetch();
+        // 核准時將產品複製進 data 表（讓使用者能在產品頁看到）
+        if ($decision === 'approved' && $subRow) {
+            try {
+                $pdo->prepare("
+                    INSERT INTO data (name, brand, category, purpose, image_url, ingredients)
+                    VALUES (:name, :brand, :category, :purpose, :image_url, :ingredients)
+                ")->execute([
+                    ':name'        => $subRow['product_name'] ?? '',
+                    ':brand'       => $subRow['brand']        ?? '',
+                    ':category'    => $subRow['category'] ?: '未分類',
+                    ':purpose'     => $subRow['description']  ?? '',
+                    ':image_url'   => '',
+                    ':ingredients' => '',
+                ]);
+            } catch (Exception $_e) {
+                // 欄位不符時記錄但不中止審核流程
+                $msg .= '（產品已核准但寫入 data 表失敗：' . $_e->getMessage() . '）';
+            }
+        }
 
         if ($subRow) {
             $resultLabel = $decision === 'approved' ? '核准' : '拒絕';
@@ -656,12 +676,48 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 .badge-purple { background: #f3e8ff; color: #6b21a8; }
 .badge-red { background: #fee2e2; color: #991b1b; }
 .badge-suspended { background: #fee2e2; color: #991b1b; }
+
+/* ── Mobile sidebar ── */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 99;
+  backdrop-filter: blur(2px);
+}
+.sidebar-overlay.open { display: block; }
+.mob-sidebar-toggle {
+  display: none; background: none; border: none; cursor: pointer;
+  width: 36px; height: 36px; border-radius: 8px;
+  align-items: center; justify-content: center;
+  color: var(--text-2); flex-shrink: 0; transition: background .15s; margin-right: 8px;
+}
+.mob-sidebar-toggle:hover { background: var(--bg); }
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .mob-sidebar-toggle { display: flex; }
+  .content { padding: 16px; }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-breadcrumb { display: none; }
+  .topbar-title { font-size: 14px; }
+  .topbar-btn { padding: 0 8px; font-size: 12px; white-space: nowrap; }
+  .card { overflow: visible; }
+  .report-card-grid { grid-template-columns: 1fr !important; }
+  .appeal-inner { display: flex !important; flex-direction: column !important; }
+  .appeal-action-panel { min-width: 0 !important; border-left: none !important; border-top: 1px solid #f3eef0; }
+}
 </style>
 </head>
 <body>
 
+<!-- Sidebar overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeAdminSidebar()"></div>
+
 <!-- Sidebar -->
-<aside class="sidebar">
+<aside class="sidebar" id="adminSidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-main">💄 COSMETIC</div>
     <div class="sidebar-logo-sub">管理後台</div>
@@ -725,6 +781,13 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 <!-- Main -->
 <div class="main">
   <div class="topbar">
+    <button class="mob-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="選單">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="currentColor">
+        <rect width="18" height="2.2" rx="1.1"/>
+        <rect y="5.9" width="18" height="2.2" rx="1.1"/>
+        <rect y="11.8" width="18" height="2.2" rx="1.1"/>
+      </svg>
+    </button>
     <div>
       <?php
         $tabTitles = [
@@ -1654,7 +1717,7 @@ function closeEdit() {
         $statusBg    = ['pending'=>'#fff3cd','approved'=>'#d4edda','rejected'=>'#f8d7da'][$ap['status']] ?? '#eee';
     ?>
     <div style="background:#fff;border-radius:14px;border:1px solid #ede8ea;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:hidden;<?php echo $isPending ? '' : 'opacity:.7;'; ?>">
-      <div style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:0;">
+      <div class="appeal-inner" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:0;">
         <div style="padding:18px 20px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <span style="font-weight:700;color:#c26b7c;font-size:15px;"><?php echo htmlspecialchars($ap['video_title'] ?? '（影片已刪除）'); ?></span>
@@ -1668,7 +1731,7 @@ function closeEdit() {
           <?php endif; ?>
         </div>
         <?php if ($isPending): ?>
-        <div style="padding:16px 18px;border-left:1px solid #f3eef0;min-width:220px;display:flex;flex-direction:column;gap:10px;">
+        <div class="appeal-action-panel" style="padding:16px 18px;border-left:1px solid #f3eef0;min-width:220px;display:flex;flex-direction:column;gap:10px;">
           <form method="post">
             <input type="hidden" name="appeal_id" value="<?php echo (int)$ap['id']; ?>">
             <input type="hidden" name="decision" value="approved">
@@ -1701,6 +1764,21 @@ function toggleRank(group, btn) {
     btn.dataset.expanded = expanded ? '0' : '1';
     btn.textContent = expanded ? '▾ 查看更多' : '▴ 收起';
 }
+
+function toggleAdminSidebar() {
+  document.getElementById('adminSidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeAdminSidebar() {
+  document.getElementById('adminSidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+// 點選選單項目後自動關閉 sidebar（手機）
+document.querySelectorAll('.nav-item').forEach(function(el) {
+  el.addEventListener('click', function() {
+    if (window.innerWidth <= 768) closeAdminSidebar();
+  });
+});
 </script>
 </body>
 </html>

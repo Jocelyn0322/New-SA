@@ -85,6 +85,9 @@ const recommendations       = ref([]);
 const ingredientAdvice      = ref(null);
 const ingredientLoading     = ref(false);
 const feedbackHistory       = ref([]);
+const quizDerivedSkinType   = ref('');
+const aiDetectedSkinType    = ref('');
+const analysisHistory       = ref([]);
 const isAnalyzing           = ref(false);
 const faceDetectionBusy     = ref(false);
 const showResultModal       = ref(false);
@@ -124,6 +127,7 @@ const showAlert = (msg) => {
 
     const p = document.createElement('p');
     p.className = 'morandi-modal-msg';
+    p.style.whiteSpace = 'pre-line';
     p.textContent = String(msg);
 
     const btn = document.createElement('button');
