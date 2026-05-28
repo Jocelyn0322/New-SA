@@ -95,6 +95,7 @@ const backToToneAndSkinPage = () => { stopCamera(); currentStep.value = 3; };
 
 const restartFromBeginning = () => {
     stopCamera();
+    isAnalyzing.value = false;
     // quiz state
     toneQuizAnswers.value     = { t1: '', t2: '', t3: '' };
     quizAnswers.value         = { q1: '', q2: '', q3: '', q4: '' };
