@@ -128,6 +128,7 @@ if (isset($_SESSION['user'])) {
   .header-actions .user-chip,
   .header-actions .btn { display: none !important; }
   .header-inner { padding: 0 16px; gap: 12px; }
+  .header-actions { margin-left: auto; }
 }
 /* On very small screens hide most header icons, keep only notif bell */
 @media (max-width: 480px) {
@@ -171,6 +172,14 @@ if (isset($_SESSION['user'])) {
 </style>
 <header class="header">
   <div class="header-inner">
+    <!-- 漢堡鈕（手機才顯示） -->
+    <button class="hamburger" id="hamburger" onclick="openMobMenu()" aria-label="選單">
+      <svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor">
+        <rect width="20" height="2.5" rx="1.25"/>
+        <rect y="6.75" width="20" height="2.5" rx="1.25"/>
+        <rect y="13.5" width="20" height="2.5" rx="1.25"/>
+      </svg>
+    </button>
     <a href="<?= BASE_URL ?>/產品/index.php" class="logo">
       <div class="logo-mark">💄</div>COSMETIC
     </a>
@@ -180,14 +189,6 @@ if (isset($_SESSION['user'])) {
       <a href="<?= BASE_URL ?>/產品/products.php" class="nav-link <?= $_navProds  ? 'active' : '' ?>">產品</a>
       <a href="<?= BASE_URL ?>/首頁/video.php"    class="nav-link <?= $_navVideo  ? 'active' : '' ?>">影片交流</a>
     </nav>
-    <!-- 漢堡鈕（手機才顯示） -->
-    <button class="hamburger" id="hamburger" onclick="openMobMenu()" aria-label="選單">
-      <svg width="20" height="16" viewBox="0 0 20 16" fill="currentColor">
-        <rect width="20" height="2.5" rx="1.25"/>
-        <rect y="6.75" width="20" height="2.5" rx="1.25"/>
-        <rect y="13.5" width="20" height="2.5" rx="1.25"/>
-      </svg>
-    </button>
     <div class="header-actions">
       <a href="<?= BASE_URL ?>/產品/favorite.php" class="icon-btn" data-tip="產品收藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 95" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M50,85 C35,75 10,60 10,35 C10,18 20,8 33,8 C42,8 48,13 50,20 C52,13 58,8 67,8 C80,8 90,18 90,35 C90,60 65,75 50,85 Z"/>
