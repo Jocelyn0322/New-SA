@@ -690,17 +690,9 @@ if (isset($pdo)) {
 
     select.addEventListener('change', onCityChange);
 
-    // 初始執行：auto 需等使用者主動點擊才觸發定位（iOS Safari 限制）
+    // 初始執行
     if (select.value === 'auto') {
-        setStatus('📍 點擊以偵測位置');
-        status.style.cursor = 'pointer';
-        status.style.textDecoration = 'underline';
-        status.addEventListener('click', function handler() {
-            status.style.cursor = '';
-            status.style.textDecoration = '';
-            status.removeEventListener('click', handler);
-            runAuto();
-        }, { once: true });
+        runAuto();
     } else {
         const [lat, lon] = select.value.split(',');
         checkWeather(parseFloat(lat), parseFloat(lon));
