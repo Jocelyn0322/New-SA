@@ -20,6 +20,9 @@ const startCamera = async () => {
         }
         video.value.srcObject = stream;
         video.value.onloadedmetadata = () => { video.value.play().catch(() => {}); };
+        stream.getTracks().forEach(track => {
+            track.addEventListener('ended', () => { cameraActive.value = false; });
+        });
     } catch (error) {
         let msg = '無法訪問相機: ';
         if (error.name === 'NotAllowedError')       msg += '請允許相機權限';
@@ -38,6 +41,16 @@ const stopCamera = () => {
     }
     cameraActive.value = false;
 };
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && cameraActive.value && video.value) {
+        const tracks = video.value.srcObject?.getTracks() ?? [];
+        if (!tracks.length || tracks.every(t => t.readyState === 'ended')) {
+            video.value.srcObject = null;
+            cameraActive.value = false;
+        }
+    }
+});
 
 // ── Face detection (BlazeFace fallback) ─────────────────────────
 const ensureFallbackFaceDetector = (() => {
@@ -534,12 +547,12 @@ const checkObstacleAndLiveness = async (face) => {
     const skinRatioLower = computeSkinRatioRegion(patch, 'lower');
     const skinRatioUpper = computeSkinRatioRegion(patch, 'upper');
 
-    if (skinRatioLower < 0.38) {
+    if (skinRatioLower < 0.25) {
         alert('❌ 檢測到口罩或下方遮擋物。\n請移除口罩/圍巾以便系統讀取真正的臉部肌膚。');
         return false;
     }
-    if (skinRatioUpper < 0.38) {
-        alert('❌ 檢測到瀏海、眼鏡或眼部遮擋。\n請撥開頭髮或移除眼部遮擋物再重試。');
+    if (skinRatioUpper < 0.42) {
+        alert('❌ 檢測到帽子、瀏海或眼部遮擋。\n請移除帽子/撥開頭髮再重試。');
         return false;
     }
 
