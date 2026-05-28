@@ -100,7 +100,7 @@ function page_url($p) {
       .search-hero-inner { flex-wrap: wrap; gap: 8px; padding: 0 12px; }
       .search-input-wrap { flex: 1 1 100%; order: -1; }
       .sort-select { flex: 1; min-width: 0; }
-      .btn-img-search { display: none; }
+      .btn-img-search { display: inline-flex; }
       .filter-wrap { padding: 0 12px; }
       .products-wrap { padding: 0 12px; margin-top: 16px; }
     }
@@ -386,19 +386,30 @@ function page_url($p) {
     <h3 style="margin:0 0 6px;">📷 以圖搜尋產品</h3>
     <p style="font-size:13px;color:var(--text-3);margin:0 0 18px;">上傳產品照片，AI 自動識別並找出相似商品</p>
     <div id="imgDropZone"
-      onclick="document.getElementById('imgFileInput').click()"
       ondragover="event.preventDefault();this.style.borderColor='var(--rose)';this.style.background='var(--rose-50)'"
       ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg)'"
       ondrop="handleImgDrop(event)"
-      style="border:2px dashed var(--border);border-radius:var(--r-lg);background:var(--bg);padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;">
+      style="border:2px dashed var(--border);border-radius:var(--r-lg);background:var(--bg);padding:20px;text-align:center;transition:all .2s;">
       <div id="imgDropZoneContent">
         <div style="font-size:36px;margin-bottom:8px;">🖼️</div>
-        <p style="font-size:14px;font-weight:600;color:var(--rose);margin:0 0 4px;">點擊或拖曳圖片至此</p>
-        <p style="font-size:12px;color:var(--text-3);margin:0;">支援 JPG、PNG、WEBP</p>
+        <p class="img-drop-hint" style="font-size:14px;font-weight:600;color:var(--rose);margin:0 0 4px;">點擊或拖曳圖片至此</p>
+        <p style="font-size:12px;color:var(--text-3);margin:0 0 14px;">支援 JPG、PNG、WEBP</p>
+        <!-- 手機：相簿 + 拍照 兩個按鈕 -->
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button type="button" onclick="document.getElementById('imgFileInput').click()"
+            style="flex:1;max-width:160px;padding:10px 0;border-radius:var(--r-full,99px);border:1.5px solid var(--rose);background:#fff;color:var(--rose);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+            📁 選擇相簿
+          </button>
+          <button type="button" onclick="document.getElementById('imgCameraInput').click()"
+            style="flex:1;max-width:160px;padding:10px 0;border-radius:var(--r-full,99px);border:none;background:var(--rose);color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+            📸 直接拍照
+          </button>
+        </div>
       </div>
       <img id="imgPreview" src="" alt="" style="display:none;max-width:100%;max-height:200px;border-radius:var(--r);object-fit:contain;">
     </div>
     <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImgFile(this.files[0])">
+    <input type="file" id="imgCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImgFile(this.files[0])">
     <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="width:100%;margin-top:14px;opacity:.5;cursor:not-allowed;">開始搜尋</button>
     <div id="imgLoading" style="display:none;text-align:center;padding:20px 0;">
       <div style="display:inline-block;width:28px;height:28px;border:3px solid var(--rose-100);border-top-color:var(--rose);border-radius:50%;animation:spin .8s linear infinite;"></div>
