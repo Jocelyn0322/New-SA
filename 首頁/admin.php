@@ -714,7 +714,12 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
   .main { margin-left: 0; }
   .mob-sidebar-toggle { display: flex; }
   .content { padding: 16px; }
-  .topbar { padding: 0 16px; }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-breadcrumb { display: none; }
+  .topbar-title { font-size: 14px; }
+  .topbar-btn { padding: 0 8px; font-size: 12px; white-space: nowrap; }
+  .card { overflow: visible; }
+  .report-card-grid { grid-template-columns: 1fr !important; }
   .appeal-inner { display: flex !important; flex-direction: column !important; }
   .appeal-action-panel { min-width: 0 !important; border-left: none !important; border-top: 1px solid #f3eef0; }
 }
