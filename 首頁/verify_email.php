@@ -174,6 +174,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </form>
 </div>
 
-<?php include __DIR__ . '/../footer.php'; ?>
 </body>
 </html>
