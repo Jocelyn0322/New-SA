@@ -43,7 +43,6 @@
             <p>毛孔狀態: {{ skinFeatures.pore_visibility }}</p>
             <p>泛紅: {{ skinFeatures.redness ? '是' : '否' }}</p>
         </div>
-        <p class="text-xs mt-3" style="color:#c09aaa;">⏰ 提示：拍攝時間點會影響 AI 偵測結果（下午膚質偏油、早晨偏乾），建議在洗臉後 30 分鐘、相同條件下拍攝，結果更準確。</p>
     </div>
 
 
@@ -77,7 +76,7 @@
 
         <div class="grid md:grid-cols-2 gap-3 mb-4">
             <!-- 確認膚色 -->
-            <div class="rounded-2xl border p-4 transition-all duration-200"
+            <div class="rounded-2xl border p-4 transition-all duration-200 flex flex-col"
                  :class="confirmedSkinTone ? 'border-emerald-400 bg-emerald-50' : 'border-amber-300 bg-white'">
                 <div class="flex items-center justify-between mb-2">
                     <p class="font-bold text-base" :class="confirmedSkinTone ? 'text-emerald-800' : 'text-gray-700'">膚色</p>
@@ -101,7 +100,7 @@
                     <option v-for="t in skinTonesData" :key="t.toneName" :value="t.toneName">{{ t.toneName }}</option>
                 </select>
                 <button type="button" @click="confirmSkinTone"
-                    class="w-full py-2 rounded-xl text-sm font-bold transition-all duration-200"
+                    class="mt-auto w-full py-2 rounded-xl text-sm font-bold transition-all duration-200"
                     :class="confirmedSkinTone
                         ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                         : 'bg-amber-100 text-amber-800 hover:bg-amber-200'">
@@ -110,7 +109,7 @@
             </div>
 
             <!-- 確認膚質 -->
-            <div class="rounded-2xl border p-4 transition-all duration-200"
+            <div class="rounded-2xl border p-4 transition-all duration-200 flex flex-col"
                  :class="confirmedSkinType ? 'border-emerald-400 bg-emerald-50' : 'border-amber-300 bg-white'">
                 <div class="flex items-center justify-between mb-2">
                     <p class="font-bold text-base" :class="confirmedSkinType ? 'text-emerald-800' : 'text-gray-700'">膚質</p>
@@ -136,7 +135,7 @@
                     同時標記為敏感肌
                 </label>
                 <button type="button" @click="confirmSkinType"
-                    class="w-full py-2 rounded-xl text-sm font-bold transition-all duration-200"
+                    class="mt-auto w-full py-2 rounded-xl text-sm font-bold transition-all duration-200"
                     :class="confirmedSkinType
                         ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                         : 'bg-amber-100 text-amber-800 hover:bg-amber-200'">

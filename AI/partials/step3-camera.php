@@ -3,8 +3,11 @@
         <h3 class="font-extrabold text-gray-900 text-lg">📸 第 3 頁：相機拍照</h3>
         <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-violet-700 border border-violet-200">Camera</span>
     </div>
-    <p class="text-sm text-gray-600 mb-1">請拍攝臉部照片，系統會先分析結果，再讓你進行確認。</p>
-    <p class="text-xs text-gray-400 mb-3">💡 建議在自然光下、洗臉後 30 分鐘拍攝，避免下午出油影響偵測結果。</p>
+    <p class="text-sm text-gray-600 mb-2">請拍攝臉部照片，系統會先分析結果，再讓你進行確認。</p>
+    <div class="text-xs text-gray-500 mb-3 p-3 rounded-xl bg-white/70 border border-violet-100 space-y-1">
+        <p>💡 建議在自然光下拍攝，效果最好。</p>
+        <p>⏰ 避免下午出油時段；建議洗臉後 30 分鐘、在相同條件下拍攝，結果更準確。</p>
+    </div>
     <button @click="startCamera" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 active:scale-[0.99] transition duration-200 shadow-lg shadow-gray-900/20">
         啟動相機
     </button>
