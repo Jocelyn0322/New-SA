@@ -40,7 +40,7 @@
         </div>
     </div>
 
-    <?php include 'footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
 
     <!-- Load order matters: state must be first, app must be last -->
     <?php $v = filemtime(__DIR__ . '/js/state.js'); ?>
