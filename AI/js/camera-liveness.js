@@ -196,6 +196,37 @@ const sampleFacePatch = (face, size = 128) => {
     return ctx.getImageData(0, 0, size, size);
 };
 
+// 額頭採樣：在 bounding box 上方 0.5 倍高度的區域取 128×48 patch
+const sampleForeheadPatch = (face) => {
+    const bb     = face.boundingBox;
+    const fw     = Math.max(1, Math.floor(bb.width));
+    const fh     = Math.max(1, Math.floor(bb.height));
+    const pH     = Math.max(1, Math.floor(fh * 0.50));   // 取臉高的一半作為額頭採樣高度
+    const pY     = Math.max(0, Math.floor(bb.y) - pH);   // 從 bounding box 上方開始
+    const xPad   = Math.floor(fw * 0.20);
+    const pX     = Math.max(0, Math.floor(bb.x) + xPad);
+    const pW     = Math.max(1, fw - xPad * 2);
+    const W = 128, H = 48;
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const ctx = off.getContext('2d');
+    ctx.drawImage(video.value, pX, pY, pW, pH, 0, 0, W, H);
+    return ctx.getImageData(0, 0, W, H);
+};
+
+const computeSkinRatioFlat = (imageData) => {
+    const { data, width, height } = imageData;
+    let skinCount = 0, total = 0;
+    for (let y = 0; y < height; y += 2) {
+        for (let x = 0; x < width; x += 2) {
+            const i = (y * width + x) * 4;
+            if (isSkinPixel(data[i], data[i + 1], data[i + 2])) skinCount++;
+            total++;
+        }
+    }
+    return total > 0 ? (skinCount / total) : 0;
+};
+
 const computeSkinRatioRegion = (imageData, region = 'lower') => {
     const { data, width, height } = imageData;
     let skinCount = 0, total = 0;
@@ -551,10 +582,20 @@ const checkObstacleAndLiveness = async (face) => {
         alert('❌ 檢測到口罩或下方遮擋物。\n請移除口罩/圍巾以便系統讀取真正的臉部肌膚。');
         return false;
     }
-    if (skinRatioUpper < 0.55) {
-        alert('❌ 檢測到帽子、瀏海或眼部遮擋。\n請移除帽子/撥開頭髮再重試。');
+    if (skinRatioUpper < 0.40) {
+        alert('❌ 檢測到眼部或上臉遮擋物。\n請撥開頭髮或移除遮擋物再重試。');
         return false;
     }
+
+    // 額頭專屬檢查：在臉的 bounding box 上方採樣，若膚色比例低表示有帽子遮住
+    try {
+        const foreheadPatch = sampleForeheadPatch(face);
+        const skinRatioForehead = computeSkinRatioFlat(foreheadPatch);
+        if (skinRatioForehead < 0.20) {
+            alert('❌ 偵測到額頭被遮住（帽子／頭帶）。\n請移除後再拍攝，以便正確讀取膚色。');
+            return false;
+        }
+    } catch (e) { /* 無法取得額頭區域時跳過此項檢查 */ }
 
     const rotationResult = await detectHeadRotation();
     if (!rotationResult.success) return false;
