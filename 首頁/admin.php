@@ -715,6 +715,8 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
   .mob-sidebar-toggle { display: flex; }
   .content { padding: 16px; }
   .topbar { padding: 0 16px; }
+  .appeal-inner { display: flex !important; flex-direction: column !important; }
+  .appeal-action-panel { min-width: 0 !important; border-left: none !important; border-top: 1px solid #f3eef0; }
 }
 </style>
 </head>
@@ -1773,7 +1775,7 @@ function closeEdit() {
         $statusBg    = ['pending'=>'#fff3cd','approved'=>'#d4edda','rejected'=>'#f8d7da'][$ap['status']] ?? '#eee';
     ?>
     <div style="background:#fff;border-radius:14px;border:1px solid #ede8ea;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:hidden;<?php echo $isPending ? '' : 'opacity:.7;'; ?>">
-      <div style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:0;">
+      <div class="appeal-inner" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:0;">
         <div style="padding:18px 20px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <span style="font-weight:700;color:#c26b7c;font-size:15px;"><?php echo htmlspecialchars($ap['video_title'] ?? '（影片已刪除）'); ?></span>
@@ -1787,7 +1789,7 @@ function closeEdit() {
           <?php endif; ?>
         </div>
         <?php if ($isPending): ?>
-        <div style="padding:16px 18px;border-left:1px solid #f3eef0;min-width:220px;display:flex;flex-direction:column;gap:10px;">
+        <div class="appeal-action-panel" style="padding:16px 18px;border-left:1px solid #f3eef0;min-width:220px;display:flex;flex-direction:column;gap:10px;">
           <form method="post">
             <input type="hidden" name="appeal_id" value="<?php echo (int)$ap['id']; ?>">
             <input type="hidden" name="decision" value="approved">
