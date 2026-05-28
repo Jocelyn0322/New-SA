@@ -26,22 +26,29 @@ $mimeType    = $payload['mimeType'] ?? 'image/jpeg';
 $groqApiKey   = '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';
 $groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
-$prompt = '你是彩妝產品識別專家。分析這張產品照片（可能是打開或合起的外觀），只輸出 JSON，不要任何說明或 markdown。
+$prompt = '你是彩妝產品識別專家。分析這張產品照片，只輸出 JSON，不要任何說明或 markdown。
 
 資料庫固定分類（category 只能填以下其中一個，或空字串）：
 底妝、遮瑕、眼影、眼線、睫毛膏、腮紅、修容、打亮、唇彩、護膚、護唇、防曬
 
 格式：
 {
-  "brand": "從包裝上任何文字辨識品牌名（看不清楚填空字串）",
-  "category": "從上方固定分類中選最符合的一個（完全不確定填空字串）",
-  "keywords": ["產品系列名、色系、其他搜尋關鍵字，最多3個，看不出來留空陣列"]
+  "brand": "品牌名",
+  "category": "分類",
+  "keywords": ["關鍵字1", "關鍵字2"]
 }
 
-重要：
-- brand 是第一優先，仔細辨識包裝上所有文字
-- category 必須完全符合固定分類中的一個詞，不確定就填空字串，不要猜
-- 眼影盤→眼影、口紅/唇膏→唇彩、粉底/氣墊→底妝、腮紅→腮紅、修容/立體→修容';
+brand 規則（非常重要）：
+- 只填寫照片中肉眼能直接讀到的品牌文字，例如包裝上印著 CHANEL、DIOR、MAC 等字樣
+- 看不到清楚的品牌文字 → 一定要填空字串 ""
+- 絕對禁止從外觀顏色、設計風格、產品形狀去推測或猜測品牌
+- 寧可填空也不能猜錯
+
+category 規則：
+- 必須是固定分類中的一個詞，不確定填 ""
+- 眼影盤/眼影粉→眼影、口紅/唇膏/唇釉→唇彩、粉底/氣墊/BB霜→底妝、打亮/highlighter→打亮、修容/bronzer/contour→修容
+
+keywords：產品系列名或色號（如看到文字），最多2個，看不出來留 []';
 
 $requestBody = json_encode([
     'model'    => 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -129,13 +136,16 @@ if (empty($scoreParts)) {
 
 $scoreExpr = '(' . implode(' + ', $scoreParts) . ')';
 
-// WHERE 條件：
-//   brand 識別到 → 以品牌過濾（category 只加分，不限制）
-//   brand 未識別 → 以 category 過濾
-//   都沒有 → 已在上方 exit
+// WHERE 策略：
+//   使用者手選了類別 → category 為主要 filter，brand 只加分（AI 可能猜錯品牌）
+//   使用者沒選類別 + AI 有識別 brand → 以 brand 過濾
+//   使用者沒選類別 + 只有 AI category → 以 category 過濾
 $whereParts  = [];
 $whereParams = [];
-if ($brand) {
+if ($userCategory) {
+    $whereParts[]  = "p.category = ?";
+    $whereParams[] = $category;   // $category 已被 userCategory 覆蓋
+} elseif ($brand) {
     $whereParts[]  = "(p.brand ILIKE ? OR p.name ILIKE ?)";
     $whereParams   = array_merge($whereParams, ["%$brand%", "%$brand%"]);
 } elseif ($category) {
