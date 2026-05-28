@@ -690,12 +690,41 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 .badge-purple { background: #f3e8ff; color: #6b21a8; }
 .badge-red { background: #fee2e2; color: #991b1b; }
 .badge-suspended { background: #fee2e2; color: #991b1b; }
+
+/* ── Mobile sidebar ── */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 99;
+  backdrop-filter: blur(2px);
+}
+.sidebar-overlay.open { display: block; }
+.mob-sidebar-toggle {
+  display: none; background: none; border: none; cursor: pointer;
+  width: 36px; height: 36px; border-radius: 8px;
+  align-items: center; justify-content: center;
+  color: var(--text-2); flex-shrink: 0; transition: background .15s; margin-right: 8px;
+}
+.mob-sidebar-toggle:hover { background: var(--bg); }
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .mob-sidebar-toggle { display: flex; }
+  .content { padding: 16px; }
+  .topbar { padding: 0 16px; }
+}
 </style>
 </head>
 <body>
 
+<!-- Sidebar overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeAdminSidebar()"></div>
+
 <!-- Sidebar -->
-<aside class="sidebar">
+<aside class="sidebar" id="adminSidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-main">💄 COSMETIC</div>
     <div class="sidebar-logo-sub">管理後台</div>
@@ -759,6 +788,13 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 <!-- Main -->
 <div class="main">
   <div class="topbar">
+    <button class="mob-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="選單">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="currentColor">
+        <rect width="18" height="2.2" rx="1.1"/>
+        <rect y="5.9" width="18" height="2.2" rx="1.1"/>
+        <rect y="11.8" width="18" height="2.2" rx="1.1"/>
+      </svg>
+    </button>
     <div>
       <?php
         $tabTitles = [
@@ -1784,6 +1820,21 @@ function toggleRank(group, btn) {
     btn.dataset.expanded = expanded ? '0' : '1';
     btn.textContent = expanded ? '▾ 查看更多' : '▴ 收起';
 }
+
+function toggleAdminSidebar() {
+  document.getElementById('adminSidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeAdminSidebar() {
+  document.getElementById('adminSidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+// 點選選單項目後自動關閉 sidebar（手機）
+document.querySelectorAll('.nav-item').forEach(function(el) {
+  el.addEventListener('click', function() {
+    if (window.innerWidth <= 768) closeAdminSidebar();
+  });
+});
 </script>
 </body>
 </html>
