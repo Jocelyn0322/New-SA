@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-bottom: 56px;
     }
     .hero-brand-icon { font-size: 32px; }
-    .hero-brand-name { font-size: 60px; font-weight: 800; color: #fff; letter-spacing: .08em; }
+    .hero-brand-name { font-size: clamp(28px, 8vw, 60px); font-weight: 800; color: #fff; letter-spacing: .08em; }
 
     .hero-title {
       font-size: clamp(2rem, 3.5vw, 2.8rem);

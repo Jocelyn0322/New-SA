@@ -252,7 +252,7 @@ function page_url($p) {
               <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
               <button type="submit" class="btn btn-outline" style="width:100%;">比較</button>
             </form>
-            <?php if (isset($_SESSION['user'])): ?>
+            <?php if (isset($_SESSION['user']) && ($_SESSION['role'] ?? '') !== 'admin'): ?>
               <button type="button" class="btn btn-danger" style="padding:7px 10px;" onclick="openReportModal(<?= $row['p_id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>')">回報</button>
             <?php endif; ?>
           </div>

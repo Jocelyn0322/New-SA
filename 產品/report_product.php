@@ -6,6 +6,10 @@ if (!isset($_SESSION['user'])) {
     echo json_encode(['success' => false, 'message' => '請先登入']);
     exit;
 }
+if (($_SESSION['role'] ?? '') === 'admin') {
+    echo json_encode(['success' => false, 'message' => '管理員無法回報產品，請直接在後台處理']);
+    exit;
+}
 
 require __DIR__ . '/../db.php';
 

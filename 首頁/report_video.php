@@ -11,6 +11,13 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
+// 管理員不能檢舉（應使用管理後台直接處理）
+if (($_SESSION['role'] ?? '') === 'admin') {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => '管理員請使用檢舉管理頁面處理影片']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => '只支援 POST 請求']);

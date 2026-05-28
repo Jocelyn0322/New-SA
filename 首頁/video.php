@@ -13,6 +13,7 @@ try { $pdo->exec("ALTER TABLE videos ADD COLUMN tags VARCHAR(500) NOT NULL DEFAU
 try { $pdo->exec("ALTER TABLE videos ADD COLUMN IF NOT EXISTS removed_reason TEXT"); } catch (Exception $e) {}
 try { $pdo->exec("ALTER TABLE videos ADD COLUMN IF NOT EXISTS removed_at TIMESTAMP"); } catch (Exception $e) {}
 try { $pdo->exec("ALTER TABLE video_appeals ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP"); } catch (Exception $e) {}
+try { $pdo->exec("ALTER TABLE videos ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0"); } catch (Exception $e) {}
 
 // 撈現有標籤（給 autocomplete 用）
 $existingTags = [];
@@ -82,7 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_FILES) && empty($_POST)
 // 處理影片上傳
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['video']) && !isset($_POST['delete'])) {
     $currentView = $_GET['view'] ?? 'home';
-    if ($currentView !== 'personal') {
+    if ($isAdmin) {
+        $message = '管理員無法上傳影片';
+        $messageType = 'error';
+    } elseif ($currentView !== 'personal') {
         $message = '請先切換到個人頁面才能上傳影片';
         $messageType = 'error';
     } else {
@@ -249,6 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_video']) && isse
 
 // 處理按讚/取消按讚
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_like']) && isset($_POST['video_id'])) {
+    if ($isAdmin) { header('Content-Type: application/json'); echo json_encode(['success' => false, 'message' => '管理員無法按讚']); exit; }
     $videoId = (int)$_POST['video_id'];
     $userId  = $_SESSION['user'];
 
@@ -275,6 +280,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_like']) && iss
     exit;
 }
 
+// 觀看數 +1（每次打開 overlay 時由前端呼叫，不限登入）
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_view']) && isset($_POST['video_id'])) {
+    $vid = (int)$_POST['video_id'];
+    if ($vid > 0) {
+        try {
+            $pdo->prepare("UPDATE videos SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ? AND is_active = 1")
+                ->execute([$vid]);
+        } catch (Exception $e) {}
+    }
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // 追蹤 / 取消追蹤
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow']) && $isLoggedIn) {
     $targetUser = trim($_POST['target_user'] ?? '');
@@ -296,55 +315,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow']) && $
     }
 }
 
-// 管理員：軟性下架影片（保留資料，使用者可申訴）
-if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_takedown'])) {
-    $vid    = (int)$_POST['video_id'];
-    $reason = trim($_POST['removed_reason'] ?? '');
-    $stmt = $pdo->prepare("SELECT title, uploaded_by FROM videos WHERE id = ?");
-    $stmt->execute([$vid]);
-    $vrow = $stmt->fetch();
-    if ($vrow) {
-        $pdo->prepare("UPDATE videos SET is_active = 0, removed_reason = ?, removed_at = NOW() WHERE id = ?")
-            ->execute([$reason ?: '違反社群規範', $vid]);
-        $noteText = $reason ? "，原因：{$reason}" : '';
-        insertNotification($pdo, $vrow['uploaded_by'], 'video_removed',
-            "您的影片「{$vrow['title']}」已被管理員下架{$noteText}。如有異議可至影片交流頁面提出申訴。",
-            $_SESSION['user'], $vid, $vrow['title']);
-        $message     = '已下架影片，使用者已收到通知';
-        $messageType = 'success';
-    }
-}
-
-// 管理員：強制刪除影片
-if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_force_delete'])) {
-    $vid  = (int)$_POST['video_id'];
-    $stmt = $pdo->prepare("SELECT filename, title, uploaded_by FROM videos WHERE id = ?");
-    $stmt->execute([$vid]);
-    $vrow = $stmt->fetch();
-    if ($vrow) {
-        if (!empty($vrow['filename'])) {
-            deleteVideoFromSupabase($vrow['filename']);
-        }
-        $pdo->prepare("DELETE FROM videos WHERE id = ?")->execute([$vid]);
-        insertNotification($pdo, $vrow['uploaded_by'], 'video_removed',
-            "您的影片「{$vrow['title']}」已被管理員下架移除。", $_SESSION['user']);
-        $message     = '已強制刪除影片';
-        $messageType = 'success';
-    }
-}
-
-// 管理員：標記檢舉為已處理
-if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_dismiss_report'])) {
-    $vid = (int)$_POST['video_id'];
-    $pdo->prepare("UPDATE video_reports SET status = 'resolved' WHERE video_id = ?")
-        ->execute([$vid]);
-    $message     = '已標記為已處理';
-    $messageType = 'success';
-}
 
 // 獲取影片列表
 $view = $_GET['view'] ?? 'home';
-if ($view === 'admin' && !$isAdmin) $view = 'home';
+if ($view === 'admin') $view = 'home';
 if ($view === 'following' && !$isLoggedIn) $view = 'home';
 $activeTag = ltrim(trim($_GET['tag'] ?? ''), '#');
 
@@ -391,61 +365,12 @@ if ($view === 'following') {
     ");
     $stmt->execute([$_SESSION['user'], $_SESSION['user'], $_SESSION['user']]);
     $videos = $stmt->fetchAll();
-} elseif ($view === 'admin' && $isAdmin) {
-    $videos = [];
-    // 檢舉清單（pending 狀態）
-    try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS video_reports (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            video_id INT NOT NULL,
-            reported_by VARCHAR(100) NOT NULL,
-            reason VARCHAR(100) NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status VARCHAR(20) DEFAULT 'pending',
-            FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-        )");
-    } catch (Exception $e) {}
-
-    $reportStmt = $pdo->query("
-        SELECT v.id, v.title, v.uploaded_by, v.file_path,
-               COUNT(r.id) AS report_count,
-               MAX(r.created_at) AS last_reported_at
-        FROM videos v
-        JOIN video_reports r ON v.id = r.video_id
-        WHERE r.status = 'pending'
-        GROUP BY v.id
-        ORDER BY report_count DESC, last_reported_at DESC
-    ");
-    $reportedVideos = $reportStmt->fetchAll();
-
-    $reasonStmt = $pdo->query("
-        SELECT video_id, reason, COUNT(*) AS cnt
-        FROM video_reports
-        WHERE status = 'pending'
-        GROUP BY video_id, reason
-        ORDER BY cnt DESC
-    ");
-    $reportedReasons = [];
-    foreach ($reasonStmt->fetchAll() as $r) {
-        $reportedReasons[$r['video_id']][] = $r;
-    }
-
-    $detailStmt = $pdo->query("
-        SELECT video_id, reported_by, reason, description, created_at
-        FROM video_reports
-        WHERE status = 'pending' AND description IS NOT NULL AND description != ''
-        ORDER BY created_at DESC
-    ");
-    $reportedDetails = [];
-    foreach ($detailStmt->fetchAll() as $d) {
-        $reportedDetails[$d['video_id']][] = $d;
-    }
 } else {
     // 主頁：顯示所有影片（支援 tag 篩選）
     if ($activeTag !== '') {
         $stmt = $pdo->prepare("
-            SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags,
+            SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes,
+                   COALESCE(v.view_count, 0) AS view_count, v.tags,
                    CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
             FROM videos v
             LEFT JOIN likes l ON v.id = l.video_id AND l.user_id = ?
@@ -455,13 +380,14 @@ if ($view === 'following') {
         $stmt->execute([$_SESSION['user'] ?? null, $activeTag]);
     } else {
         $stmt = $pdo->prepare("
-        SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes, v.tags,
+        SELECT v.id, v.title, v.description, v.file_path, v.uploaded_by, v.upload_time, v.likes,
+               COALESCE(v.view_count, 0) AS view_count, v.tags,
                CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
         FROM videos v
         LEFT JOIN likes l ON v.id = l.video_id AND l.user_id = ?
         WHERE v.is_active = 1
         ORDER BY v.upload_time DESC
-        ");
+");
         $stmt->execute([$_SESSION['user'] ?? null]);
     }
     $videos = $stmt->fetchAll();
@@ -898,6 +824,27 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         .follow-btn.not-following { background: #c26b7c; color: #fff; }
         .follow-btn.not-following:hover { background: #9d2942; }
 
+        /* Admin no-action tooltip */
+        .admin-no-action {
+            cursor: not-allowed !important;
+            opacity: 0.65;
+        }
+        /* JS-driven tooltip, appended to body to avoid overflow clipping */
+        #adminTooltip {
+            display: none;
+            position: fixed;
+            background: rgba(30,10,15,.88);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 99999;
+            transition: opacity .15s;
+        }
+
         /* Admin report table */
         .report-mgr-table { width: 100%; border-collapse: collapse; font-size: 14px; }
         .report-mgr-table th, .report-mgr-table td { padding: 12px 14px; border: 1px solid #f1d1dc; text-align: left; vertical-align: top; }
@@ -961,7 +908,9 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 <h1 class="page-title">影片交流</h1>
                 <div class="page-title-sub">探索彩妝技巧・分享你的精彩</div>
             </div>
+            <?php if (!$isAdmin): ?>
             <a href="?view=personal" class="btn-upload-header">＋ 上傳影片</a>
+            <?php endif; ?>
         </div>
 
         <div class="nav-tabs">
@@ -977,9 +926,6 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             </a>
             <?php endif; ?>
             <a href="?view=personal" class="nav-tab <?php echo ($view === 'personal') ? 'active' : ''; ?>">👤 個人</a>
-            <?php if ($isAdmin): ?>
-                <a href="?view=admin" class="nav-tab <?php echo ($view === 'admin') ? 'active' : ''; ?>">🛡️ 檢舉管理</a>
-            <?php endif; ?>
         </div>
 
         <?php if ($message): ?>
@@ -989,6 +935,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         <?php endif; ?>
 
         <?php if ($view === 'personal'): ?>
+        <?php if (!$isAdmin): ?>
         <div class="content-grid">
             <div class="upload-section">
                 <h2>📹 分享你的精彩時刻</h2>
@@ -1041,9 +988,17 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 </form>
             </div>
         </div>
-        <?php endif; ?>
+        <?php endif; /* end !$isAdmin upload section */ ?>
+        <?php endif; /* end $view === 'personal' upload block */ ?>
 
         <?php if ($view === 'personal'): ?>
+            <?php if ($isAdmin): ?>
+            <div style="text-align:center;padding:80px 20px;">
+                <div style="font-size:3rem;margin-bottom:16px;">🚫</div>
+                <div style="font-size:20px;font-weight:700;color:#9d2942;margin-bottom:10px;">管理員無法使用此功能</div>
+                <p style="color:#888;font-size:14px;">個人頁面僅供一般使用者使用</p>
+            </div>
+            <?php else: ?>
             <?php
             $myUploads = array_filter($videos, function($v) { return $v['uploaded_by'] === $_SESSION['user']; });
             $myLikes = array_filter($videos, function($v) { return $v['uploaded_by'] !== $_SESSION['user'] && $v['is_liked']; });
@@ -1066,7 +1021,8 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                                     您的瀏覽器不支援影片播放。
                                 </video>
                                 <div class="play-icon"></div>
-                                <button class="video-like-btn <?php echo $video['is_liked'] ? 'liked' : ''; ?>" onclick="toggleLikeCard(<?php echo (int)$video['id']; ?>, this)">
+                                <button class="video-like-btn <?php echo $video['is_liked'] ? 'liked' : ''; ?><?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
+                                        onclick="<?php echo $isAdmin ? 'return false;' : 'toggleLikeCard(' . (int)$video['id'] . ', this)'; ?>">
                                     <span class="like-icon"><?php echo $video['is_liked'] ? '❤️' : '🤍'; ?></span>
                                     <span class="like-count"><?php echo (int)$video['likes']; ?></span>
                                 </button>
@@ -1151,8 +1107,16 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+            <?php endif; /* end !$isAdmin personal content */ ?>
         <?php elseif ($view === 'following'): ?>
         <!-- ── 追蹤中 ── -->
+        <?php if ($isAdmin): ?>
+        <div style="text-align:center;padding:80px 20px;">
+            <div style="font-size:3rem;margin-bottom:16px;">🚫</div>
+            <div style="font-size:20px;font-weight:700;color:#9d2942;margin-bottom:10px;">管理員無法使用此功能</div>
+            <p style="color:#888;font-size:14px;">追蹤功能僅供一般使用者使用</p>
+        </div>
+        <?php else: ?>
 
         <!-- 追蹤的人列表 -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
@@ -1201,6 +1165,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                          data-time="<?php echo date('Y年m月d日', strtotime($video['upload_time'])); ?>"
                          data-likes="<?php echo $video['likes']; ?>"
                          data-is-liked="<?php echo $video['is_liked']; ?>"
+                         data-view-count="<?php echo (int)$video['view_count']; ?>"
                          data-description="<?php echo htmlspecialchars($video['description'] ?? ''); ?>"
                          data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>"
                          onclick="openVideoDetail(<?php echo (int)$video['id']; ?>)">
@@ -1230,88 +1195,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
-
-        <?php elseif ($view === 'admin' && $isAdmin): ?>
-            <h2 style="font-size:22px;margin-bottom:18px;color:#c82333;">🚩 待處理檢舉</h2>
-            <?php if (empty($reportedVideos)): ?>
-                <div class="empty-state">
-                    <div class="empty-icon">✅</div>
-                    <div class="empty-text">目前沒有待處理的檢舉</div>
-                </div>
-            <?php else: ?>
-                <div style="overflow-x:auto;">
-                <table class="report-mgr-table">
-                    <thead>
-                        <tr>
-                            <th>影片標題</th>
-                            <th>上傳者</th>
-                            <th>檢舉次數</th>
-                            <th>檢舉原因</th>
-                            <th>最後檢舉時間</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($reportedVideos as $rv): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($rv['title']); ?></td>
-                                <td><?php echo htmlspecialchars($rv['uploaded_by']); ?></td>
-                                <td style="text-align:center;font-weight:bold;color:#c82333;"><?php echo (int)$rv['report_count']; ?></td>
-                                <td>
-                                    <?php foreach ($reportedReasons[$rv['id']] ?? [] as $reason): ?>
-                                        <span class="rpt-tag"><?php echo htmlspecialchars($reason['reason']); ?> ×<?php echo (int)$reason['cnt']; ?></span>
-                                    <?php endforeach; ?>
-                                    <?php if (!empty($reportedDetails[$rv['id']])): ?>
-                                        <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
-                                            <?php foreach ($reportedDetails[$rv['id']] as $d): ?>
-                                                <div style="background:#fff0f3;border-left:3px solid #c82333;padding:6px 10px;border-radius:0 6px 6px 0;font-size:12px;">
-                                                    <span style="color:#9c2132;font-weight:600;"><?php echo htmlspecialchars($d['reported_by']); ?></span>
-                                                    <span style="color:#aaa;margin:0 6px;">·</span>
-                                                    <span style="color:#666;"><?php echo htmlspecialchars($d['reason']); ?></span>
-                                                    <div style="color:#444;margin-top:3px;line-height:1.5;"><?php echo nl2br(htmlspecialchars($d['description'])); ?></div>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo date('m/d H:i', strtotime($rv['last_reported_at'])); ?></td>
-                                <td style="white-space:nowrap;">
-                                    <button class="btn-preview"
-                                        onclick="openReportPreview(
-                                            '<?php echo htmlspecialchars(addslashes($rv['title'])); ?>',
-                                            '<?php echo htmlspecialchars(addslashes($rv['file_path'])); ?>'
-                                        )">▶ 查看影片</button>
-                                    <form method="post" style="display:inline;" onsubmit="return promptTakedownReason(this)">
-                                        <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
-                                        <input type="hidden" name="removed_reason" value="">
-                                        <button type="submit" name="admin_takedown" value="1" class="btn-dismiss" style="background:#fff3e0;border-color:#e67e22;color:#c0392b;">⬇ 下架</button>
-                                    </form>
-                                    <form method="post" style="display:inline;" onsubmit="return confirm('確定永久刪除？此操作無法復原。')">
-                                        <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
-                                        <button type="submit" name="admin_force_delete" value="1" class="btn-force-del">🗑️ 永久刪除</button>
-                                    </form>
-                                    <form method="post" style="display:inline;">
-                                        <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
-                                        <button type="submit" name="admin_dismiss_report" value="1" class="btn-dismiss">✓ 標記已處理</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                </div>
-            <?php endif; ?>
-
-        <!-- 影片預覽 Modal（管理員用）-->
-        <div class="rpt-preview-overlay" id="rptPreviewOverlay">
-            <div class="rpt-preview-box">
-                <button class="rpt-preview-close" onclick="closeReportPreview()">✕</button>
-                <div class="rpt-preview-title" id="rptPreviewTitle"></div>
-                <video id="rptPreviewVideo" controls playsinline>
-                    <source id="rptPreviewSource" src="" type="video/mp4">
-                </video>
-            </div>
-        </div>
+        <?php endif; /* end !$isAdmin following content */ ?>
 
         <?php else: ?>
             <form method="get" action="" id="tagSearchForm">
@@ -1410,6 +1294,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                          data-time="<?php echo date('Y年m月d日', strtotime($video['upload_time'])); ?>"
                          data-likes="<?php echo $video['likes']; ?>"
                          data-is-liked="<?php echo $video['is_liked']; ?>"
+                         data-view-count="<?php echo (int)$video['view_count']; ?>"
                          data-description="<?php echo htmlspecialchars($video['description'] ?? ''); ?>"
                          data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>"
                          onclick="openVideoDetail(<?php echo (int)$video['id']; ?>)">
@@ -1467,17 +1352,24 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                     <div class="video-detail-author" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:8px;"></div>
                         <?php if ($isLoggedIn): ?>
-                        <button id="detailFollowBtn" class="follow-btn" style="display:none;" onclick="toggleFollow('', this)">+ 追蹤</button>
+                        <button id="detailFollowBtn" class="follow-btn<?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
+                                style="display:none;"
+                                onclick="<?php echo $isAdmin ? 'return false;' : "toggleFollow('', this)"; ?>">+ 追蹤</button>
                         <?php endif; ?>
                     </div>
                     <div class="video-detail-time"></div>
                     <div class="video-detail-likes"></div>
+                    <div class="video-detail-views" style="font-size:12px;color:#aaa;"></div>
                 </div>
                 <div class="video-detail-actions">
-                    <button class="video-detail-like-btn" onclick="toggleLike()">🤍 讚</button>
-                    <button class="share-btn" onclick="shareVideo()"><span style="font-size:13px;">🔗</span> 分享</button>
-                    <button class="report-trigger-btn" onclick="toggleReportForm()"><span style="font-size:13px;">🚩</span> 檢舉</button>
+                    <button class="video-detail-like-btn<?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
+                            onclick="<?php echo $isAdmin ? 'return false;' : 'toggleLike()'; ?>">🤍 讚</button>
+                    <button class="share-btn<?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
+                            onclick="<?php echo $isAdmin ? 'return false;' : 'shareVideo()'; ?>"><span style="font-size:13px;">🔗</span> 分享</button>
+                    <button class="report-trigger-btn<?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
+                            onclick="<?php echo $isAdmin ? 'return false;' : 'toggleReportForm()'; ?>"><span style="font-size:13px;">🚩</span> 檢舉</button>
                 </div>
+                <?php if (!$isAdmin): ?>
                 <div id="reportForm" class="report-form">
                     <div>
                         <strong style="color:#fff;">請選擇檢舉原因</strong>
@@ -1493,19 +1385,24 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                     </div>
                     <div id="reportMessage" class="report-message"></div>
                 </div>
-                
+                <?php else: ?>
+                <div id="reportForm"></div>
+                <?php endif; ?>
+
                 <!-- 評論區 -->
                 <div class="comments-section">
                     <div class="comments-header">💬 評論</div>
-                    
+
                     <div class="comment-form">
-                        <input 
-                            type="text" 
-                            class="comment-input" 
-                            id="commentInput" 
-                            placeholder="分享你的想法..." 
-                            maxlength="200">
-                        <button class="comment-submit-btn" onclick="submitComment()">發表</button>
+                        <input
+                            type="text"
+                            class="comment-input<?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
+                            id="commentInput"
+                            placeholder="<?php echo $isAdmin ? '管理員無法留言' : '分享你的想法...'; ?>"
+                            maxlength="200"
+                            <?php if ($isAdmin): ?>readonly onclick="return false;"<?php endif; ?>>
+                        <button class="comment-submit-btn<?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
+                                onclick="<?php echo $isAdmin ? 'return false;' : 'submitComment()'; ?>">發表</button>
                     </div>
 
                     <div id="commentsList" class="comments-list">
@@ -1627,6 +1524,12 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             
             // 載入影片詳情
             loadVideoDetail(videoId);
+
+            // 觀看數 +1（fire-and-forget）
+            const vfd = new FormData();
+            vfd.append('record_view', '1');
+            vfd.append('video_id', videoId);
+            fetch('', { method: 'POST', body: vfd }).catch(() => {});
         }
     }
 
@@ -1654,6 +1557,8 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 const time = card.dataset.time;
                 const likes = card.dataset.likes;
                 const isLiked = card.dataset.isLiked === '1';
+                const viewCount = parseInt(card.dataset.viewCount || '0') + 1; // +1 for this view
+                card.dataset.viewCount = viewCount; // update card data
                 const description = card.dataset.description;
                 const filePath = card.dataset.filePath;
 
@@ -1668,24 +1573,43 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 if (followBtn) {
                     const currentUser = <?php echo json_encode($_SESSION['user'] ?? null); ?>;
                     if (author && author !== currentUser) {
-                        const myFollowings = <?php echo json_encode(array_values($myFollowings)); ?>;
-                        const isFollowing = myFollowings.includes(author);
                         followBtn.style.display = '';
-                        followBtn.textContent = isFollowing ? '✓ 追蹤中' : '+ 追蹤';
-                        followBtn.className = 'follow-btn ' + (isFollowing ? 'following' : 'not-following');
-                        followBtn.onclick = function() { toggleFollow(author, this); };
+                        if (currentRole === 'admin') {
+                            followBtn.textContent = '+ 追蹤';
+                            followBtn.className = 'follow-btn admin-no-action';
+                            followBtn.onclick = function() { return false; };
+                        } else {
+                            const myFollowings = <?php echo json_encode(array_values($myFollowings)); ?>;
+                            const isFollowing = myFollowings.includes(author);
+                            followBtn.textContent = isFollowing ? '✓ 追蹤中' : '+ 追蹤';
+                            followBtn.className = 'follow-btn ' + (isFollowing ? 'following' : 'not-following');
+                            followBtn.onclick = function() { toggleFollow(author, this); };
+                        }
                     } else {
                         followBtn.style.display = 'none';
                     }
                 }
+                // ── 每次開 overlay 重新讀卡片最新狀態（可能被 toggleLike 更新過）──
+                const freshCard = document.querySelector(`.video-card[data-video-id="${videoId}"], .rec-card[data-video-id="${videoId}"]`);
+                const freshIsLiked = freshCard ? freshCard.dataset.isLiked === '1' : isLiked;
+                const freshLikes   = freshCard ? freshCard.dataset.likes : likes;
+
                 overlay.querySelector('.video-detail-time').textContent = time;
-                overlay.querySelector('.video-detail-likes').textContent = likes + ' 讚';
+                overlay.querySelector('.video-detail-likes').textContent = freshLikes + ' 讚';
+                const viewEl = overlay.querySelector('.video-detail-views');
+                if (viewEl) viewEl.textContent = '👁 ' + viewCount.toLocaleString() + ' 次觀看';
                 overlay.querySelector('.video-detail-description').textContent = description || '無描述';
-                
+
                 const likeBtn = overlay.querySelector('.video-detail-like-btn');
-                likeBtn.className = 'video-detail-like-btn' + (isLiked ? ' liked' : '');
-                likeBtn.innerHTML = isLiked ? '<span style="font-size:13px;">❤️</span> 已讚' : '<span style="font-size:13px;">🤍</span> 讚';
-                likeBtn.onclick = function() { toggleLike(videoId); };
+                if (currentRole === 'admin') {
+                    likeBtn.className = 'video-detail-like-btn admin-no-action';
+                    likeBtn.innerHTML = '<span style="font-size:13px;">🤍</span> 讚';
+                    likeBtn.onclick = function() { return false; };
+                } else {
+                    likeBtn.className = 'video-detail-like-btn' + (freshIsLiked ? ' liked' : '');
+                    likeBtn.innerHTML = freshIsLiked ? '<span style="font-size:13px;">❤️</span> 已讚' : '<span style="font-size:13px;">🤍</span> 讚';
+                    likeBtn.onclick = function() { toggleLike(videoId); };
+                }
 
                 const video = overlay.querySelector('.video-detail-player video');
                 if (video) {
@@ -1833,6 +1757,13 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 ? '<span style="font-size:13px;">❤️</span> 已讚'
                 : '<span style="font-size:13px;">🤍</span> 讚';
             overlay.querySelector('.video-detail-likes').textContent = data.likes + ' 讚';
+
+            // ── 同步更新卡片的 data 屬性，讓下次重開 overlay 狀態一致 ──
+            const card = document.querySelector(`.video-card[data-video-id="${videoId}"], .rec-card[data-video-id="${videoId}"]`);
+            if (card) {
+                card.dataset.isLiked = data.liked ? '1' : '0';
+                card.dataset.likes   = data.likes;
+            }
         } catch(e) { console.error('按讚失敗', e); }
     }
 
@@ -2512,6 +2443,42 @@ document.getElementById('editHashtagTyping').addEventListener('keydown', functio
   to   { opacity:1; transform:scale(1); }
 }
 </style>
+
+<!-- Admin tooltip (fixed, never clipped) -->
+<div id="adminTooltip">管理員無法使用此功能</div>
+<script>
+(function() {
+    const tip = document.getElementById('adminTooltip');
+    if (!tip) return;
+
+    document.addEventListener('mouseover', function(e) {
+        const el = e.target.closest('.admin-no-action');
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        tip.style.display = 'block';
+        // Position below the element
+        let top = r.bottom + 6;
+        let left = r.left + r.width / 2 - tip.offsetWidth / 2;
+        // Clamp so tooltip stays inside viewport
+        left = Math.max(8, Math.min(left, window.innerWidth - tip.offsetWidth - 8));
+        if (top + tip.offsetHeight > window.innerHeight - 8) {
+            top = r.top - tip.offsetHeight - 6; // flip to above if no room below
+        }
+        tip.style.top  = top + 'px';
+        tip.style.left = left + 'px';
+    });
+
+    document.addEventListener('mouseout', function(e) {
+        if (!e.target.closest('.admin-no-action')) return;
+        if (e.relatedTarget && e.relatedTarget.closest('.admin-no-action')) return;
+        tip.style.display = 'none';
+    });
+
+    // Hide on scroll / click
+    document.addEventListener('scroll', function() { tip.style.display = 'none'; }, true);
+    document.addEventListener('click',  function() { tip.style.display = 'none'; }, true);
+})();
+</script>
 
 </body>
 </html>

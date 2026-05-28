@@ -18,6 +18,12 @@ if ($rawInput) {
 $action   = $jsonBody['action']   ?? $_POST['action']   ?? $_GET['action'] ?? '';
 $username = $_SESSION['user'];
 
+// 管理員只能讀取，不能新增/修改/刪除留言
+if (($_SESSION['role'] ?? '') === 'admin' && in_array($action, ['add', 'like', 'reply', 'delete', 'report'])) {
+    echo json_encode(['success' => false, 'message' => '管理員無法執行此操作']);
+    exit;
+}
+
 // ── 不當言辭偵測 ───────────────────────────────────────────
 function detectInappropriate(string $text): bool {
     // 統一小寫、去全形空白，方便比對

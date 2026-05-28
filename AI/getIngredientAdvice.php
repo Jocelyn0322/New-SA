@@ -120,6 +120,11 @@ function buildChildEnvironment(): array
         }
     }
 
+    // Fallback: use bundled key if GROQ_API_KEY is not set in environment
+    if (empty($env['GROQ_API_KEY'])) {
+        $env['GROQ_API_KEY'] = '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';
+    }
+
     $env['PATH'] = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin';
 
     foreach (['DYLD_LIBRARY_PATH', 'DYLD_INSERT_LIBRARIES', 'LD_LIBRARY_PATH'] as $dangerKey) {

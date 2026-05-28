@@ -160,33 +160,6 @@ if (isset($_POST['review_submission'])) {
     $tab = 'products';
 }
 
-// 存入本月排名快照
-if (isset($_POST['save_monthly_ranking'])) {
-    $month = date('Y-m');
-    try {
-        // 刪除同月舊快照
-        $pdo->prepare("DELETE FROM monthly_rankings WHERE month = ?")->execute([$month]);
-
-        $types = [
-            'product_views' => "SELECT id AS item_id, name AS item_name, COALESCE(view_count,0) AS score FROM data ORDER BY view_count DESC NULLS LAST LIMIT 10",
-            'product_favs'  => "SELECT p.id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM data p LEFT JOIN product_favorites f ON f.product_id = p.id GROUP BY p.id, p.name ORDER BY score DESC LIMIT 10",
-            'video_views'   => "SELECT id AS item_id, title AS item_name, view_count AS score FROM videos WHERE is_active = 1 ORDER BY view_count DESC LIMIT 10",
-            'video_likes'   => "SELECT v.id AS item_id, v.title AS item_name, COUNT(l.id) AS score FROM videos v LEFT JOIN likes l ON l.video_id = v.id WHERE v.is_active = 1 GROUP BY v.id, v.title ORDER BY score DESC LIMIT 10",
-        ];
-
-        $ins = $pdo->prepare("INSERT INTO monthly_rankings (month, rank_type, rank_no, item_id, item_name, score) VALUES (?,?,?,?,?,?)");
-        foreach ($types as $type => $sql) {
-            $rows = $pdo->query($sql)->fetchAll();
-            foreach ($rows as $i => $r) {
-                $ins->execute([$month, $type, $i + 1, $r['item_id'], $r['item_name'], $r['score']]);
-            }
-        }
-        $msg = "✅ 已儲存 {$month} 的排名快照"; $msgType = 'success';
-    } catch (Throwable $e) {
-        $msg = '❌ 儲存失敗：' . $e->getMessage(); $msgType = 'error';
-    }
-    $tab = 'stats';
-}
 
 // 更新產品資料
 if (isset($_POST['update_product'])) {
@@ -315,15 +288,8 @@ if ($tab === 'stats') {
         $rankData['product_favs']  = $pdo->query("SELECT p.id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM data p LEFT JOIN product_favorites f ON f.product_id = p.id GROUP BY p.id, p.name ORDER BY score DESC LIMIT 10")->fetchAll();
         $rankData['video_views']   = $pdo->query("SELECT id AS item_id, title AS item_name, view_count AS score FROM videos WHERE is_active = 1 ORDER BY view_count DESC LIMIT 10")->fetchAll();
         $rankData['video_likes']   = $pdo->query("SELECT v.id AS item_id, v.title AS item_name, COUNT(l.id) AS score FROM videos v LEFT JOIN likes l ON l.video_id = v.id WHERE v.is_active = 1 GROUP BY v.id, v.title ORDER BY score DESC LIMIT 10")->fetchAll();
-        $lastMonth = date('Y-m', strtotime('first day of last month'));
-        $lastMonthRows = $pdo->prepare("SELECT * FROM monthly_rankings WHERE month = ? ORDER BY rank_type, rank_no");
-        $lastMonthRows->execute([$lastMonth]);
-        $lastMonthData = [];
-        foreach ($lastMonthRows->fetchAll() as $r) {
-            $lastMonthData[$r['rank_type']][] = $r;
-        }
     } catch (Throwable $e) {
-        $rankData = []; $lastMonthData = [];
+        $rankData = [];
     }
 }
 
@@ -790,9 +756,6 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
     <div class="sec-subtitle">平台整體概覽與排名統計</div>
   </div>
   <div class="sec-header-spacer"></div>
-  <form method="post" onsubmit="return confirm('存入 <?php echo date('Y-m'); ?> 的排名快照？');" style="margin:0;">
-    <button type="submit" name="save_monthly_ranking" value="1" class="act-btn neutral" style="height:36px;padding:0 16px;font-size:13px;">📸 存入本月快照</button>
-  </form>
 </div>
 <div class="stats-grid">
     <div class="stat-card">
@@ -866,9 +829,6 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 .rank-toggle:hover { color:#c47a8a; background:#fdf8f8; }
 .snap-btn { background:#fff; color:#c47a8a; border:1.5px solid #ecd8da; border-radius:10px; padding:9px 18px; cursor:pointer; font-size:12px; font-weight:700; font-family:inherit; transition:all .2s; letter-spacing:.3px; }
 .snap-btn:hover { background:#fdf0f1; border-color:#d4a0a8; }
-.rank-last-header { display:flex; align-items:center; gap:10px; margin:32px 0 14px; }
-.rank-last-header h3 { font-size:15px; font-weight:700; color:#3a2a2a; margin:0; }
-.rank-last-header span { font-size:11px; color:#b09090; background:#f5eeee; border-radius:6px; padding:2px 10px; font-weight:500; }
 </style>
 
 <?php
@@ -917,49 +877,6 @@ $medals = ['🥇','🥈','🥉'];
 <?php endforeach; ?>
 </div>
 
-<!-- 上個月快照 -->
-<?php $lastMonth = date('Y-m', strtotime('first day of last month')); ?>
-<div class="rank-last-header">
-    <h3>上個月排名</h3>
-    <span><?php echo $lastMonth; ?></span>
-</div>
-<?php if (empty($lastMonthData)): ?>
-    <div style="background:#fff;border-radius:14px;padding:28px;text-align:center;color:#ccc;font-size:13px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
-        尚無快照紀錄。點「存入本月快照」，下個月即可在此查閱歷史排名。
-    </div>
-<?php else: ?>
-    <div class="rank-grid">
-    <?php foreach ($rankLabels as $type => $info): ?>
-    <div class="rank-block">
-        <div class="rank-block-title" style="background:<?php echo $info['hdr_bg']; ?>; color:<?php echo $info['hdr_color']; ?>;">
-            <span class="title-icon"><?php echo $info['icon']; ?></span>
-            <span class="title-text"><?php echo $info['label']; ?></span>
-        </div>
-        <?php if (empty($lastMonthData[$type])): ?>
-            <div class="rank-empty">無紀錄</div>
-        <?php else: ?>
-            <?php $hasMoreL = count($lastMonthData[$type]) > 3; $uidL = $type . '_last'; ?>
-            <?php foreach ($lastMonthData[$type] as $idx => $r): ?>
-            <a class="rank-row <?php echo $idx >= 3 ? 'rank-more' : ''; ?>" data-group="<?php echo $uidL; ?>"
-               href="<?php echo $info['link'] . (int)$r['item_id']; ?>" target="_blank">
-                <?php $n = (int)$r['rank_no']; ?>
-                <?php if ($n <= 3): ?>
-                    <span class="rank-medal"><?php echo $medals[$n-1]; ?></span>
-                <?php else: ?>
-                    <span class="rank-no"><?php echo $n; ?></span>
-                <?php endif; ?>
-                <span class="rank-name" title="<?php echo htmlspecialchars($r['item_name']); ?>"><?php echo htmlspecialchars($r['item_name']); ?></span>
-                <span class="rank-score" style="background:<?php echo $info['score_bg']; ?>;color:<?php echo $info['score_color']; ?>;"><?php echo (int)$r['score']; ?> <?php echo $info['unit']; ?></span>
-            </a>
-            <?php endforeach; ?>
-            <?php if ($hasMoreL): ?>
-            <button class="rank-toggle" onclick="toggleRank('<?php echo $uidL; ?>', this)">▾ 查看更多</button>
-            <?php endif; ?>
-        <?php endif; ?>
-    </div>
-    <?php endforeach; ?>
-    </div>
-<?php endif; ?>
 
 
 <?php elseif ($tab === 'videos'): ?>
