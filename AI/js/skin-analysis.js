@@ -264,6 +264,7 @@ const confirmManualToneSelection = async () => {
     toneFusionNote.value = `您選擇的膚色：${tone.toneName}（${baseLabel} × ${selectedDepth.value}級 × ${biasLabel}）`;
 
     closeManualSelector();
+    isAnalyzing.value = true;
     await analyzeSkinTone();
 };
 
