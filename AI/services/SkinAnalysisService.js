@@ -166,7 +166,21 @@ export class SkinAnalysisService {
       };
     }
 
-    const conn = await mysqlClient.createConnection(this.dbConfig);
+    let conn;
+    try {
+      conn = await mysqlClient.createConnection(this.dbConfig);
+    } catch (dbErr) {
+      return {
+        analysis,
+        nearestSkinTone: null,
+        products: [],
+        makeupPreference: {
+          finish: makeupPreference?.finish || userPreference || 'Matte',
+          style: makeupPreference?.style || '日常通勤'
+        },
+        warnings: ['資料庫連線失敗，已略過產品推薦']
+      };
+    }
     try {
       const skinTonesTable = await this.findTable(conn, ['SkinTones', 'skintones', 'skin_tones', 'skin_tone']);
       const productsTable = await this.findTable(conn, ['Products', 'products', 'product', 'product_list', 'product_info']);
