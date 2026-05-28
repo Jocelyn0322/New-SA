@@ -35,7 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $_SESSION['user'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
-                header("Location: " . BASE_URL . "/產品/index.php");
+                // 用 JS redirect，先設 sessionStorage 旗標再跳轉
+                echo '<script>sessionStorage.setItem("sa_active","1");window.location.href="' . BASE_URL . '/產品/index.php";</script>';
                 exit();
             }
         }

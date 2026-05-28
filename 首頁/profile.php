@@ -126,6 +126,11 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
     .profile-avatar { width: 96px; height: 96px; background: var(--rose-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 700; color: var(--rose); border: 3px solid var(--rose-200); overflow: hidden; }
     .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .avatar-edit-icon { position: absolute; bottom: 2px; right: 2px; width: 28px; height: 28px; background: var(--rose); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 2px solid white; }
+    .avatar-upload-overlay { position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,.55); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 5px; z-index: 10; pointer-events: none; }
+    .avatar-upload-overlay.show { display: flex; }
+    .avatar-spinner { width: 22px; height: 22px; border: 2.5px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: avatarSpin .7s linear infinite; }
+    .avatar-upload-label { font-size: 10px; color: #fff; font-weight: 700; letter-spacing: .3px; }
+    @keyframes avatarSpin { to { transform: rotate(360deg); } }
     .profile-info { flex: 1; min-width: 0; }
     .profile-name { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
     .profile-meta { font-size: 13px; color: var(--text-3); margin-bottom: 14px; }
@@ -241,7 +246,11 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
           <img src="" id="avatarImg" style="display:none;">
         <?php endif; ?>
       </div>
-      <div class="avatar-edit-icon">✎</div>
+      <div class="avatar-edit-icon" id="avatarEditIcon">✎</div>
+      <div class="avatar-upload-overlay" id="avatarUploadOverlay">
+        <div class="avatar-spinner"></div>
+        <div class="avatar-upload-label">上傳中</div>
+      </div>
     </label>
     <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="uploadAvatar(this)">
 
@@ -574,18 +583,44 @@ async function savePwd() {
 /* ── Avatar upload ── */
 async function uploadAvatar(input) {
   if (!input.files[0]) return;
+  const overlay  = document.getElementById('avatarUploadOverlay');
+  const editIcon = document.getElementById('avatarEditIcon');
+
+  // 顯示「上傳中」
+  overlay.innerHTML = '<div class="avatar-spinner"></div><div class="avatar-upload-label">上傳中</div>';
+  overlay.style.background = 'rgba(0,0,0,.55)';
+  overlay.classList.add('show');
+  if (editIcon) editIcon.style.display = 'none';
+
   const form = new FormData();
   form.append('avatar', input.files[0]);
   try {
-    const res = await fetch('upload_avatar.php', { method:'POST', body: form });
+    const res  = await fetch('upload_avatar.php', { method:'POST', body: form });
     const data = await res.json();
     if (data.success) {
-      const img = document.getElementById('avatarImg');
+      const img  = document.getElementById('avatarImg');
       const init = document.getElementById('avatarInitial');
       img.src = data.url; img.style.display = '';
       if (init) init.style.display = 'none';
-    } else { alert(data.message || '上傳失敗'); }
-  } catch(e) { alert('網路錯誤，請稍後再試'); }
+
+      // 顯示「✓ 成功」
+      overlay.innerHTML = '<div style="font-size:26px;line-height:1;">✓</div><div class="avatar-upload-label">成功</div>';
+      overlay.style.background = 'rgba(22,163,74,.72)';
+      setTimeout(() => {
+        overlay.classList.remove('show');
+        overlay.style.background = '';
+        if (editIcon) editIcon.style.display = '';
+      }, 1800);
+    } else {
+      overlay.classList.remove('show');
+      if (editIcon) editIcon.style.display = '';
+      alert(data.message || '上傳失敗');
+    }
+  } catch(e) {
+    overlay.classList.remove('show');
+    if (editIcon) editIcon.style.display = '';
+    alert('網路錯誤，請稍後再試');
+  }
   input.value = '';
 }
 

@@ -9,6 +9,7 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', getenv('RAILWAY_ENVIRONMENT') !== false ? '' : '/SA/New-SA');
 }
 
+
 if (!defined('SUPABASE_URL'))         define('SUPABASE_URL',         'https://gykwxrymhgywarpyqxcr.supabase.co');
 if (!defined('SUPABASE_SERVICE_KEY')) define('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5a3d4cnltaGd5d2FycHlxeGNyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODUwMjkwNSwiZXhwIjoyMDk0MDc4OTA1fQ.A9SYbsbjQlpCpXGqMANMTlNR4ZA1Ix3NVSdznxN-PKg');
 if (!defined('SUPABASE_BUCKET'))      define('SUPABASE_BUCKET',      'product-images');

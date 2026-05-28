@@ -177,6 +177,25 @@ if (isset($_SESSION['user'])) {
 .notif-time { font-size: 11px; color: #aaa; margin-top: 3px; }
 .notif-empty { padding: 36px 16px; text-align: center; color: #aaa; font-size: 13px; }
 </style>
+<?php if (isset($_SESSION['user'])): ?>
+<script>
+// ── 關閉瀏覽器/分頁後自動登出 ──
+// sessionStorage 在關閉瀏覽器時會被清空；
+// 若 PHP session 還在但 sessionStorage 已清空，代表瀏覽器曾被關閉，強制登出。
+(function(){
+  var BASE = '<?= BASE_URL ?>';
+  if (!sessionStorage.getItem('sa_active')) {
+    // 用 sendBeacon 通知 server 清除 session（非同步，不阻塞跳轉）
+    navigator.sendBeacon(BASE + '/首頁/logout.php?beacon=1');
+    sessionStorage.removeItem('sa_active');
+    window.location.replace(BASE + '/landing.php');
+  } else {
+    // 仍在使用中，持續更新旗標
+    sessionStorage.setItem('sa_active', '1');
+  }
+})();
+</script>
+<?php endif; ?>
 <header class="header">
   <div class="header-inner">
     <!-- 漢堡鈕（手機才顯示） -->
