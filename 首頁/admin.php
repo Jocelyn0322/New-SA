@@ -137,14 +137,34 @@ if (isset($_POST['review_submission'])) {
     $adminNote  = trim($_POST['admin_note'] ?? '');
 
     if ($subId && in_array($decision, ['approved', 'rejected'])) {
+        // 取得申請內容（需在更新前讀取）
+        $sub = $pdo->prepare("SELECT * FROM product_submissions WHERE id = ?");
+        $sub->execute([$subId]);
+        $subRow = $sub->fetch();
+
         // 更新申請狀態
         $pdo->prepare("UPDATE product_submissions SET status = ?, admin_note = ? WHERE id = ?")
             ->execute([$decision, $adminNote, $subId]);
 
-        // 取得申請者資訊以發送站內通知
-        $sub = $pdo->prepare("SELECT ps.product_name, ps.username FROM product_submissions ps WHERE ps.id = ?");
-        $sub->execute([$subId]);
-        $subRow = $sub->fetch();
+        // 核准時將產品複製進 data 表（讓使用者能在產品頁看到）
+        if ($decision === 'approved' && $subRow) {
+            try {
+                $pdo->prepare("
+                    INSERT INTO data (name, brand, category, purpose, image_url, ingredients)
+                    VALUES (:name, :brand, :category, :purpose, :image_url, :ingredients)
+                ")->execute([
+                    ':name'        => $subRow['product_name'] ?? '',
+                    ':brand'       => $subRow['brand']        ?? '',
+                    ':category'    => $subRow['category']     ?? '',
+                    ':purpose'     => $subRow['description']  ?? '',
+                    ':image_url'   => '',
+                    ':ingredients' => '',
+                ]);
+            } catch (Exception $_e) {
+                // 欄位不符時記錄但不中止審核流程
+                $msg .= '（產品已核准但寫入 data 表失敗：' . $_e->getMessage() . '）';
+            }
+        }
 
         if ($subRow) {
             $resultLabel = $decision === 'approved' ? '核准' : '拒絕';

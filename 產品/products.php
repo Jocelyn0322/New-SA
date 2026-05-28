@@ -42,6 +42,15 @@ $categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT categor
     WHEN '護膚' THEN 10 WHEN '護唇' THEN 11 WHEN '防曬' THEN 12
     ELSE 99 END");
 $favorites = $_SESSION['favorite'] ?? [];
+// 若 session 空但已登入，從 DB 補回（避免 Railway 部署後愛心消失）
+if (empty($favorites) && isset($_SESSION['user'])) {
+    try {
+        $fStmt = $pdo->prepare("SELECT product_id FROM product_favorites WHERE username = ?");
+        $fStmt->execute([$_SESSION['user']]);
+        $favorites = array_column($fStmt->fetchAll(PDO::FETCH_ASSOC), 'product_id');
+        if (!empty($favorites)) $_SESSION['favorite'] = $favorites;
+    } catch (Exception $e) {}
+}
 $compare_count = count($_SESSION['compare'] ?? []);
 
 /* build pagination URL helper */

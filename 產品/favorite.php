@@ -3,9 +3,24 @@ require_once __DIR__ . '/../auth_check.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 include __DIR__ . '/../db.php';
 
-$ids = $_SESSION['favorite'] ?? [];
-$result = null;
+// 優先從 DB 讀取（session 可能因 Railway 部署而遺失）
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS product_favorites (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) NOT NULL,
+        product_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (username, product_id)
+    )");
+    $fStmt = $pdo->prepare("SELECT product_id FROM product_favorites WHERE username = ? ORDER BY created_at DESC");
+    $fStmt->execute([$_SESSION['user']]);
+    $ids = array_column($fStmt->fetchAll(PDO::FETCH_ASSOC), 'product_id');
+    $_SESSION['favorite'] = $ids;
+} catch (Exception $e) {
+    $ids = $_SESSION['favorite'] ?? [];
+}
 
+$result = null;
 if (!empty($ids)) {
     $id_list = implode(",", array_map('intval', $ids));
     $result  = $conn->query("SELECT *, id AS p_id FROM data WHERE id IN ($id_list)");
