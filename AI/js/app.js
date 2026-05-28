@@ -10,6 +10,17 @@ const app = createApp({
         loadFeedbackHistory();
         loadAnalysisHistory();
 
+        const scrollToLatest = () => nextTick(() => {
+            const chipZone = document.querySelector('.chip-zone');
+            if (chipZone) { chipZone.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+            const chatBody = document.querySelector('.chat-body');
+            if (chatBody) chatBody.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+        watch(toneQuizTyping, v => { if (!v) scrollToLatest(); });
+        watch(skinQuizTyping,  v => { if (!v) scrollToLatest(); });
+        watch(toneQuizStep,  () => scrollToLatest());
+        watch(skinQuizStep,   () => scrollToLatest());
+
         return {
             // ── State refs ──────────────────────────────────────
             alertVisible,
