@@ -411,7 +411,25 @@ function page_url($p) {
     </div>
     <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImgFile(this.files[0])">
     <input type="file" id="imgCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImgFile(this.files[0])">
-    <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="width:100%;margin-top:14px;opacity:.5;cursor:not-allowed;">開始搜尋</button>
+    <div style="margin-top:14px;">
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;display:block;">產品類別（選填，可提高搜尋準確度）</label>
+      <select id="imgCategoryFilter" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--text-2);background:var(--bg);outline:none;transition:border var(--t);" onfocus="this.style.borderColor='var(--rose)'" onblur="this.style.borderColor='var(--border)'">
+        <option value="">讓 AI 自動判斷</option>
+        <option value="底妝">底妝</option>
+        <option value="遮瑕">遮瑕</option>
+        <option value="眼影">眼影</option>
+        <option value="眼線">眼線</option>
+        <option value="睫毛膏">睫毛膏</option>
+        <option value="腮紅">腮紅</option>
+        <option value="修容">修容</option>
+        <option value="打亮">打亮</option>
+        <option value="唇彩">唇彩</option>
+        <option value="護膚">護膚</option>
+        <option value="護唇">護唇</option>
+        <option value="防曬">防曬</option>
+      </select>
+    </div>
+    <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="width:100%;margin-top:12px;opacity:.5;cursor:not-allowed;">開始搜尋</button>
     <div id="imgLoading" style="display:none;text-align:center;padding:20px 0;">
       <div style="display:inline-block;width:28px;height:28px;border:3px solid var(--rose-100);border-top-color:var(--rose);border-radius:50%;animation:spin .8s linear infinite;"></div>
       <p style="font-size:13px;color:var(--text-3);margin:10px 0 0;">AI 正在識別產品…</p>
@@ -461,6 +479,7 @@ function resetImgSearch() {
   btn.disabled=true; btn.style.opacity='.5'; btn.style.cursor='not-allowed';
   ['imgLoading','imgParsedTags','imgResults','imgNoResult'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('imgFileInput').value='';
+  document.getElementById('imgCategoryFilter').value='';
 }
 function handleImgDrop(e) {
   e.preventDefault();
@@ -491,7 +510,8 @@ async function runImgSearch() {
   ['imgResults','imgNoResult','imgParsedTags'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('imgAnalyzeBtn').disabled=true;
   try {
-    const res=await fetch('image_search_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:imgBase64,mimeType:imgMime})});
+    const userCategory=document.getElementById('imgCategoryFilter').value;
+    const res=await fetch('image_search_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:imgBase64,mimeType:imgMime,userCategory:userCategory})});
     const data=await res.json();
     document.getElementById('imgLoading').style.display='none';
     document.getElementById('imgAnalyzeBtn').disabled=false;

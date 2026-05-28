@@ -93,9 +93,13 @@ $brand    = trim($parsed['brand']    ?? '');
 $category = trim($parsed['category'] ?? '');
 $keywords = array_filter(array_map('trim', $parsed['keywords'] ?? []));
 
-// 驗證 category 必須是資料庫中的合法分類，避免 AI 亂填
 $validCategories = ['底妝','遮瑕','眼影','眼線','睫毛膏','腮紅','修容','打亮','唇彩','護膚','護唇','防曬'];
-if ($category && !in_array($category, $validCategories)) {
+
+// 使用者手動選類別時直接覆蓋 AI 的判斷（更準確）
+$userCategory = trim($payload['userCategory'] ?? '');
+if ($userCategory && in_array($userCategory, $validCategories)) {
+    $category = $userCategory;
+} elseif ($category && !in_array($category, $validCategories)) {
     $category = '';
 }
 
