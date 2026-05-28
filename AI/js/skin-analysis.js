@@ -295,6 +295,7 @@ const analyzeSkinFromImage = async () => {
         ? `已將臉頰最亮膚色與前面膚色問卷（${toneGuess.value || '未判定'}）融合後作為初始膚色。`
         : '已將臉頰最亮膚色作為初始膚色。';
 
+    stopCamera();
     currentStep.value = 4;
     await analyzeWithGroq();
 };
