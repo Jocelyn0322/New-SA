@@ -4,13 +4,30 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 include __DIR__ . '/../db.php';
 
 $sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 8";
-$result = $conn->query($sql);
+$products  = $conn->query($sql)->fetchAll();   // 一次取完，避免邊 fetch 邊查
 $favorites = $_SESSION['favorite'] ?? [];
 
-// 真實統計數字
-$statProducts = (int)$pdo->query("SELECT COUNT(*) FROM data")->fetchColumn();
-$statUsers    = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active'")->fetchColumn();
-$statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchColumn();
+// 一條查詢取所有統計數字
+$statsRow     = $pdo->query("SELECT
+    (SELECT COUNT(*) FROM data) AS products,
+    (SELECT COUNT(*) FROM users WHERE COALESCE(status,'active') = 'active') AS users,
+    (SELECT COUNT(*) FROM product_ratings) AS ratings
+")->fetch();
+$statProducts = (int)($statsRow['products'] ?? 0);
+$statUsers    = (int)($statsRow['users']    ?? 0);
+$statRatings  = (int)($statsRow['ratings']  ?? 0);
+
+// 一條查詢取所有產品顏色（解決 N+1）
+$colorsMap = [];
+if (!empty($products)) {
+    $ids = implode(',', array_map('intval', array_column($products, 'p_id')));
+    $colorRows = $conn->query("SELECT p_id, color_hex, color_name FROM product_colors WHERE p_id IN ($ids) ORDER BY id")->fetchAll();
+    foreach ($colorRows as $c) {
+        if (!isset($colorsMap[$c['p_id']]) || count($colorsMap[$c['p_id']]) < 4) {
+            $colorsMap[$c['p_id']][] = $c;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -207,10 +224,9 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
     </div>
 
     <div class="product-grid">
-    <?php $cardIdx = 0; while ($row = $result->fetch()):
-      $isFav = in_array($row['p_id'], $favorites);
-      $colors_q = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$row['p_id']} LIMIT 4");
-      $colors = $colors_q->fetchAll();
+    <?php $cardIdx = 0; foreach ($products as $row):
+      $isFav  = in_array($row['p_id'], $favorites);
+      $colors = $colorsMap[$row['p_id']] ?? [];
       $cardIdx++;
     ?>
       <div class="product-card card-reveal sd-<?= min($cardIdx, 8) ?>">
@@ -259,7 +275,7 @@ $statRatings  = (int)$pdo->query("SELECT COUNT(*) FROM product_ratings")->fetchC
           </div>
         </div>
       </div>
-    <?php endwhile; ?>
+    <?php endforeach; ?>
     </div>
 
     <div style="text-align:center;margin-top:32px;">

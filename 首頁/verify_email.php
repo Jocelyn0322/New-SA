@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   $_SESSION['pending_password'], $_SESSION['pending_code'],
                   $_SESSION['pending_expiry'], $_SESSION['email_send_failed']);
 
-            echo '<script>sessionStorage.setItem("sa_active","1");window.location.href="' . BASE_URL . '/產品/index.php";</script>';
+            header("Location: " . BASE_URL . "/產品/index.php");
             exit();
         }
     }

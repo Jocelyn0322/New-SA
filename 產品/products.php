@@ -32,7 +32,19 @@ $total_pages = max(1, ceil($total / $per_page));
 $page = min($page, $total_pages);
 $offset = ($page - 1) * $per_page;
 
-$result = $conn->query($sql_base . $joins . $where_clause . " $order LIMIT $per_page OFFSET $offset");
+$products_raw = $conn->query($sql_base . $joins . $where_clause . " $order LIMIT $per_page OFFSET $offset")->fetchAll();
+
+// 一條查詢取所有顏色（解決 N+1）
+$colorsMap = [];
+if (!empty($products_raw)) {
+    $ids = implode(',', array_map('intval', array_column($products_raw, 'p_id')));
+    $colorRows = $conn->query("SELECT p_id, color_hex, color_name FROM product_colors WHERE p_id IN ($ids) ORDER BY id")->fetchAll();
+    foreach ($colorRows as $c) {
+        if (!isset($colorsMap[$c['p_id']]) || count($colorsMap[$c['p_id']]) < 4) {
+            $colorsMap[$c['p_id']][] = $c;
+        }
+    }
+}
 
 $categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT category FROM data WHERE category IS NOT NULL AND category != '') sub ORDER BY CASE category
     WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2
@@ -222,13 +234,12 @@ function page_url($p) {
 
 <!-- Products -->
 <div class="products-wrap">
-  <?php if ($result->rowCount() > 0): ?>
+  <?php if (!empty($products_raw)): ?>
     <div class="product-grid">
-    <?php while ($row = $result->fetch()): ?>
+    <?php foreach ($products_raw as $row): ?>
       <?php
-        $isFav = in_array($row['p_id'], $favorites);
-        $colors_q = $conn->query("SELECT color_hex, color_name FROM product_colors WHERE p_id={$row['p_id']} LIMIT 4");
-        $colors = $colors_q->fetchAll();
+        $isFav  = in_array($row['p_id'], $favorites);
+        $colors = $colorsMap[$row['p_id']] ?? [];
       ?>
       <div class="product-card">
         <div class="product-card-img">
@@ -276,7 +287,7 @@ function page_url($p) {
           </div>
         </div>
       </div>
-    <?php endwhile; ?>
+    <?php endforeach; ?>
     </div>
   <?php else: ?>
     <div class="empty">

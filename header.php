@@ -15,19 +15,24 @@ $_initial   = isset($_SESSION['user']) ? mb_strtoupper(mb_substr($_SESSION['user
 $_notifCount = 0;
 $_avatarUrl  = '';
 if (isset($_SESSION['user'])) {
-    try {
-        ensureNotificationsTable($pdo);
+    // 只在 session 首次載入時跑一次 DDL，避免每次頁面都執行 CREATE TABLE / ALTER TABLE
+    if (empty($_SESSION['_notif_init'])) {
+        try { ensureNotificationsTable($pdo); } catch (Exception $e) {}
+        $_SESSION['_notif_init'] = true;
+    }
 
-        $ns = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE recipient = ? AND is_read = FALSE");
-        $ns->execute([$_SESSION['user']]);
-        $_notifCount = (int)$ns->fetchColumn();
-    } catch (Exception $e) { $_notifCount = 0; }
-
+    // 一次查詢同時取通知數 + 大頭照
     try {
-        $av = $pdo->prepare("SELECT avatar_url FROM user_profiles WHERE username = ?");
-        $av->execute([$_SESSION['user']]);
-        $_avatarUrl = (string)($av->fetchColumn() ?: '');
-    } catch (Exception $e) { $_avatarUrl = ''; }
+        $hdr = $pdo->prepare("
+            SELECT
+                (SELECT COUNT(*) FROM notifications WHERE recipient = :u AND is_read = FALSE) AS notif_count,
+                (SELECT avatar_url FROM user_profiles WHERE username = :u2) AS avatar_url
+        ");
+        $hdr->execute([':u' => $_SESSION['user'], ':u2' => $_SESSION['user']]);
+        $hdrRow      = $hdr->fetch();
+        $_notifCount = (int)($hdrRow['notif_count'] ?? 0);
+        $_avatarUrl  = (string)($hdrRow['avatar_url'] ?? '');
+    } catch (Exception $e) { $_notifCount = 0; $_avatarUrl = ''; }
 }
 ?>
 <style>
@@ -177,25 +182,6 @@ if (isset($_SESSION['user'])) {
 .notif-time { font-size: 11px; color: #aaa; margin-top: 3px; }
 .notif-empty { padding: 36px 16px; text-align: center; color: #aaa; font-size: 13px; }
 </style>
-<?php if (isset($_SESSION['user'])): ?>
-<script>
-// ── 關閉瀏覽器/分頁後自動登出 ──
-// sessionStorage 在關閉瀏覽器時會被清空；
-// 若 PHP session 還在但 sessionStorage 已清空，代表瀏覽器曾被關閉，強制登出。
-(function(){
-  var BASE = '<?= BASE_URL ?>';
-  if (!sessionStorage.getItem('sa_active')) {
-    // 用 sendBeacon 通知 server 清除 session（非同步，不阻塞跳轉）
-    navigator.sendBeacon(BASE + '/首頁/logout.php?beacon=1');
-    sessionStorage.removeItem('sa_active');
-    window.location.replace(BASE + '/landing.php');
-  } else {
-    // 仍在使用中，持續更新旗標
-    sessionStorage.setItem('sa_active', '1');
-  }
-})();
-</script>
-<?php endif; ?>
 <header class="header">
   <div class="header-inner">
     <!-- 漢堡鈕（手機才顯示） -->
