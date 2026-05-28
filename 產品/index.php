@@ -21,7 +21,7 @@ $statRatings  = (int)($statsRow['ratings']  ?? 0);
 $colorsMap = [];
 if (!empty($products)) {
     $ids = implode(',', array_map('intval', array_column($products, 'p_id')));
-    $colorRows = $conn->query("SELECT p_id, color_hex, color_name FROM product_colors WHERE p_id IN ($ids) ORDER BY id")->fetchAll();
+    $colorRows = $conn->query("SELECT p_id, color_hex, color_name FROM product_colors WHERE p_id IN ($ids)")->fetchAll();
     foreach ($colorRows as $c) {
         if (!isset($colorsMap[$c['p_id']]) || count($colorsMap[$c['p_id']]) < 4) {
             $colorsMap[$c['p_id']][] = $c;
