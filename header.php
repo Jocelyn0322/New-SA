@@ -11,8 +11,9 @@ $_navSkin   = strpos($_uri, '/skinmatch.php') !== false || strpos($_uri, '/skin-
 $_favCount  = count($_SESSION['favorite'] ?? []);
 $_initial   = isset($_SESSION['user']) ? mb_strtoupper(mb_substr($_SESSION['user'], 0, 1)) : '';
 
-// 通知未讀數（只在登入時查）
+// 通知未讀數 & 大頭照（只在登入時查）
 $_notifCount = 0;
+$_avatarUrl  = '';
 if (isset($_SESSION['user'])) {
     try {
         ensureNotificationsTable($pdo);
@@ -21,6 +22,12 @@ if (isset($_SESSION['user'])) {
         $ns->execute([$_SESSION['user']]);
         $_notifCount = (int)$ns->fetchColumn();
     } catch (Exception $e) { $_notifCount = 0; }
+
+    try {
+        $av = $pdo->prepare("SELECT avatar_url FROM user_profiles WHERE username = ?");
+        $av->execute([$_SESSION['user']]);
+        $_avatarUrl = (string)($av->fetchColumn() ?: '');
+    } catch (Exception $e) { $_avatarUrl = ''; }
 }
 ?>
 <style>
@@ -270,7 +277,13 @@ if (isset($_SESSION['user'])) {
 
   <?php if (isset($_SESSION['user'])): ?>
   <div class="mob-user">
-    <div class="mob-avatar"><?= htmlspecialchars($_initial) ?></div>
+    <div class="mob-avatar">
+      <?php if ($_avatarUrl !== ''): ?>
+        <img src="<?= htmlspecialchars($_avatarUrl) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+      <?php else: ?>
+        <?= htmlspecialchars($_initial) ?>
+      <?php endif; ?>
+    </div>
     <div>
       <div class="mob-username"><?= htmlspecialchars($_SESSION['user']) ?></div>
       <div class="mob-username-sub">已登入</div>
