@@ -431,7 +431,7 @@ function page_url($p) {
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="flex:1;opacity:.5;cursor:not-allowed;">開始搜尋</button>
-      <button id="imgResetBtn" onclick="resetImgSearch()" class="btn btn-outline" style="display:none;flex-shrink:0;">換張圖片</button>
+      <button id="imgResetBtn" onclick="resetImgSearch()" class="btn btn-outline" style="display:none;flex-shrink:0;width:auto;">換張圖片</button>
     </div>
     <div id="imgLoading" style="display:none;text-align:center;padding:20px 0;">
       <div style="display:inline-block;width:28px;height:28px;border:3px solid var(--rose-100);border-top-color:var(--rose);border-radius:50%;animation:spin .8s linear infinite;"></div>
