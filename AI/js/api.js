@@ -354,6 +354,7 @@ const showLoginPromptModal = () => {
 };
 
 const finishAndSave = async () => {
+    isAnalyzing.value = true;
     const skinType = manualSkinType.value
         || (typeof skinTypeResult.value === 'object' ? skinTypeResult.value?.profile?.displayName : skinTypeResult.value)
         || '';
@@ -378,11 +379,13 @@ const finishAndSave = async () => {
         const result = await resp.json().catch(() => ({}));
 
         if (!result.loggedIn) {
+            isAnalyzing.value = false;
             showLoginPromptModal();
         } else {
             window.location.href = '../產品/skinmatch.php';
         }
     } catch (_) {
+        isAnalyzing.value = false;
         window.location.href = '../產品/skinmatch.php';
     }
 };

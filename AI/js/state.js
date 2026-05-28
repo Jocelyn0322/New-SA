@@ -63,7 +63,8 @@ const skinQuizData = [
         { val: 'A', label: '嚴重浮粉、起皮，妝吸不住' },
         { val: 'B', label: '鼻翼脫妝掉粉，兩頰很乾' },
         { val: 'C', label: 'T 區油光滿面，妝色暗沉' },
-        { val: 'D', label: '妝感完整，只有微出油' }
+        { val: 'D', label: '妝感完整，只有微出油' },
+        { val: 'E', label: '平時不化妝' }
     ]},
     { key: 'q4', q: '皮膚對外界刺激的耐受度？', hint: '敏感肌可以和其他膚質重疊，這個問題單獨評估你的耐受度', opts: [
         { val: 'A', label: '換季、新品容易泛紅刺痛' },

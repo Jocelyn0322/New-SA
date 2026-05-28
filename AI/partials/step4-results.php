@@ -191,7 +191,15 @@
     </div>
 
     <!-- 妝感偏好 -->
-    <div v-if="showMakeupPreference" class="p-5 md:p-6 border border-pink-100 rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 shadow-sm">
+    <div v-if="showMakeupPreference" class="p-5 md:p-6 border border-pink-100 rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 shadow-sm" style="position:relative;">
+        <!-- 送出中 overlay -->
+        <div v-if="isAnalyzing" style="position:absolute;inset:0;z-index:20;border-radius:1rem;background:rgba(253,242,244,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+            <svg style="width:44px;height:44px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="#f5c6d0" stroke-width="3"/>
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="#6b2d3e" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <p style="font-size:15px;font-weight:700;color:#6b2d3e;">正在儲存，請稍候…</p>
+        </div>
         <div class="flex items-center justify-between mb-3">
             <h3 class="font-extrabold text-gray-900 text-lg">💋 妝感與妝容偏好</h3>
             <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-pink-700 border border-pink-200">AI 偏好輸入</span>
@@ -223,7 +231,7 @@
         </div>
         <div class="mt-4 grid gap-2 sm:grid-cols-2">
             <button @click="backToResultsPage" class="bg-white text-pink-600 py-2.5 rounded-xl font-bold border border-pink-200 hover:bg-pink-50 transition duration-200">← 返回分析結果</button>
-            <button @click="finishAndSave" class="bg-pink-600 text-white py-2.5 rounded-xl font-bold hover:bg-pink-500 transition duration-200">送出偏好並完成分析</button>
+            <button @click="finishAndSave" :disabled="isAnalyzing" class="bg-pink-600 text-white py-2.5 rounded-xl font-bold hover:bg-pink-500 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">送出偏好並完成分析</button>
         </div>
     </div>
 

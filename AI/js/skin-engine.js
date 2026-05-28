@@ -36,7 +36,7 @@ const getCalibratedSkinType = (aiOrManualSkinType, aiConfidence = 0.5) => {
     const answerVectorMap = {
         q1: { A: -2, B: -1, C: 1, D: 2, E: 0 },
         q2: { A: -2, B: -1, C: 2, D: 0 },
-        q3: { A: -2, B: -1, C: 2, D: 0 },
+        q3: { A: -2, B: -1, C: 2, D: 0, E: 0 },
         q4: { A: 2, B: 1, C: -2 },
     };
 
@@ -68,6 +68,7 @@ const getCalibratedSkinType = (aiOrManualSkinType, aiConfidence = 0.5) => {
         B: { '混乾皮': 2.0, '敏感肌': 0.6 },
         C: { '混油皮': 2.4, '油性皮': 1.2, '敏感肌': 0.5 },
         D: { '中性皮': 2.4, '敏感肌': 0.2 },
+        E: { '中性皮': 1.0 },
     };
     const q4Weights = {
         A: { '敏感肌': 5.5 },
