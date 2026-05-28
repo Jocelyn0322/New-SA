@@ -89,45 +89,9 @@
         正在使用 AI 分析照片，請稍候...
     </div>
 
-    <!-- 操作列 -->
-    <div class="flex justify-between items-center pt-1">
-        <button type="button" @click="backToToneAndSkinPage"
-            class="rounded-xl px-4 py-2.5 text-sm font-bold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all duration-200">
-            ← 重新拍照
-        </button>
-        <button type="button" @click="goToConfirmStep"
-            class="rounded-xl px-5 py-2.5 text-sm font-bold bg-violet-600 text-white hover:bg-violet-700 transition-all duration-200 shadow-sm">
-            繼續確認 →
-        </button>
-    </div>
-
-</div>
-
-<!-- ── Step 5：確認結果 ── -->
-<div v-if="currentStep === 5" class="space-y-5">
-
-    <!-- 成分避雷 -->
-    <div v-if="ingredientAdvice" class="p-5 border border-rose-100 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 shadow-sm">
-        <h3 class="font-extrabold mb-2 text-gray-900">🧪 成分避雷（AI）</h3>
-        <p class="text-sm text-gray-600 mb-2">膚質：{{ ingredientAdvice.skin_type }}</p>
-        <ul class="space-y-2">
-            <li v-for="item in ingredientAdvice.avoid_ingredients" :key="item.ingredient" class="bg-white/90 border border-rose-100 rounded-xl p-3">
-                <p class="font-semibold text-gray-900">{{ item.ingredient }}</p>
-                <p class="text-sm text-gray-600 mt-1">{{ item.reason }}</p>
-            </li>
-        </ul>
-        <div v-if="ingredientAdvice.suitable_focus && ingredientAdvice.suitable_focus.length" class="mt-3 text-sm text-gray-700">
-            <p class="font-semibold">建議著重：</p>
-            <p>{{ ingredientAdvice.suitable_focus.join('、') }}</p>
-        </div>
-        <p class="text-xs text-gray-500 mt-3">{{ ingredientAdvice.disclaimer }}</p>
-    </div>
-
     <!-- 確認結果 -->
     <div class="p-5 md:p-6 border border-amber-100 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">
-        <div class="flex items-center justify-between mb-1">
-            <h4 class="font-extrabold text-gray-900 text-lg">確認你的分析結果</h4>
-        </div>
+        <h4 class="font-extrabold text-gray-900 text-lg mb-1">確認你的分析結果</h4>
         <p class="text-sm text-gray-500 mb-4">請分別點擊下方兩個按鈕確認膚色與膚質，確認後才能進行下一步。</p>
 
         <div class="grid md:grid-cols-2 gap-3 mb-4">
@@ -175,9 +139,9 @@
 
         <!-- 操作列 -->
         <div class="flex flex-wrap gap-2 justify-between items-center">
-            <button type="button" @click="backToResultsPage"
-                class="rounded-xl px-4 py-2.5 text-sm font-bold bg-white text-amber-700 border border-amber-200 hover:bg-amber-50 transition-all duration-200">
-                ← 返回分析結果
+            <button type="button" @click="backToToneAndSkinPage"
+                class="rounded-xl px-4 py-2.5 text-sm font-bold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all duration-200">
+                ← 重新拍照
             </button>
             <div class="flex flex-wrap gap-2">
                 <button type="button" @click="finishAndSave"
@@ -199,6 +163,28 @@
                 </button>
             </div>
         </div>
+    </div>
+
+</div>
+
+<!-- ── Step 5：妝感偏好 ── -->
+<div v-if="currentStep === 5" class="space-y-5">
+
+    <!-- 成分避雷 -->
+    <div v-if="ingredientAdvice" class="p-5 border border-rose-100 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 shadow-sm">
+        <h3 class="font-extrabold mb-2 text-gray-900">🧪 成分避雷（AI）</h3>
+        <p class="text-sm text-gray-600 mb-2">膚質：{{ ingredientAdvice.skin_type }}</p>
+        <ul class="space-y-2">
+            <li v-for="item in ingredientAdvice.avoid_ingredients" :key="item.ingredient" class="bg-white/90 border border-rose-100 rounded-xl p-3">
+                <p class="font-semibold text-gray-900">{{ item.ingredient }}</p>
+                <p class="text-sm text-gray-600 mt-1">{{ item.reason }}</p>
+            </li>
+        </ul>
+        <div v-if="ingredientAdvice.suitable_focus && ingredientAdvice.suitable_focus.length" class="mt-3 text-sm text-gray-700">
+            <p class="font-semibold">建議著重：</p>
+            <p>{{ ingredientAdvice.suitable_focus.join('、') }}</p>
+        </div>
+        <p class="text-xs text-gray-500 mt-3">{{ ingredientAdvice.disclaimer }}</p>
     </div>
 
     <!-- 妝感偏好 -->
@@ -233,7 +219,7 @@
             </div>
         </div>
         <div class="mt-4 grid gap-2 sm:grid-cols-2">
-            <button @click="showMakeupPreference = false" class="bg-white text-pink-600 py-2.5 rounded-xl font-bold border border-pink-200 hover:bg-pink-50 transition duration-200">返回：確認結果</button>
+            <button @click="backToResultsPage" class="bg-white text-pink-600 py-2.5 rounded-xl font-bold border border-pink-200 hover:bg-pink-50 transition duration-200">← 返回分析結果</button>
             <button @click="finishAndSave" class="bg-pink-600 text-white py-2.5 rounded-xl font-bold hover:bg-pink-500 transition duration-200">送出偏好並完成分析</button>
         </div>
     </div>
