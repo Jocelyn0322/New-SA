@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="../產品/style.css?v=2">
+    <link rel="stylesheet" href="../產品/style.css?v=3">
     <link rel="stylesheet" href="story1-morandi.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>

@@ -13,7 +13,7 @@ $aiBase = '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AI Skin Lab</title>
-    <link rel="stylesheet" href="../產品/style.css?v=2">
+    <link rel="stylesheet" href="../產品/style.css?v=3">
     <style>
     /* ── Page ─────────────────────────────────────────────── */
     body {
