@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COSMETIC — 產品列表</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.search-wrap {
+  background: var(--card); border-bottom: 1px solid var(--border);
+  padding: 18px 0; position: sticky; top: var(--header-h); z-index: 90;
+}
+.search-inner {
+  max-width: var(--max-w); margin: 0 auto; padding: 0 24px;
+  display: flex; gap: 12px; align-items: center;
+}
+.search-box {
+  flex: 1; display: flex; align-items: center;
+  border: 1.5px solid var(--border); border-radius: var(--r); background: var(--bg);
+  overflow: hidden; transition: border var(--t);
+}
+.search-box:focus-within { border-color: var(--rose); background: var(--card); }
+.search-box-icon { padding: 0 12px; color: var(--text-3); font-size: 16px; }
+.search-box input { flex: 1; border: none; background: none; padding: 10px 8px 10px 0; font-size: 14px; font-family: inherit; color: var(--text); outline: none; }
+.filter-wrap { max-width: var(--max-w); margin: 16px auto 0; padding: 0 24px; }
+.filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-pill {
+  padding: 6px 16px; border-radius: var(--r-full);
+  border: 1.5px solid var(--border); background: var(--card);
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+  cursor: pointer; transition: all var(--t);
+}
+.filter-pill:hover { border-color: var(--rose-200); color: var(--rose); }
+.filter-pill.active { background: var(--rose); border-color: var(--rose); color: white; }
+.sort-select {
+  padding: 8px 14px; border: 1.5px solid var(--border); border-radius: var(--r);
+  font-size: 13px; font-family: inherit; color: var(--text-2); background: var(--card);
+  cursor: pointer; outline: none;
+}
+.products-wrap { max-width: var(--max-w); margin: 28px auto 60px; padding: 0 24px; }
+.results-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.results-count { font-size: 13px; color: var(--text-3); }
+.results-count strong { color: var(--text); }
+.pagination { display: flex; gap: 6px; align-items: center; margin-top: 40px; justify-content: center; }
+.page-btn {
+  width: 36px; height: 36px; border-radius: var(--r);
+  border: 1px solid var(--border); background: var(--card);
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+  cursor: pointer; transition: all var(--t); display: flex; align-items: center; justify-content: center;
+}
+.page-btn:hover { border-color: var(--rose-200); color: var(--rose); }
+.page-btn.active { background: var(--rose); border-color: var(--rose); color: white; }
+.page-btn.disabled { opacity: .4; cursor: default; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo"><div class="logo-mark">💄</div>COSMETIC</a>
+    <nav class="nav">
+      <a href="index.html" class="nav-link">首頁</a>
+      <a href="products.html" class="nav-link active">產品</a>
+      <a href="ai.html" class="nav-link">AI 檢測</a>
+      <a href="video.html" class="nav-link">影片交流</a>
+    </nav>
+    <div class="header-actions">
+      <a href="favorite.html" class="icon-btn">♡<span class="count">3</span></a>
+      <a href="compare.html" class="icon-btn">⚖</a>
+      <a href="profile.html" class="user-chip"><div class="user-avatar">A</div><span>alice</span></a>
+    </div>
+  </div>
+</header>
+
+<!-- Search Bar -->
+<div class="search-wrap">
+  <div class="search-inner">
+    <div class="search-box">
+      <span class="search-box-icon">🔍</span>
+      <input type="text" placeholder="搜尋品牌、產品名稱…" value="">
+    </div>
+    <select class="sort-select">
+      <option>最新上架</option>
+      <option>觀看最多</option>
+      <option>評分最高</option>
+      <option>收藏最多</option>
+    </select>
+  </div>
+</div>
+
+<!-- Category Filter -->
+<div class="filter-wrap">
+  <div class="filter-pills">
+    <button class="filter-pill active">全部</button>
+    <button class="filter-pill">底妝</button>
+    <button class="filter-pill">眼影</button>
+    <button class="filter-pill">口紅</button>
+    <button class="filter-pill">唇膏</button>
+    <button class="filter-pill">唇釉</button>
+    <button class="filter-pill">腮紅</button>
+    <button class="filter-pill">修容</button>
+    <button class="filter-pill">打亮</button>
+    <button class="filter-pill">睫毛膏</button>
+    <button class="filter-pill">眼線</button>
+    <button class="filter-pill">護膚</button>
+    <button class="filter-pill">防曬</button>
+  </div>
+</div>
+
+<!-- Products Grid -->
+<div class="products-wrap">
+  <div class="results-bar">
+    <div class="results-count">共 <strong>512</strong> 個產品</div>
+  </div>
+
+  <div class="product-grid">
+    <div class="product-card"><div class="product-card-img">🌸</div><button class="fav-btn active">♥</button><div class="product-card-body"><div class="product-card-brand">NARS</div><div class="product-card-name">裸光蜜粉餅 Radiant Pressed</div><span class="badge badge-rose">底妝</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">💋</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">MAC</div><div class="product-card-name">Ruby Woo 持久子彈唇膏</div><span class="badge badge-rose">口紅</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">✨</div><button class="fav-btn active">♥</button><div class="product-card-body"><div class="product-card-brand">Dior</div><div class="product-card-name">迪奧超完美柔霧唇膏</div><span class="badge badge-rose">唇膏</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">💎</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">Shiseido</div><div class="product-card-name">時尚色繪觸感氣墊粉餅</div><span class="badge badge-rose">底妝</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">🎨</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">3CE</div><div class="product-card-name">Multi Eye Color Palette</div><span class="badge badge-rose">眼影</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">🌷</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">Fenty Beauty</div><div class="product-card-name">Pro Filt'r 柔霧持久粉底液</div><span class="badge badge-rose">底妝</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">🌺</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">Lancome</div><div class="product-card-name">L'Absolu Rouge 絕對玫瑰唇膏</div><span class="badge badge-rose">口紅</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">🌻</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">Chanel</div><div class="product-card-name">N°5 香奈兒完美粉餅</div><span class="badge badge-rose">底妝</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">🌹</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">YSL</div><div class="product-card-name">Couture Mini Clutch 限定眼影</div><span class="badge badge-rose">眼影</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">💜</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">Urban Decay</div><div class="product-card-name">Naked Palette 眼影盤</div><span class="badge badge-rose">眼影</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">🍑</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">NARS</div><div class="product-card-name">Orgasm 腮紅</div><span class="badge badge-rose">腮紅</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+    <div class="product-card"><div class="product-card-img">⭐</div><button class="fav-btn">♡</button><div class="product-card-body"><div class="product-card-brand">Too Faced</div><div class="product-card-name">Better Than Sex 睫毛膏</div><span class="badge badge-rose">睫毛膏</span><div class="product-card-actions"><a href="product-detail.html" class="btn btn-primary">查看</a><button class="btn btn-outline">比較</button></div></div></div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    <button class="page-btn disabled">←</button>
+    <button class="page-btn active">1</button>
+    <button class="page-btn">2</button>
+    <button class="page-btn">3</button>
+    <span style="color:var(--text-3);padding:0 4px;">…</span>
+    <button class="page-btn">21</button>
+    <button class="page-btn">→</button>
+  </div>
+</div>
+
+<footer class="footer"><p>© 2025 COSMETIC</p></footer>
+</body>
+</html>
