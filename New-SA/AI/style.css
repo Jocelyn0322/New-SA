@@ -41,36 +41,7 @@ body {
     gap: 40px;
 }
 
-/* logo */
-.logo {
-    font-weight: 600;
-    font-size: 22px;
-    color: #333;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-/* nav */
-.nav {
-    display: flex;
-    flex-direction: row;   /* 強制橫排 */
-    gap: 35px;             /* 每個按鈕間距 */
-    justify-content: center;
-    align-items: center;
-    flex: 1;
-}
-
-.nav a {
-    text-decoration: none;
-    color: #666;
-    font-size: 15px;
-    transition: color 0.2s ease;
-    white-space: nowrap;
-}
-
-.nav a:hover {
-    color: #efc6cd;
-}
+/* logo / nav 樣式統一由 shared.css 控制（此處不再覆蓋） */
 
 /* login */
 .login-link {

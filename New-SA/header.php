@@ -2,6 +2,13 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/notify_helper.php';
+
+// 自動登出：偵測瀏覽器是否被關閉後重開
+$_sessionInitJs = '';
+if (!empty($_SESSION['_session_init'])) {
+    unset($_SESSION['_session_init']);
+    $_sessionInitJs = 'set'; // 通知 JS 設定 sessionStorage
+}
 $_uri       = $_SERVER['REQUEST_URI'];
 $_navHome   = strpos($_uri, '/產品/index.php') !== false;
 $_navProds  = strpos($_uri, '/products.php') !== false || strpos($_uri, '/product.php') !== false;
@@ -332,6 +339,41 @@ if (isset($_SESSION['user'])) {
 </div>
 
 <script>
+// ── 自動登出：瀏覽器關閉偵測 ──────────────────────────────────
+(function() {
+  const KEY = 'sa_session';
+  <?php if ($_sessionInitJs === 'set'): ?>
+  // 登入成功後的第一次頁面載入 → 建立 sessionStorage 標記
+  sessionStorage.setItem(KEY, '1');
+  localStorage.setItem(KEY, '1');
+  <?php elseif (isset($_SESSION['user'])): ?>
+  // 已登入頁面：檢查 sessionStorage 標記是否存在
+  if (!sessionStorage.getItem(KEY)) {
+    if (localStorage.getItem(KEY)) {
+      // 另一個分頁有 session（新開分頁） → 繼承標記
+      sessionStorage.setItem(KEY, '1');
+    } else {
+      // 瀏覽器被關閉又重開 → 自動登出
+      window.location.replace('<?= BASE_URL ?>/首頁/logout.php?auto=1');
+    }
+  }
+  <?php endif; ?>
+
+  // 分頁關閉時管理 localStorage（所有分頁都關閉才清除）
+  var tabKey = 'sa_tab_count';
+  var cnt = parseInt(localStorage.getItem(tabKey) || '0');
+  localStorage.setItem(tabKey, cnt + 1);
+  window.addEventListener('beforeunload', function() {
+    var n = parseInt(localStorage.getItem(tabKey) || '1');
+    if (n <= 1) {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(tabKey);
+    } else {
+      localStorage.setItem(tabKey, n - 1);
+    }
+  });
+})();
+
 window.openMobMenu  = function(){ document.getElementById('mobDrawer').classList.add('open'); document.getElementById('mobOverlay').classList.add('open'); document.body.style.overflow='hidden'; };
 window.closeMobMenu = function(){ document.getElementById('mobDrawer').classList.remove('open'); document.getElementById('mobOverlay').classList.remove('open'); document.body.style.overflow=''; };
 

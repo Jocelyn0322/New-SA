@@ -38,8 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$username]);
             $newUser = $stmt->fetch();
 
-            $_SESSION['user'] = $username;
-            $_SESSION['role'] = $newUser['role'] ?? 'user';
+            $_SESSION['user']          = $username;
+            $_SESSION['role']          = $newUser['role'] ?? 'user';
+            $_SESSION['_session_init'] = true;
 
             unset($_SESSION['pending_user'], $_SESSION['pending_email'],
                   $_SESSION['pending_password'], $_SESSION['pending_code'],
