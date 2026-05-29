@@ -598,6 +598,64 @@ if (isset($pdo)) {
     </div>
 
 
+    <?php if (!empty($products)): ?>
+    <!-- 日常推薦產品 -->
+    <div style="margin-top:32px;">
+        <div class="section-head">
+            <div>
+                <div class="section-title">🌸 為你精選的日常底妝</div>
+                <div class="section-sub">依據你的膚質、膚色與妝感偏好推薦，平時就適合用</div>
+            </div>
+            <a href="products.php" style="font-size:13px;color:#c26b7c;text-decoration:none;font-weight:600;white-space:nowrap;">查看全部 →</a>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;align-items:stretch;">
+            <?php foreach ($products as $p): ?>
+            <a href="product.php?id=<?= (int)$p['id'] ?>"
+               style="text-decoration:none;background:#fff;border-radius:18px;border:1.5px solid #f0e4ea;overflow:hidden;display:flex;flex-direction:column;height:100%;transition:box-shadow .2s,transform .2s;position:relative;"
+               onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'"
+               onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+
+                <?php if (!empty($p['reasons'])): ?>
+                <span class="match-badge"><?= htmlspecialchars($p['reasons'][0]) ?></span>
+                <?php endif; ?>
+
+                <div style="width:100%;aspect-ratio:1;background:#fdf2f4;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:36px;flex-shrink:0;">
+                    <?php if (!empty($p['image_url'])): ?>
+                    <img src="<?= htmlspecialchars($p['image_url']) ?>"
+                         alt="<?= htmlspecialchars($p['name']) ?>"
+                         style="width:100%;height:100%;object-fit:cover;"
+                         onerror="this.parentElement.innerHTML='💄';">
+                    <?php else: ?>💄<?php endif; ?>
+                </div>
+
+                <div style="padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:6px;">
+                    <div style="font-size:11px;color:#c09aaa;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        <?= htmlspecialchars($p['brand']) ?>
+                    </div>
+                    <div style="font-size:13px;color:#333;font-weight:700;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
+                        <?= htmlspecialchars($p['name']) ?>
+                    </div>
+                    <?php if (!empty($p['reasons'])): ?>
+                    <div class="match-reasons">
+                        <?php foreach (array_slice($p['reasons'], 0, 3) as $r): ?>
+                        <span class="match-reason-tag"><?= htmlspecialchars($r) ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($p['colorHexes'])): ?>
+                    <div class="color-swatches">
+                        <?php foreach (array_slice($p['colorHexes'], 0, 5) as $hex): ?>
+                        <span class="color-swatch" style="background:<?= htmlspecialchars($hex) ?>;"></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
 <?php endif; ?>
 </div>
 </main>
