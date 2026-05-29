@@ -3,7 +3,7 @@ $host   = 'localhost';
 $port   = '3307';
 $dbname = 'sa_db';
 $user   = 'root';
-$pass   = '';
+$pass   = '6Pd?#fZyb0gl';
 
 if (!defined('BASE_URL')) {
     if (getenv('RAILWAY_ENVIRONMENT') !== false) {
