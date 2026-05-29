@@ -224,12 +224,11 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
   <div class="profile-header">
     <label for="avatarInput" class="profile-avatar-wrap" title="點擊更換頭貼" style="cursor:pointer;">
       <div class="profile-avatar" id="avatarCircle">
-        <?php if (!empty($profile['avatar_url'])): ?>
-          <img src="<?= htmlspecialchars($profile['avatar_url']) ?>" id="avatarImg">
-        <?php else: ?>
-          <span id="avatarInitial"><?= $userInitial ?></span>
-          <img src="" id="avatarImg" style="display:none;">
-        <?php endif; ?>
+        <span id="avatarInitial"><?= $userInitial ?></span>
+        <img src="<?= BASE_URL ?>/image_file.php?type=avatar&user=<?= rawurlencode($_SESSION['user']) ?>" id="avatarImg"
+             style="display:none;"
+             onload="this.style.display='';document.getElementById('avatarInitial').style.display='none';"
+             onerror="this.style.display='none';document.getElementById('avatarInitial').style.display='';">
       </div>
       <div class="avatar-edit-icon" id="avatarEditIcon">✎</div>
       <div class="avatar-upload-overlay" id="avatarUploadOverlay">
