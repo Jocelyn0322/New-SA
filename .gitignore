@@ -1,0 +1,13 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# 環境變數
+.env
+.env.local
+
+# 遷移腳本（已執行完畢，不需要上傳）
+New-SA/migrate_to_mysql.php
+
+# macOS
+.DS_Store

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -u root sa_db)",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -u root sa_db -e \"SELECT COUNT\\(*\\) as skintones_count FROM skintones;\")"
+    ]
+  }
+}
