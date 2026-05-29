@@ -29,10 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $skinConcerns = implode(', ', $_POST['skin_concerns'] ?? []);
     $age          = isset($_POST['age']) && $_POST['age'] !== '' ? intval($_POST['age']) : null;
     $allergies    = $_POST['allergies'] ?? '';
+    $makeupFinish = $_POST['makeup_finish'] ?? '';
+    $makeupStyle  = $_POST['makeup_style'] ?? '';
 
     try {
-        $stmt = $pdo->prepare("UPDATE users SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=?,updated_at=NOW() WHERE username=?");
-        $stmt->execute([$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$_SESSION['user']]);
+        $stmt = $pdo->prepare("UPDATE users SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=?,makeup_finish=?,makeup_style=?,updated_at=NOW() WHERE username=?");
+        $stmt->execute([$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$makeupFinish,$makeupStyle,$_SESSION['user']]);
         $message = '個人資料儲存成功！';
         $messageType = 'success';
     } catch (Exception $e) {
@@ -90,6 +92,8 @@ if (isset($skinToneLegacyMap[$profileSkinTone])) $profileSkinTone = $skinToneLeg
 $skinTypes = ['乾性皮','混乾皮','中性皮','混油皮','油性皮','敏感肌'];
 $skinTones = ['中一白','中二白','中三白','中性冷一白','中性冷二白','中性暖一白','中性暖二白','偏紅冷一白','偏紅冷二白','偏紅暖一白','偏紅暖二白','偏綠冷一白','偏綠冷二白','偏綠暖一白','偏綠暖二白','橄欖一白','橄欖二白','橄欖三白','粉一白','粉二白','粉三白','黃一白','黃二白','黃三白'];
 $skinConcernsList = ['敏感肌','痘痘','粉刺','毛孔粗大','黑斑','細紋','皺紋','乾燥脫皮','油光滿面','暗瘡疤痕','曬斑','黑眼圈','浮腫'];
+$makeupFinishList = ['霧面','水光感','自然光澤'];
+$makeupStyleList  = ['日常通勤','韓系清透','歐美立體','約會精緻'];
 $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
 ?>
 <!DOCTYPE html>
@@ -356,7 +360,29 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
             <?php endforeach; ?>
           </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="margin-top:14px;">
+          <label class="form-label">妝感偏好</label>
+          <div class="radio-row">
+            <?php foreach ($makeupFinishList as $f): ?>
+              <label class="radio-pill">
+                <input type="radio" name="makeup_finish" value="<?= $f ?>" <?= ($profile['makeup_finish'] ?? '') === $f ? 'checked' : '' ?>>
+                <?= $f ?>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label class="form-label">妝容風格偏好</label>
+          <div class="radio-row">
+            <?php foreach ($makeupStyleList as $s): ?>
+              <label class="radio-pill">
+                <input type="radio" name="makeup_style" value="<?= $s ?>" <?= ($profile['makeup_style'] ?? '') === $s ? 'checked' : '' ?>>
+                <?= $s ?>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
           <label class="form-label">過敏史或敏感成分</label>
           <textarea class="form-input" name="allergies" placeholder="請列出您過敏的成分或產品（如：酒精、香精）"><?= htmlspecialchars($profile['allergies'] ?? '') ?></textarea>
         </div>
