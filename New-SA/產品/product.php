@@ -109,7 +109,7 @@ if (empty($_SESSION[$viewedKey])) {
     <div class="product-detail-grid">
         <div>
             <?php
-            $imgSrc = !empty($row['image_url']) ? htmlspecialchars($row['image_url']) : 'images/' . $row['p_id'] . '.jpg';
+            $imgSrc = BASE_URL . '/image_file.php?type=product&id=' . $row['p_id'];
             ?>
             <img id="mainProductImg"
                  src="<?php echo $imgSrc; ?>"
