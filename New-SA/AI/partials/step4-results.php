@@ -72,7 +72,7 @@
     <!-- 確認結果 -->
     <div class="p-5 md:p-6 border border-amber-100 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">
         <h4 class="font-extrabold text-gray-900 text-lg mb-1">確認你的分析結果</h4>
-        <p class="text-sm text-gray-500 mb-4">請分別點擊下方兩個按鈕確認膚色與膚質，確認後才能進行下一步。</p>
+        <p class="text-sm text-gray-500 mb-4">點擊右上角圓圈確認膚色與膚質，確認後才能進行下一步。</p>
 
         <div class="grid md:grid-cols-2 gap-3 mb-4">
             <!-- 確認膚色 -->
@@ -80,8 +80,10 @@
                  :class="confirmedSkinTone ? 'border-emerald-400 bg-emerald-50' : 'border-amber-300 bg-white'">
                 <div class="flex items-center justify-between mb-2">
                     <p class="font-bold text-base" :class="confirmedSkinTone ? 'text-emerald-800' : 'text-gray-700'">膚色</p>
-                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center"
-                         :class="confirmedSkinTone ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300'">
+                    <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-110"
+                         :class="confirmedSkinTone ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300 hover:border-emerald-400'"
+                         @click="confirmSkinTone"
+                         :title="confirmedSkinTone ? '點擊取消確認' : '點擊確認膚色'">
                         <svg v-if="confirmedSkinTone" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                         </svg>
@@ -95,17 +97,10 @@
                 </div>
                 <!-- 手動選膚色 -->
                 <select v-model="skinTone" @change="analyzeSkinTone"
-                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none mb-3">
+                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none">
                     <option disabled value="">— 選擇其他膚色 —</option>
                     <option v-for="t in skinTonesData" :key="t.toneName" :value="t.toneName">{{ t.toneName }}</option>
                 </select>
-                <button type="button" @click="confirmSkinTone"
-                    class="mt-auto w-full py-2 rounded-xl text-sm font-bold transition-all duration-200"
-                    :class="confirmedSkinTone
-                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                        : 'bg-amber-100 text-amber-800 hover:bg-amber-200'">
-                    {{ confirmedSkinTone ? '✓ 已確認（點擊取消）' : '確認膚色' }}
-                </button>
             </div>
 
             <!-- 確認膚質 -->
@@ -113,8 +108,10 @@
                  :class="confirmedSkinType ? 'border-emerald-400 bg-emerald-50' : 'border-amber-300 bg-white'">
                 <div class="flex items-center justify-between mb-2">
                     <p class="font-bold text-base" :class="confirmedSkinType ? 'text-emerald-800' : 'text-gray-700'">膚質</p>
-                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center"
-                         :class="confirmedSkinType ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300'">
+                    <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-110"
+                         :class="confirmedSkinType ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300 hover:border-emerald-400'"
+                         @click="confirmSkinType"
+                         :title="confirmedSkinType ? '點擊取消確認' : '點擊確認膚質'">
                         <svg v-if="confirmedSkinType" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                         </svg>
@@ -130,23 +127,16 @@
                     <option disabled value="">— 選擇其他膚質 —</option>
                     <option v-for="option in skinTypeOptions" :key="option" :value="option">{{ option }}</option>
                 </select>
-                <label class="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
                     <input v-model="manualSensitiveSkin" type="checkbox" class="h-4 w-4 rounded border-amber-300 text-amber-500 focus:ring-amber-300" />
                     同時標記為敏感肌
                 </label>
-                <button type="button" @click="confirmSkinType"
-                    class="mt-auto w-full py-2 rounded-xl text-sm font-bold transition-all duration-200"
-                    :class="confirmedSkinType
-                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                        : 'bg-amber-100 text-amber-800 hover:bg-amber-200'">
-                    {{ confirmedSkinType ? '✓ 已確認（點擊取消）' : '確認膚質' }}
-                </button>
             </div>
         </div>
 
         <!-- 提示未確認 -->
         <div v-if="!canChooseMakeupPreference" class="mb-3 px-4 py-2.5 rounded-xl bg-amber-100 border border-amber-200 text-sm text-amber-800">
-            ⚠️ 請先點擊上方兩個按鈕完成確認，再繼續下一步。
+            ⚠️ 請先點擊上方兩個圓圈完成確認，再繼續下一步。
         </div>
 
         <!-- 操作列 -->

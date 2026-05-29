@@ -169,6 +169,33 @@ if (isset($pdo)) {
     } catch (Exception $e) {}
 }
 
+// ── 天氣推薦產品（輕薄日常，舒適溫度時顯示） ─────────────────────
+$mildProducts = [];
+if (isset($pdo)) {
+    try {
+        $mildKw = ['輕薄', '自然', '裸妝', '日常', '通透', '輕盈', '空氣感'];
+        $conditions = array_map(fn($k) => "purpose LIKE :kw_p_$k OR name LIKE :kw_n_$k", array_keys($mildKw));
+        $sql = "SELECT id, name, brand, purpose, image_url FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
+        $st = $pdo->prepare($sql);
+        foreach ($mildKw as $i => $kw) {
+            $st->bindValue(":kw_p_$i", '%' . $kw . '%');
+            $st->bindValue(":kw_n_$i", '%' . $kw . '%');
+        }
+        $st->execute();
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        usort($rows, function($a, $b) use ($mildKw, $_userSkinKw) {
+            $tA = $a['purpose'] . $a['name'];
+            $tB = $b['purpose'] . $b['name'];
+            $wA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 2 : 0, $mildKw));
+            $sA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 1 : 0, $_userSkinKw));
+            $wB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 2 : 0, $mildKw));
+            $sB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 1 : 0, $_userSkinKw));
+            return ($wB + $sB) <=> ($wA + $sA);
+        });
+        $mildProducts = array_slice($rows, 0, 4);
+    } catch (Exception $e) {}
+}
+
 // ── 天氣推薦產品（保濕／滋潤，低溫時顯示） ───────────────────────
 $coldProducts = [];
 if (isset($pdo)) {
@@ -513,12 +540,10 @@ if (isset($pdo)) {
                 <?php foreach ($heatProducts as $hp): ?>
                 <a href="product.php?id=<?= $hp['id'] ?>" style="text-decoration:none; background:#fff; border-radius:16px; border:1.5px solid #f5c6d0; overflow:hidden; display:flex; flex-direction:column; height:100%; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
                     <div style="width:100%; aspect-ratio:1; background:#fdf2f4; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0;">
-                        <?php if (!empty($hp['image_url'])): ?>
-                        <img src="<?= htmlspecialchars($hp['image_url']) ?>"
+                        <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $hp['id'] ?>"
                              alt="<?= htmlspecialchars($hp['name']) ?>"
                              style="width:100%; height:100%; object-fit:cover;"
-                             onerror="this.parentElement.innerHTML='💄';">
-                        <?php else: ?>💄<?php endif; ?>
+                             onerror="this.style.display='none';this.parentElement.innerHTML='💄';">
                     </div>
                     <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
                         <div style="font-size:10px; color:#c09aaa; font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($hp['brand']) ?></div>
@@ -579,12 +604,10 @@ if (isset($pdo)) {
                 <?php foreach ($coldProducts as $cp): ?>
                 <a href="product.php?id=<?= $cp['id'] ?>" style="text-decoration:none; background:white; border-radius:16px; border:1.5px solid #d8e2ed; overflow:hidden; display:flex; flex-direction:column; height:100%; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
                     <div style="width:100%; aspect-ratio:1; background:#edf3f9; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0;">
-                        <?php if (!empty($cp['image_url'])): ?>
-                        <img src="<?= htmlspecialchars($cp['image_url']) ?>"
+                        <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $cp['id'] ?>"
                              alt="<?= htmlspecialchars($cp['name']) ?>"
                              style="width:100%; height:100%; object-fit:cover;"
-                             onerror="this.parentElement.innerHTML='💄';">
-                        <?php else: ?>💄<?php endif; ?>
+                             onerror="this.style.display='none';this.parentElement.innerHTML='💄';">
                     </div>
                     <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
                         <div style="font-size:10px; color:#8a9bbf; font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($cp['brand']) ?></div>
@@ -596,6 +619,40 @@ if (isset($pdo)) {
             <?php endif; ?>
         </div>
     </div>
+
+    <?php if (!empty($mildProducts)): ?>
+    <?php
+    $skinTypeLabel = $profile['skin_type'] ?? '';
+    $makeupFinishLabel = $profile['makeup_finish'] ?? '';
+    $subtitleParts = [];
+    if ($skinTypeLabel) $subtitleParts[] = $skinTypeLabel;
+    if ($makeupFinishLabel) $subtitleParts[] = $makeupFinishLabel . '妝感';
+    $recommendSubtitle = !empty($subtitleParts)
+        ? '根據你的' . implode('、', $subtitleParts) . '，為你挑選適合的輕薄日常底妝'
+        : '根據你的膚質，為你挑選適合的輕薄日常底妝';
+    ?>
+    <!-- 日常產品推薦（永遠顯示） -->
+    <div style="margin-bottom:28px;">
+        <div style="font-size:15px; font-weight:700; color:var(--text); margin-bottom:4px;">產品推薦</div>
+        <div style="font-size:13px; color:var(--text-3); margin-bottom:14px;"><?= htmlspecialchars($recommendSubtitle) ?></div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; align-items:stretch;">
+            <?php foreach ($mildProducts as $mp): ?>
+            <a href="product.php?id=<?= $mp['id'] ?>" style="text-decoration:none; background:var(--card); border-radius:16px; border:1.5px solid var(--border); overflow:hidden; display:flex; flex-direction:column; height:100%; transition:box-shadow .2s, transform .2s;" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                <div style="width:100%; aspect-ratio:1; background:var(--bg); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0;">
+                    <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $mp['id'] ?>"
+                         alt="<?= htmlspecialchars($mp['name']) ?>"
+                         style="width:100%; height:100%; object-fit:cover;"
+                         onerror="this.style.display='none';this.parentElement.innerHTML='💄';">
+                </div>
+                <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
+                    <div style="font-size:10px; color:var(--text-3); font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($mp['brand']) ?></div>
+                    <div style="font-size:12px; color:var(--text); font-weight:700; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;"><?= htmlspecialchars($mp['name']) ?></div>
+                </div>
+            </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
 
 <?php endif; ?>
@@ -667,6 +724,7 @@ if (isset($pdo)) {
     function hideColdAlert() {
         if (coldAlert) coldAlert.style.display = 'none';
     }
+
 
     function setStatus(msg) {
         if (status) status.textContent = msg;

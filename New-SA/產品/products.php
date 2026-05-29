@@ -243,9 +243,7 @@ function page_url($p) {
       ?>
       <div class="product-card">
         <div class="product-card-img">
-          <?php if (!empty($row['image_url'])): ?>
-            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
-          <?php else: ?>💄<?php endif; ?>
+          <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $row['p_id'] ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.style.display='none';this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
         </div>
 
         <?php if ($isFav): ?>
@@ -563,7 +561,7 @@ async function runImgSearch() {
     if(!data.products||data.products.length===0){document.getElementById('imgNoResult').style.display='block';return;}
     document.getElementById('imgResultsTitle').textContent=`找到 ${data.products.length} 個相關產品`;
     document.getElementById('imgResultsGrid').innerHTML=data.products.map(p=>{
-      const img=p.image_url?`<img src="${p.image_url}" alt="${p.name}" style="width:100%;height:90px;object-fit:cover;border-radius:var(--r-sm);" onerror="this.parentElement.style.background='var(--rose-50)';this.remove()">`:`<div style="width:100%;height:90px;background:var(--rose-50);border-radius:var(--r-sm);"></div>`;
+      const img=`<img src="<?= BASE_URL ?>/image_file.php?type=product&id=${p.id}" alt="${p.name}" style="width:100%;height:90px;object-fit:cover;border-radius:var(--r-sm);" onerror="this.style.display='none';this.parentElement.style.background='var(--rose-50)';">`;
       return `<a href="product.php?id=${p.id}" style="text-decoration:none;color:inherit;display:block;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='var(--shadow)'" onmouseout="this.style.boxShadow='none'">${img}<div style="padding:8px;"><p style="font-size:12px;font-weight:600;margin:0 0 2px;line-height:1.3;">${p.name}</p><p style="font-size:11px;color:var(--text-3);margin:0;">${p.brand} · ${p.category}</p></div></a>`;
     }).join('');
     document.getElementById('imgResults').style.display='block';
