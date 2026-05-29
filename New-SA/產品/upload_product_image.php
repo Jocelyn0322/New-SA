@@ -1,11 +1,12 @@
 <?php
 /**
- * 上傳產品照片到 Supabase Storage
+ * 上傳產品照片到 MySQL（product_images BLOB）
  * POST 參數：product_id（數字）、image（檔案）
  * 回傳 JSON：{ success, url, message }
  */
 session_start();
 require __DIR__ . '/../db.php';
+require __DIR__ . '/../image_store.php';
 
 header('Content-Type: application/json');
 
@@ -34,38 +35,20 @@ if (!in_array($mimeType, $allowed)) {
     exit;
 }
 
-// 副檔名
-$ext      = match($mimeType) { 'image/png' => 'png', 'image/webp' => 'webp', default => 'jpg' };
-$filename = $productId . '.' . $ext;
-
-// 上傳到 Supabase Storage
-$uploadUrl = SUPABASE_URL . '/storage/v1/object/' . SUPABASE_BUCKET . '/' . $filename;
-
-$ch = curl_init($uploadUrl);
-curl_setopt_array($ch, [
-    CURLOPT_CUSTOMREQUEST  => 'POST',
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => [
-        'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-        'apikey: '               . SUPABASE_SERVICE_KEY,
-        'Content-Type: '         . $mimeType,
-        'x-upsert: true',        // 覆蓋同名檔案
-    ],
-    CURLOPT_POSTFIELDS     => file_get_contents($file['tmp_name']),
-]);
-$response   = curl_exec($ch);
-$httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-if ($httpStatus !== 200) {
-    echo json_encode(['success' => false, 'message' => '上傳失敗：' . $response]);
+$bytes = file_get_contents($file['tmp_name']);
+if ($bytes === false) {
+    echo json_encode(['success' => false, 'message' => '讀取檔案失敗']);
     exit;
 }
 
-// 組成公開 URL
-$publicUrl = SUPABASE_URL . '/storage/v1/object/public/' . SUPABASE_BUCKET . '/' . $filename;
+// 存進 MySQL（product_images），不再上傳 Supabase
+if (!storeImageBytes($pdo, 'product', $productId, $bytes, $mimeType)) {
+    echo json_encode(['success' => false, 'message' => '圖片寫入資料庫失敗']);
+    exit;
+}
 
-// 更新資料庫
+$publicUrl = imageUrl('product', $productId);
+
 $pdo->prepare("UPDATE data SET image_url = ? WHERE id = ?")
     ->execute([$publicUrl, $productId]);
 

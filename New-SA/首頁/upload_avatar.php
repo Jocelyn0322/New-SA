@@ -1,6 +1,7 @@
 <?php
 session_start();
 require __DIR__ . '/../db.php';
+require __DIR__ . '/../image_store.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_SESSION['user'])) {
@@ -30,36 +31,19 @@ if (!isset($extMap[$mimeType])) {
     exit;
 }
 
-$ext      = $extMap[$mimeType];
-$filename = 'avatars/' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $username) . '.' . $ext;
-$tmpPath  = $file['tmp_name'];
-$fileSize = $file['size'];
-
-$fp = fopen($tmpPath, 'rb');
-$ch = curl_init();
-curl_setopt_array($ch, [
-    CURLOPT_URL            => SUPABASE_URL . '/storage/v1/object/' . SUPABASE_BUCKET . '/' . $filename,
-    CURLOPT_PUT            => true,
-    CURLOPT_INFILE         => $fp,
-    CURLOPT_INFILESIZE     => $fileSize,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => [
-        'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-        'Content-Type: ' . $mimeType,
-        'x-upsert: true',
-    ],
-]);
-$resp   = curl_exec($ch);
-$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-fclose($fp);
-
-if ($status !== 200 && $status !== 201) {
-    echo json_encode(['success' => false, 'message' => '上傳失敗，請稍後再試']);
+$bytes = file_get_contents($file['tmp_name']);
+if ($bytes === false) {
+    echo json_encode(['success' => false, 'message' => '讀取檔案失敗']);
     exit;
 }
 
-$publicUrl = SUPABASE_URL . '/storage/v1/object/public/' . SUPABASE_BUCKET . '/' . $filename . '?v=' . time();
+// 存進 MySQL（avatar_images），不再上傳 Supabase
+if (!storeImageBytes($pdo, 'avatar', $username, $bytes, $mimeType)) {
+    echo json_encode(['success' => false, 'message' => '圖片寫入資料庫失敗']);
+    exit;
+}
+
+$publicUrl = imageUrl('avatar', $username);
 
 $pdo->prepare("UPDATE users SET avatar_url = ? WHERE username = ?")
     ->execute([$publicUrl, $username]);
