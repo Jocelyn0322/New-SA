@@ -41,37 +41,7 @@ body {
     gap: 40px;
 }
 
-/* logo */
-.logo {
-    font-weight: 600;
-    font-size: 22px;
-    color: #333;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-/* nav */
-.nav {
-    display: flex;
-    gap: 35px;
-    align-items: center;
-    flex: 1;
-    justify-content: center;
-}
-
-.nav a,
-.nav .dropdown-toggle {
-    text-decoration: none;
-    color: #666;
-    font-size: 15px;
-    white-space: nowrap;
-    transition: 0.2s ease;
-}
-
-.nav a:hover,
-.nav .dropdown-toggle:hover {
-    color: #efc6cd;
-}
+/* logo / nav 樣式統一由 shared.css 控制（此處不再覆蓋） */
 
 /* ===== dropdown（重點）===== */
 .nav-item {

@@ -1,7 +1,4 @@
-
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -29,44 +26,31 @@ try {
 $isLoggedIn = isset($_SESSION['user']);
 $isAdmin    = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 
-// Supabase Storage 上傳影片
-function uploadVideoToSupabase(string $tmpPath, string $filename, string $mimeType): array {
-    $uploadUrl = SUPABASE_URL . '/storage/v1/object/' . SUPABASE_BUCKET . '/videos/' . $filename;
-    $fp   = fopen($tmpPath, 'rb');
-    $size = filesize($tmpPath);
-    $ch   = curl_init($uploadUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_PUT            => true,
-        CURLOPT_INFILE         => $fp,
-        CURLOPT_INFILESIZE     => $size,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-            'apikey: '               . SUPABASE_SERVICE_KEY,
-            'Content-Type: '         . $mimeType,
-            'x-upsert: true',
-        ],
-    ]);
-    $resp   = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    fclose($fp);
-    return ['status' => $status, 'body' => $resp];
+// 確保影片 BLOB 資料表存在（影片二進位存在資料庫）
+function ensureVideoFilesTable(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS video_files (
+        video_id INT NOT NULL PRIMARY KEY,
+        mime     VARCHAR(100) NOT NULL DEFAULT 'video/mp4',
+        data     LONGBLOB     NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
 
-// Supabase Storage 刪除影片
+// 把影片二進位存進資料庫
+function storeVideoBlob(PDO $pdo, int $videoId, string $tmpPath, string $mimeType): bool {
+    ensureVideoFilesTable($pdo);
+    $bin = file_get_contents($tmpPath);
+    if ($bin === false) return false;
+    $stmt = $pdo->prepare("INSERT INTO video_files (video_id, mime, data) VALUES (?, ?, ?)
+                           ON DUPLICATE KEY UPDATE mime = VALUES(mime), data = VALUES(data)");
+    $stmt->bindValue(1, $videoId, PDO::PARAM_INT);
+    $stmt->bindValue(2, $mimeType, PDO::PARAM_STR);
+    $stmt->bindValue(3, $bin, PDO::PARAM_LOB);
+    return $stmt->execute();
+}
+
+// 從資料庫刪除影片 BLOB
 function deleteVideoFromSupabase(string $filename): void {
-    $ch = curl_init(SUPABASE_URL . '/storage/v1/object/' . SUPABASE_BUCKET . '/videos/' . $filename);
-    curl_setopt_array($ch, [
-        CURLOPT_CUSTOMREQUEST  => 'DELETE',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-            'apikey: '               . SUPABASE_SERVICE_KEY,
-        ],
-    ]);
-    curl_exec($ch);
-    curl_close($ch);
+    // 保留簽名相容性，實際刪除在刪除流程用 video_id 處理
 }
 
 $message = '';
@@ -82,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_FILES) && empty($_POST)
 
 // 處理影片上傳
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['video']) && !isset($_POST['delete'])) {
+    $isAjaxUpload = isset($_POST['ajax_upload']);
     $currentView = $_GET['view'] ?? 'home';
     if ($isAdmin) {
         $message = '管理員無法上傳影片';
@@ -147,48 +132,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['video']) && !isset($
                 // 依 MIME 判斷 Content-Type（瀏覽器送來的有時不準，以伺服器偵測為準）
                 $mimeType = mime_content_type($file['tmp_name']) ?: 'video/mp4';
 
-                $result = uploadVideoToSupabase($file['tmp_name'], $filename, $mimeType);
+                try {
+                    // 先建立影片紀錄（file_path 待會用 id 組出串流網址）
+                    $stmt = $pdo->prepare("
+                        INSERT INTO videos (title, description, filename, file_path, uploaded_by, tags)
+                        VALUES (?, ?, ?, '', ?, ?)
+                    ");
+                    $stmt->execute([$title, $description, $filename, $_SESSION['user'], $tags]);
+                    $newVideoId = (int)$pdo->lastInsertId();
 
-                if ($result['status'] === 200) {
-                    $publicUrl = SUPABASE_URL . '/storage/v1/object/public/' . SUPABASE_BUCKET . '/videos/' . $filename;
-                    try {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO videos (title, description, filename, file_path, uploaded_by, tags)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        ");
-                        $stmt->execute([$title, $description, $filename, $publicUrl, $_SESSION['user'], $tags]);
-                        $newVideoId = (int)$pdo->lastInsertId();
-                        $message = '影片上傳成功！';
-                        $messageType = 'success';
-                        // 通知所有追蹤者
-                        $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
-                            id INT AUTO_INCREMENT PRIMARY KEY, recipient VARCHAR(100) NOT NULL,
-                            actor VARCHAR(100) NOT NULL, type VARCHAR(50) DEFAULT 'new_video',
-                            video_id INT, video_title VARCHAR(255),
-                            is_read TINYINT(1) DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-                        $fols = $pdo->prepare("SELECT follower FROM follows WHERE following = ?");
-                        $fols->execute([$_SESSION['user']]);
-                        $nStmt = $pdo->prepare("INSERT INTO notifications (recipient, actor, video_id, video_title) VALUES (?, ?, ?, ?)");
-                        foreach ($fols->fetchAll() as $f) {
-                            $nStmt->execute([$f['follower'], $_SESSION['user'], $newVideoId, $title]);
-                        }
-                    } catch (PDOException $e) {
-                        deleteVideoFromSupabase($filename);
-                        $message = '資料庫儲存失敗：' . $e->getMessage();
-                        $messageType = 'error';
+                    // 影片二進位存進資料庫
+                    if (!storeVideoBlob($pdo, $newVideoId, $file['tmp_name'], $mimeType)) {
+                        throw new RuntimeException('影片寫入資料庫失敗');
                     }
-                } else {
-                    $message = '上傳到 Supabase 失敗（HTTP ' . $result['status'] . '）：' . $result['body'];
+
+                    // file_path 指向串流腳本
+                    $publicUrl = BASE_URL . '/video_file.php?id=' . $newVideoId;
+                    $pdo->prepare("UPDATE videos SET file_path = ? WHERE id = ?")
+                        ->execute([$publicUrl, $newVideoId]);
+
+                    $message = '影片上傳成功！';
+                    $messageType = 'success';
+
+                    // 通知所有追蹤者
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+                        id INT AUTO_INCREMENT PRIMARY KEY, recipient VARCHAR(100) NOT NULL,
+                        actor VARCHAR(100) NOT NULL, type VARCHAR(50) DEFAULT 'new_video',
+                        video_id INT, video_title VARCHAR(255),
+                        is_read TINYINT(1) DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+                    $fols = $pdo->prepare("SELECT follower FROM follows WHERE following = ?");
+                    $fols->execute([$_SESSION['user']]);
+                    $nStmt = $pdo->prepare("INSERT INTO notifications (recipient, actor, video_id, video_title) VALUES (?, ?, ?, ?)");
+                    foreach ($fols->fetchAll() as $f) {
+                        $nStmt->execute([$f['follower'], $_SESSION['user'], $newVideoId, $title]);
+                    }
+                } catch (Exception $e) {
+                    if (!empty($newVideoId)) {
+                        try { $pdo->prepare("DELETE FROM videos WHERE id = ?")->execute([$newVideoId]); } catch (Exception $e2) {}
+                        try { $pdo->prepare("DELETE FROM video_files WHERE video_id = ?")->execute([$newVideoId]); } catch (Exception $e2) {}
+                    }
+                    $message = '資料庫儲存失敗：' . $e->getMessage();
                     $messageType = 'error';
                 }
             }
         }
     }
+
+    // AJAX 上傳：回傳 JSON（不重整頁面，失敗時前端保留欄位）
+    if ($isAjaxUpload) {
+        while (ob_get_level()) { ob_end_clean(); }  // 清掉任何提前輸出，確保 JSON 乾淨
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => $messageType === 'success',
+            'message' => $message,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }
 
 // 處理影片刪除
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_POST['video_id'])) {
+    $isAjaxDelete = isset($_POST['ajax_delete']);
     $videoId = (int)$_POST['video_id'];
 
     // 檢查權限
@@ -200,15 +205,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_
         $canDelete = ($_SESSION['role'] ?? '') === 'admin' || $video['uploaded_by'] === $_SESSION['user'];
 
         if ($canDelete) {
-            // 從 Supabase Storage 刪除
-            $stmt = $pdo->prepare("SELECT filename FROM videos WHERE id = ?");
-            $stmt->execute([$videoId]);
-            $row = $stmt->fetch();
-            if ($row && !empty($row['filename'])) {
-                deleteVideoFromSupabase($row['filename']);
-            }
-
-            // 刪除資料庫記錄
+            // 刪除影片 BLOB 與紀錄
+            try { $pdo->prepare("DELETE FROM video_files WHERE video_id = ?")->execute([$videoId]); } catch (Exception $e) {}
             $stmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
             $stmt->execute([$videoId]);
 
@@ -221,6 +219,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_
     } else {
         $message = '影片不存在';
         $messageType = 'error';
+    }
+
+    // AJAX 刪除：回傳 JSON
+    if ($isAjaxDelete) {
+        while (ob_get_level()) { ob_end_clean(); }  // 清掉任何提前輸出，確保 JSON 乾淨
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => $messageType === 'success',
+            'message' => $message,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 }
 
@@ -888,6 +897,56 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
           .sort-row { flex-wrap: wrap; gap: 6px; }
         }
 
+        /* ─── 社群規範彈窗 ─── */
+        .guideline-overlay {
+            display: none; position: fixed; inset: 0; z-index: 2500;
+            background: rgba(30,10,15,.55); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .guideline-overlay.active { display: flex; }
+        .guideline-modal {
+            background: #fff; border-radius: 18px; width: 100%; max-width: 540px;
+            max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 24px 70px rgba(0,0,0,.32); animation: glPop .25s ease;
+        }
+        @keyframes glPop { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+        .guideline-modal-head {
+            display: flex; align-items: center; gap: 8px;
+            padding: 18px 22px; font-size: 16px; font-weight: 800; color: #9d2942;
+            background: linear-gradient(135deg, #fdf2f4, #fce7ec); border-bottom: 1px solid #f5c6d0;
+        }
+        .guideline-modal-body { padding: 18px 22px; overflow-y: auto; }
+        .guideline-modal-foot { padding: 14px 22px 20px; border-top: 1px solid #f1e3e7; }
+        .guideline-confirm-btn {
+            width: 100%; background: #c26b7c; color: #fff; border: none;
+            border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700;
+            cursor: pointer; transition: background .18s;
+        }
+        .guideline-confirm-btn:hover { background: #9d2942; }
+        /* 重看規範的小按鈕 */
+        .guideline-reopen-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            height: 32px; padding: 0 12px; border-radius: 99px;
+            background: #fff; border: 1.5px solid #f5c6d0; color: #9d2942;
+            font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+            transition: all .18s;
+        }
+        .guideline-reopen-btn:hover { background: #fce7ec; border-color: #c26b7c; }
+        .guideline-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+        .guideline-list li {
+            display: flex; gap: 10px; font-size: 13px; color: #555; line-height: 1.6;
+            background: rgba(255,255,255,.65); border-radius: 10px; padding: 10px 12px;
+        }
+        .guideline-list .gl-num {
+            flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+            background: #c26b7c; color: #fff; font-size: 12px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .guideline-list b { color: #9d2942; }
+        .guideline-tag-hint {
+            display: inline-block; background: #c26b7c; color: #fff;
+            font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; margin: 0 2px;
+        }
     </style>
 </head>
 <body>
@@ -908,9 +967,32 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 <h1 class="page-title">影片交流</h1>
                 <div class="page-title-sub">探索彩妝技巧・分享你的精彩</div>
             </div>
+            <button type="button" class="guideline-reopen-btn" onclick="openGuideline()">📢 社群規範</button>
             <?php if (!$isAdmin): ?>
             <a href="?view=personal" class="btn-upload-header">＋ 上傳影片</a>
             <?php endif; ?>
+        </div>
+
+        <!-- 社群規範彈窗 -->
+        <div class="guideline-overlay" id="guidelineOverlay">
+            <div class="guideline-modal">
+                <div class="guideline-modal-head">
+                    <span>📢</span>
+                    <span>影片交流社群規範</span>
+                </div>
+                <div class="guideline-modal-body">
+                    <ul class="guideline-list">
+                        <li><span class="gl-num">1</span><span><b>留言禮儀：</b>留言不得包含辱罵、歧視、人身攻擊等不當言詞。</span></li>
+                        <li><span class="gl-num">2</span><span><b>業配標示：</b>發布業配內容請務必加上 <span class="guideline-tag-hint">#業配</span> 標籤。若經其他使用者檢舉且查證屬實，管理者將刪除該影片；<b>一個月內違規三次，帳號將永久停權</b>。</span></li>
+                        <li><span class="gl-num">3</span><span><b>內容相關性：</b>發布內容須與美妝相關，否則管理者有權直接刪除。</span></li>
+                        <li><span class="gl-num">4</span><span><b>尊重原創：</b>請勿盜用、未經授權轉載他人影片，違者將下架處理。</span></li>
+                        <li><span class="gl-num">5</span><span><b>隱私保護：</b>禁止張貼廣告連結、垃圾訊息，或洩漏他人個人資料。</span></li>
+                    </ul>
+                </div>
+                <div class="guideline-modal-foot">
+                    <button type="button" class="guideline-confirm-btn" onclick="acceptGuideline()">我已閱讀並同意</button>
+                </div>
+            </div>
         </div>
 
         <div class="nav-tabs">
@@ -939,7 +1021,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         <div class="content-grid">
             <div class="upload-section">
                 <h2>📹 分享你的精彩時刻</h2>
-                <form method="post" enctype="multipart/form-data">
+                <form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="return submitUpload(event)">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="title">影片標題 *</label>
@@ -957,7 +1039,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                             <!-- 建議標籤 -->
                             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
                                 <?php
-                                $presetTags = ['唇妝','眼妝','底妝','腮紅','修容','眉毛','日系','教學','彩妝','彩妝品','穿搭','日常通勤','歐美立體','韓系清透','約會精緻','霧面','奶油肌','水光感','自然裸妝'];
+                                $presetTags = ['唇妝','眼妝','底妝','腮紅','修容','眉毛','日系','教學','彩妝','彩妝品','穿搭','日常通勤','歐美立體','韓系清透','約會精緻','霧面','奶油肌','水光感','自然裸妝','業配'];
                                 foreach ($presetTags as $pt): ?>
                                 <button type="button" class="preset-tag-btn" data-tag="<?= htmlspecialchars($pt) ?>">#<?= htmlspecialchars($pt) ?></button>
                                 <?php endforeach; ?>
@@ -983,7 +1065,8 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                             <small style="color: #999; margin-top: 5px; display: block;">支援 MP4、AVI、MOV 等格式，最大 40MB</small>
                         </div>
 
-                        <button type="submit" class="upload-btn">🚀 上傳影片</button>
+                        <button type="submit" class="upload-btn" id="uploadBtn">🚀 上傳影片</button>
+                        <div id="uploadStatus" style="display:none;margin-top:12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;"></div>
                     </div>
                 </form>
             </div>
@@ -1014,7 +1097,16 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             <?php else: ?>
                 <div class="video-grid" style="margin-bottom: 40px;">
                     <?php foreach ($myUploads as $video): ?>
-                        <div class="video-card">
+                        <div class="video-card"
+                             data-video-id="<?php echo (int)$video['id']; ?>"
+                             data-title="<?php echo htmlspecialchars($video['title']); ?>"
+                             data-author="<?php echo htmlspecialchars($video['uploaded_by']); ?>"
+                             data-time="<?php echo date('Y年m月d日', strtotime($video['upload_time'])); ?>"
+                             data-likes="<?php echo (int)$video['likes']; ?>"
+                             data-is-liked="<?php echo $video['is_liked'] ? 1 : 0; ?>"
+                             data-view-count="<?php echo (int)($video['view_count'] ?? 0); ?>"
+                             data-description="<?php echo htmlspecialchars($video['description'] ?? ''); ?>"
+                             data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>">
                             <div class="video-player">
                                 <video controls>
                                     <source src="<?php echo htmlspecialchars($video['file_path']); ?>" type="video/mp4">
@@ -1049,7 +1141,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
 
                                 <div class="video-actions">
                                     <button class="edit-btn" onclick="openEditModal(<?php echo (int)$video['id']; ?>, <?php echo htmlspecialchars(json_encode($video['title']), ENT_QUOTES); ?>, <?php echo htmlspecialchars(json_encode($video['description'] ?? ''), ENT_QUOTES); ?>, <?php echo htmlspecialchars(json_encode($video['tags'] ?? ''), ENT_QUOTES); ?>)">✏️ 編輯</button>
-                                    <button class="delete-btn" onclick="deleteVideoAjax(<?php echo (int)$video['id']; ?>, this)">🗑️ 刪除</button>
+                                    <button class="delete-btn" onclick="deleteVideoAjax(event, <?php echo (int)$video['id']; ?>, this)">🗑️ 刪除</button>
                                 </div>
                             </div>
                         </div>
@@ -1067,7 +1159,16 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             <?php else: ?>
                 <div class="video-grid">
                     <?php foreach ($myLikes as $video): ?>
-                        <div class="video-card">
+                        <div class="video-card"
+                             data-video-id="<?php echo (int)$video['id']; ?>"
+                             data-title="<?php echo htmlspecialchars($video['title']); ?>"
+                             data-author="<?php echo htmlspecialchars($video['uploaded_by']); ?>"
+                             data-time="<?php echo date('Y年m月d日', strtotime($video['upload_time'])); ?>"
+                             data-likes="<?php echo (int)$video['likes']; ?>"
+                             data-is-liked="<?php echo $video['is_liked'] ? 1 : 0; ?>"
+                             data-view-count="<?php echo (int)($video['view_count'] ?? 0); ?>"
+                             data-description="<?php echo htmlspecialchars($video['description'] ?? ''); ?>"
+                             data-file-path="<?php echo htmlspecialchars($video['file_path']); ?>">
                             <div class="video-player">
                                 <video controls>
                                     <source src="<?php echo htmlspecialchars($video['file_path']); ?>" type="video/mp4">
@@ -1210,16 +1311,17 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                         </div>
                         <button type="submit" style="display:none">搜尋</button>
                     </div>
-                    <?php if (!empty($existingTags)): ?>
+                    <?php
+                    $filterTags = ['唇妝','眼妝','底妝','腮紅','修容','眉毛','日系','教學','彩妝','彩妝品','穿搭','日常通勤','歐美立體','韓系清透','約會精緻','霧面','奶油肌','水光感','自然裸妝','業配'];
+                    ?>
                     <div class="filter-tags">
                         <span class="filter-label">標籤</span>
                         <a href="?view=home" class="f-chip <?php echo $activeTag === '' ? 'active' : ''; ?>"># 全部</a>
-                        <?php foreach (array_slice($existingTags, 0, 8) as $tag): ?>
+                        <?php foreach ($filterTags as $tag): ?>
                         <a href="?view=home&tag=<?php echo urlencode($tag); ?>"
                            class="f-chip <?php echo $activeTag === $tag ? 'active' : ''; ?>">#<?php echo htmlspecialchars($tag); ?></a>
                         <?php endforeach; ?>
                     </div>
-                    <?php endif; ?>
                 </div>
             </form>
 
@@ -1431,11 +1533,19 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         </div>
         <div class="form-group">
             <label>標籤</label>
+
+            <!-- 建議標籤 -->
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+                <?php foreach ($presetTags as $pt): ?>
+                <button type="button" class="preset-tag-btn edit-preset-tag-btn" data-tag="<?= htmlspecialchars($pt) ?>">#<?= htmlspecialchars($pt) ?></button>
+                <?php endforeach; ?>
+            </div>
+
             <div class="hashtag-input-box" id="editHashtagBox" onclick="document.getElementById('editHashtagTyping').focus()">
                 <input type="text" id="editHashtagTyping" class="hashtag-typing" placeholder="輸入標籤，按 Enter 確認" autocomplete="off">
             </div>
             <input type="hidden" id="editTagsHidden">
-            <small style="color:#999;margin-top:5px;display:block;">按 Enter 新增標籤，點 × 刪除</small>
+            <small style="color:#999;margin-top:5px;display:block;">點選建議標籤或輸入自訂標籤（按 Enter）</small>
         </div>
         <div class="edit-modal-actions">
             <button class="edit-cancel-btn" onclick="closeEditModal()">取消</button>
@@ -1452,11 +1562,22 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
     let currentVideoIndex = 0;
     let videoIds = [];
     let currentDetailVideoId = null;
-    let scrollDebounce = null;
-    
+
     // 儲存當前用戶資訊
     const currentUser = '<?php echo isset($_SESSION['user']) ? htmlspecialchars($_SESSION['user']) : ''; ?>';
     const currentRole = '<?php echo isset($_SESSION['role']) ? htmlspecialchars($_SESSION['role']) : ''; ?>';
+
+    // ── 社群規範彈窗 ──
+    const GUIDELINE_KEY = 'videoGuidelineAccepted';
+    function openGuideline() {
+        const o = document.getElementById('guidelineOverlay');
+        if (o) o.classList.add('active');
+    }
+    function acceptGuideline() {
+        try { localStorage.setItem(GUIDELINE_KEY, '1'); } catch (e) {}
+        const o = document.getElementById('guidelineOverlay');
+        if (o) o.classList.remove('active');
+    }
 
     // 初始化影片ID列表
     function initVideoIds() {
@@ -1467,6 +1588,11 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
     // 頁面載入後初始化
     document.addEventListener('DOMContentLoaded', function() {
         initVideoIds();
+
+        // 首次進入自動彈出社群規範（已同意過則不再自動跳，可用標題列按鈕重看）
+        let guidelineAccepted = false;
+        try { guidelineAccepted = !!localStorage.getItem(GUIDELINE_KEY); } catch (e) {}
+        if (!guidelineAccepted) openGuideline();
 
         // 讓縮圖顯示第一幀而非黑畫面
         document.querySelectorAll('.video-card .video-player video').forEach(function(v) {
@@ -1487,16 +1613,33 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         
         const overlay = document.getElementById('videoDetailOverlay');
         if (overlay) {
-            // 滾輪切換影片（加防抖避免連續觸發）
+            let wheelAccum    = 0;       // 累加滾動量
+            let switchLock     = false;  // 切換中鎖定，避免慣性連跳
+            let wheelResetTimer = null;
+            const THRESHOLD   = 60;      // 觸發切換所需的累積量
+            const LOCK_MS     = 650;     // 切換後鎖定時間
+
+            function doSwitch(dir) {
+                switchLock = true;
+                wheelAccum = 0;
+                dir > 0 ? nextVideo() : prevVideo();
+                setTimeout(() => { switchLock = false; }, LOCK_MS);
+            }
+
+            // 滾輪／觸控板切換影片
             overlay.addEventListener('wheel', function(e) {
+                // 滑鼠在右側評論／資訊區 → 允許正常捲動，不切換影片
+                if (e.target.closest('.video-detail-info')) return;
+
                 e.preventDefault();
-                if (scrollDebounce) return;
-                scrollDebounce = setTimeout(() => { scrollDebounce = null; }, 800);
-                if (e.deltaY > 0) {
-                    nextVideo();
-                } else if (e.deltaY < 0) {
-                    prevVideo();
-                }
+                if (switchLock) return;
+
+                wheelAccum += e.deltaY;
+                clearTimeout(wheelResetTimer);
+                wheelResetTimer = setTimeout(() => { wheelAccum = 0; }, 180); // 停止滾動後歸零
+
+                if (wheelAccum > THRESHOLD)      doSwitch(1);
+                else if (wheelAccum < -THRESHOLD) doSwitch(-1);
             }, { passive: false });
 
             // 手機觸控滑動支援
@@ -1505,10 +1648,10 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 touchStartY = e.touches[0].clientY;
             }, { passive: true });
             overlay.addEventListener('touchend', function(e) {
+                if (switchLock) return;
+                if (e.target.closest('.video-detail-info')) return;
                 const diff = touchStartY - e.changedTouches[0].clientY;
-                if (Math.abs(diff) > 50) {
-                    diff > 0 ? nextVideo() : prevVideo();
-                }
+                if (Math.abs(diff) > 50) doSwitch(diff > 0 ? 1 : -1);
             }, { passive: true });
         }
     });
@@ -2151,7 +2294,9 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         }
     });
 
-    async function deleteVideoAjax(videoId, btn) {
+    async function deleteVideoAjax(event, videoId, btn) {
+        // 阻止冒泡，避免點刪除時誤觸卡片開啟影片
+        if (event) { event.stopPropagation(); event.preventDefault(); }
         if (!confirm('確定要刪除此影片嗎？')) return;
         btn.disabled = true;
         btn.textContent = '刪除中…';
@@ -2159,16 +2304,22 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             const form = new FormData();
             form.append('video_id', videoId);
             form.append('delete', '1');
-            const res = await fetch('?view=personal', { method: 'POST', body: form });
-            if (res.ok) {
+            form.append('ajax_delete', '1');
+            const res  = await fetch('?view=personal', { method: 'POST', body: form });
+            const data = await res.json();
+            if (data.success) {
+                btn.textContent = '✓ 已刪除';
+                btn.style.background = '#16a34a';
                 const card = btn.closest('.video-card');
                 if (card) {
-                    card.style.transition = 'opacity .3s';
-                    card.style.opacity = '0';
-                    setTimeout(() => card.remove(), 300);
+                    setTimeout(() => {
+                        card.style.transition = 'opacity .3s';
+                        card.style.opacity = '0';
+                        setTimeout(() => card.remove(), 300);
+                    }, 600);
                 }
             } else {
-                alert('刪除失敗，請重試');
+                alert(data.message || '刪除失敗，請重試');
                 btn.disabled = false;
                 btn.textContent = '🗑️ 刪除';
             }
@@ -2176,6 +2327,61 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             alert('網路錯誤，請重試');
             btn.disabled = false;
             btn.textContent = '🗑️ 刪除';
+        }
+    }
+
+    // ── 影片上傳（AJAX：上傳中/成功/失敗，失敗保留欄位）─────────────
+    async function submitUpload(event) {
+        event.preventDefault();
+        const form   = document.getElementById('uploadForm');
+        const btn    = document.getElementById('uploadBtn');
+        const status = document.getElementById('uploadStatus');
+
+        const fileInput = document.getElementById('video');
+        if (!fileInput.files.length) {
+            showUploadStatus('error', '請選擇影片檔案');
+            return false;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '⏳ 上傳中…';
+        showUploadStatus('loading', '⏳ 影片上傳中，請稍候…');
+
+        try {
+            const formData = new FormData(form);
+            formData.append('ajax_upload', '1');
+            const res  = await fetch('?view=personal', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                showUploadStatus('success', '✓ 上傳成功！即將重新整理…');
+                btn.textContent = '✓ 上傳成功';
+                setTimeout(() => { window.location.href = '?view=personal'; }, 1200);
+            } else {
+                // 失敗：保留標題/描述/標籤，只需重新選檔案
+                showUploadStatus('error', '✗ ' + (data.message || '上傳失敗，請重試'));
+                btn.disabled = false;
+                btn.textContent = '🚀 上傳影片';
+            }
+        } catch (e) {
+            showUploadStatus('error', '✗ 網路錯誤，請重試');
+            btn.disabled = false;
+            btn.textContent = '🚀 上傳影片';
+        }
+        return false;
+    }
+
+    function showUploadStatus(type, msg) {
+        const el = document.getElementById('uploadStatus');
+        if (!el) return;
+        el.style.display = 'block';
+        el.textContent = msg;
+        if (type === 'success') {
+            el.style.background = '#f0fdf4'; el.style.color = '#16a34a'; el.style.border = '1px solid #bbf7d0';
+        } else if (type === 'error') {
+            el.style.background = '#fef2f2'; el.style.color = '#dc2626'; el.style.border = '1px solid #fecaca';
+        } else {
+            el.style.background = '#eff6ff'; el.style.color = '#2563eb'; el.style.border = '1px solid #bfdbfe';
         }
     }
 
@@ -2390,12 +2596,35 @@ function renderEditChips() {
         box.insertBefore(chip, typing);
     });
     document.getElementById('editTagsHidden').value = editTags.join(',');
+    // 同步建議標籤按鈕的選取狀態
+    document.querySelectorAll('.edit-preset-tag-btn').forEach(btn => {
+        btn.classList.toggle('selected', editTags.includes(btn.dataset.tag));
+    });
+}
+
+function addEditTag(tag) {
+    if (tag && !editTags.includes(tag) && editTags.length < 10) {
+        editTags.push(tag);
+        renderEditChips();
+    }
 }
 
 function removeEditTag(tag) {
     editTags = editTags.filter(t => t !== tag);
     renderEditChips();
 }
+
+// 建議標籤按鈕：點一下加入/移除
+document.querySelectorAll('.edit-preset-tag-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tag = this.dataset.tag;
+        if (editTags.includes(tag)) {
+            removeEditTag(tag);
+        } else {
+            addEditTag(tag);
+        }
+    });
+});
 
 document.getElementById('editHashtagTyping').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.key === ',') {

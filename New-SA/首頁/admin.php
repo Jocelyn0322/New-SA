@@ -445,8 +445,8 @@ if ($tab === 'reports') {
 }
 
 if ($tab === 'appeals') {
+    try { $pdo->exec("ALTER TABLE video_appeals ADD COLUMN reviewed_at DATETIME"); } catch (Exception $e) {}
     try {
-        $pdo->exec("ALTER TABLE video_appeals ADD COLUMN reviewed_at DATETIME");
         $appeals = $pdo->query("
             SELECT va.id, va.video_id, va.username, va.reason, va.status, va.admin_note,
                    va.created_at, va.reviewed_at, v.title AS video_title, v.is_active

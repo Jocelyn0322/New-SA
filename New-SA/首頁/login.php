@@ -33,8 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($user['status'] === 'suspended') {
                 $error = "此帳號已被停用，請聯絡管理員";
             } else {
-                $_SESSION['user'] = $user['username'];
-                $_SESSION['role'] = $user['role'];
+                $_SESSION['user']          = $user['username'];
+                $_SESSION['role']          = $user['role'];
+                $_SESSION['_session_init'] = true;
                 header("Location: " . BASE_URL . "/產品/index.php");
                 exit();
             }

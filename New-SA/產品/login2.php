@@ -31,8 +31,9 @@ if (isset($_POST['register'])) {
         } else {
             $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'user')");
             if ($stmt->execute([$username, $password])) {
-                $_SESSION['user'] = $username;
-                $_SESSION['role'] = 'user';
+                $_SESSION['user']          = $username;
+                $_SESSION['role']          = 'user';
+                $_SESSION['_session_init'] = true;
                 header("Location: profile.php?new=1");
                 exit();
             } else {
@@ -53,8 +54,9 @@ if (isset($_POST['login'])) {
 
     if ($user) {
         if ($password === $user['password']) {
-            $_SESSION['user'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
+            $_SESSION['user']          = $user['username'];
+            $_SESSION['role']          = $user['role'];
+            $_SESSION['_session_init'] = true;
 
             if ($user['role'] === 'admin') {
                 echo "<script>alert('登入成功'); window.location.href='index.php';</script>";
