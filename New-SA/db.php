@@ -9,13 +9,12 @@ if (!defined('BASE_URL')) {
     if (getenv('RAILWAY_ENVIRONMENT') !== false) {
         define('BASE_URL', '');
     } else {
-        // 動態取得專案根目錄，相容 SA / SA拷貝3 等不同資料夾名稱
+        // 動態偵測：找到 New-SA 在路徑中的位置，取到它為止
         $scriptPath = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? '');
         $docRoot    = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']   ?? '');
         $relPath    = ltrim(str_replace($docRoot, '', $scriptPath), '/');
-        $parts      = explode('/', $relPath);
-        // 取前兩段：<專案資料夾>/New-SA
-        $baseUrl    = isset($parts[1]) ? '/' . $parts[0] . '/' . $parts[1] : '/SA/New-SA';
+        $pos        = strpos($relPath, 'New-SA');
+        $baseUrl    = $pos !== false ? '/' . rtrim(substr($relPath, 0, $pos + strlen('New-SA')), '/') : '/SA/New-SA';
         define('BASE_URL', $baseUrl);
     }
 }
