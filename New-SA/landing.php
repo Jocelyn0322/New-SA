@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       --r-full:  99px;
       --t:       .18s ease;
     }
-    body { font-family: '標楷體', 'DFKai-SB', 'BiauKai', 'KaiTi', serif; min-height: 100vh; display: flex; background: var(--bg); color: var(--text); }
+    body { font-family: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif; min-height: 100vh; display: flex; background: var(--bg); color: var(--text); }
 
     /* ── LEFT HERO ── */
     .hero {
