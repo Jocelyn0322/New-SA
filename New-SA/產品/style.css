@@ -1,0 +1,595 @@
+@import url('../shared.css');
+@import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-tc-webfont@latest/style.css');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
+}
+
+body {
+    font-family: 'LXGW WenKai TC', '標楷體', 'BiauKai', 'DFKai-SB', serif;
+    background: #fafafa;
+    color: #222;
+}
+
+.page {
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* ===== Header ===== */
+.topbar {
+    width: 100%;
+    height: 80px;
+    background: white;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.topbar .inner {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+/* logo */
+.logo {
+    font-weight: 600;
+    font-size: 22px;
+    color: #333;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+/* nav */
+.nav {
+    display: flex;
+    gap: 35px;
+    align-items: center;
+    flex: 1;
+    justify-content: center;
+}
+
+.nav a,
+.nav .dropdown-toggle {
+    text-decoration: none;
+    color: #666;
+    font-size: 15px;
+    white-space: nowrap;
+    transition: 0.2s ease;
+}
+
+.nav a:hover,
+.nav .dropdown-toggle:hover {
+    color: #efc6cd;
+}
+
+/* ===== dropdown（重點）===== */
+.nav-item {
+    position: relative;
+}
+
+/* 預設隱藏 */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+
+    min-width: 140px;
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+
+    padding: 8px 0;
+    z-index: 999;
+}
+
+/* hover 才出現 */
+.nav-item:hover .dropdown-menu {
+    display: block;
+}
+
+/* dropdown 裡的項目 */
+.dropdown-menu a {
+    display: block;
+    padding: 10px 18px;
+    font-size: 14px;
+    color: #666;
+}
+
+.dropdown-menu a:hover {
+    background: #fff4f6;
+    color: #efc6cd;
+}
+
+/* login */
+.login-link {
+    background: #efc6cd;
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    color: #333;
+    font-size: 14px;
+}
+
+.login-link:hover {
+    background: #e6b3ba;
+}
+
+/* ===== Buttons ===== */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: 0.2s ease;
+    text-align: center;
+}
+
+.btn-primary {
+    background: #efc6cd;
+    color: #333;
+}
+
+.btn-primary:hover {
+    background: #e6b3ba;
+}
+
+.btn-outline {
+    background: white;
+    color: #666;
+    border: 1.5px solid #ddd;
+    width: 100%;
+}
+
+.btn-outline:hover {
+    background: #fafafa;
+    border-color: #efc6cd;
+    color: #333;
+}
+
+/* ===== Search ===== */
+.search-section {
+    max-width: 1400px;
+    margin: 30px auto 0;
+    padding: 0 40px;
+}
+
+.search-bar {
+    display: flex;
+    gap: 10px;
+}
+
+.search-bar input {
+    flex: 1;
+    padding: 10px 18px;
+    border: 1.5px solid #ddd;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-bar input:focus {
+    border-color: #efc6cd;
+}
+
+.search-bar button {
+    padding: 10px 20px;
+    background: #efc6cd;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* ===== Filter ===== */
+.filter-section {
+    max-width: 1400px;
+    margin: 16px auto 0;
+    padding: 0 40px;
+}
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-btn {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1.5px solid #ddd;
+    background: white;
+    font-size: 13px;
+    color: #555;
+    text-decoration: none;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: #efc6cd;
+    border-color: #efc6cd;
+    color: #333;
+}
+
+/* ===== Product Grid ===== */
+.products {
+    max-width: 1400px;
+    margin: 30px auto 60px;
+    padding: 0 40px;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.product-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.product-card img {
+    width: 100%;
+    height: 220px;
+    object-fit: contain;
+    background: #f5f5f5;
+    padding: 8px;
+}
+
+.product-card-inner {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.product-card-inner h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.product-card-inner p {
+    font-size: 13px;
+    color: #999;
+}
+
+.product-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.product-actions .btn,
+.product-actions button {
+    flex: 1;
+}
+
+/* ===== Favorite Button ===== */
+.fav-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+}
+
+.heart {
+    background: white;
+    border: none;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #999;
+}
+
+.empty-state h3 {
+    font-size: 22px;
+    margin-bottom: 12px;
+    color: #555;
+}
+
+/* ===== Product Detail ===== */
+.product-detail {
+    max-width: 1000px;
+    margin: 40px auto 80px;
+    padding: 0 40px;
+}
+
+.product-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.product-info h1 {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.product-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 8px;
+    color: #444;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.colors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.color-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.color-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #eee;
+}
+
+.color-name {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+}
+
+/* ===== Compare ===== */
+.compare-section {
+    max-width: 1200px;
+    margin: 40px auto 80px;
+    padding: 0 40px;
+    overflow-x: auto;
+}
+
+.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+
+.compare-table th,
+.compare-table td {
+    padding: 16px 20px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+    vertical-align: top;
+}
+
+.compare-table th {
+    background: #fdf5f6;
+    font-weight: 600;
+    color: #555;
+}
+
+.compare-badge {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #efc6cd;
+    color: #333;
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    z-index: 100;
+}
+
+/* ===== Hero / Slider ===== */
+.hero {
+    position: relative;
+    overflow: hidden;
+    height: 420px;
+    background: #f5f5f5;
+}
+
+.slider {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+.slide.active {
+    display: block;
+}
+
+.slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hero-text {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.85);
+    padding: 10px 28px;
+    border-radius: 30px;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.8);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.slider-btn.prev { left: 16px; }
+.slider-btn.next { right: 16px; }
+
+.dots {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.dot.active {
+    background: white;
+}
+
+/* ===== Features section ===== */
+.features {
+    padding: 50px 0;
+}
+
+/* ===== Login ===== */
+.login-container {
+    max-width: 420px;
+    margin: 80px auto;
+    padding: 40px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.login-form input {
+    padding: 12px 16px;
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.login-form input:focus {
+    border-color: #efc6cd;
+}
+
+.login-form button {
+    padding: 12px;
+    background: #efc6cd;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.error {
+    color: #e55;
+    font-size: 14px;
+    padding: 8px 12px;
+    background: #fff0f0;
+    border-radius: 8px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .topbar .inner { padding: 0 16px; gap: 16px; }
+    .nav { gap: 16px; }
+    .products { padding: 0 16px; }
+    .search-section, .filter-section { padding: 0 16px; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+    .product-detail { padding: 0 16px; }
+    .product-detail-grid { grid-template-columns: 1fr; }
+    .compare-section { padding: 0 16px; }
+    .hero { height: 240px; }
+}

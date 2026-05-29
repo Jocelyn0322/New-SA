@@ -1,0 +1,6 @@
+首頁/mail_config.php
+vendor/
+*.log
+.env
+test_db.php
+preview/
