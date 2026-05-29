@@ -49,7 +49,7 @@ if (isset($_POST['restore_video'])) {
             ->execute([$vid]);
         insertNotification($pdo, $vrow['uploaded_by'], 'appeal_result',
             "您的影片「{$vrow['title']}」已由管理員恢復上架。", $adminUser);
-        $msg = '✅ 已復原影片「' . $vrow['title'] . '」'; $msgType = 'success';
+        $msg = '✅ 已恢復影片「' . $vrow['title'] . '」'; $msgType = 'success';
     }
     $tab = 'videos';
 }
@@ -305,7 +305,7 @@ if ($tab === 'stats') {
 
     // 排名資料
     try {
-        $rankData['product_views'] = $pdo->query("SELECT id AS item_id, name AS item_name, COALESCE(view_count,0) AS score FROM data ORDER BY view_count DESC NULLS LAST LIMIT 10")->fetchAll();
+        $rankData['product_views'] = $pdo->query("SELECT id AS item_id, name AS item_name, COALESCE(view_count,0) AS score FROM data ORDER BY view_count IS NULL, view_count DESC LIMIT 10")->fetchAll();
         $rankData['product_favs']  = $pdo->query("SELECT p.id AS item_id, p.name AS item_name, COUNT(f.id) AS score FROM data p LEFT JOIN product_favorites f ON f.product_id = p.id GROUP BY p.id, p.name ORDER BY score DESC LIMIT 10")->fetchAll();
         $rankData['video_views']   = $pdo->query("SELECT id AS item_id, title AS item_name, view_count AS score FROM videos WHERE is_active = 1 ORDER BY view_count DESC LIMIT 10")->fetchAll();
         $rankData['video_likes']   = $pdo->query("SELECT v.id AS item_id, v.title AS item_name, COUNT(l.id) AS score FROM videos v LEFT JOIN likes l ON l.video_id = v.id WHERE v.is_active = 1 GROUP BY v.id, v.title ORDER BY score DESC LIMIT 10")->fetchAll();
@@ -380,7 +380,7 @@ if ($tab === 'videos') {
         $inactiveVideos = $pdo->query("
             SELECT id, title, uploaded_by, removed_reason, removed_at
             FROM videos WHERE is_active = 0
-            ORDER BY removed_at DESC NULLS LAST
+            ORDER BY removed_at IS NULL, removed_at DESC
         ")->fetchAll();
     } catch (Throwable $e) { $inactiveVideos = []; }
 }
@@ -1146,11 +1146,11 @@ function adminTakedownPrompt(form) {
 
 <div style="margin-top:36px;border-top:2px solid #f0eef8;padding-top:28px;">
   <div style="font-size:15px;font-weight:700;color:#c26b7c;margin-bottom:14px;">
-    ⬇ 下架中的影片
+    ⬇ 已下架的影片
     <span style="font-size:13px;font-weight:400;color:#aaa;margin-left:6px;">共 <?php echo count($inactiveVideos); ?> 部</span>
   </div>
   <?php if (empty($inactiveVideos)): ?>
-    <div style="text-align:center;padding:30px 0;color:#ccc;font-size:14px;">目前沒有下架中的影片</div>
+    <div style="text-align:center;padding:30px 0;color:#ccc;font-size:14px;">目前沒有已下架的影片</div>
   <?php else: ?>
     <div style="display:flex;flex-direction:column;gap:8px;">
     <?php foreach ($inactiveVideos as $iv): ?>
@@ -1168,11 +1168,11 @@ function adminTakedownPrompt(form) {
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
-          <form method="post" onsubmit="return confirm('確定復原此影片上架？')">
+          <form method="post" onsubmit="return confirm('確定恢復此影片上架？')">
             <input type="hidden" name="video_id" value="<?php echo (int)$iv['id']; ?>">
             <button type="submit" name="restore_video" value="1"
               style="padding:7px 14px;background:#eafaf1;border:1.5px solid #a9dfbf;color:#27ae60;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
-              🔄 復原上架
+              🔄 恢復上架
             </button>
           </form>
           <form method="post" onsubmit="return confirm('確定永久刪除？此操作無法復原。')">
