@@ -28,18 +28,11 @@ if (isset($_SESSION['user'])) {
         $_SESSION['_notif_init'] = true;
     }
 
-    // 一次查詢同時取通知數 + 大頭照
     try {
-        $hdr = $pdo->prepare("
-            SELECT
-                (SELECT COUNT(*) FROM notifications WHERE recipient = :u AND is_read = FALSE) AS notif_count,
-                (SELECT avatar_url FROM users WHERE username = :u2) AS avatar_url
-        ");
-        $hdr->execute([':u' => $_SESSION['user'], ':u2' => $_SESSION['user']]);
-        $hdrRow      = $hdr->fetch();
-        $_notifCount = (int)($hdrRow['notif_count'] ?? 0);
-        $_avatarUrl  = (string)($hdrRow['avatar_url'] ?? '');
-    } catch (Exception $e) { $_notifCount = 0; $_avatarUrl = ''; }
+        $hdr = $pdo->prepare("SELECT COUNT(*) AS notif_count FROM notifications WHERE recipient = :u AND is_read = FALSE");
+        $hdr->execute([':u' => $_SESSION['user']]);
+        $_notifCount = (int)($hdr->fetchColumn() ?: 0);
+    } catch (Exception $e) { $_notifCount = 0; }
 }
 ?>
 <style>

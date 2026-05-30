@@ -14,12 +14,18 @@ $messageType = '';
 
 $isNewUser = isset($_GET['new']);
 
-$stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+$stmt = $pdo->prepare("SELECT id, username, email, created_at FROM users WHERE username = ?");
 $stmt->execute([$_SESSION['user']]);
-$profile = $stmt->fetch();
+$userRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-$currentEmail = $profile['email'] ?? '';
-$joinedAt     = $profile['created_at'] ?? '';
+$stmt = $pdo->prepare("SELECT * FROM user_profiles WHERE username = ?");
+$stmt->execute([$_SESSION['user']]);
+$profileRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+$profile = array_merge($userRow, $profileRow);
+
+$currentEmail = $userRow['email'] ?? '';
+$joinedAt     = $userRow['created_at'] ?? '';
 $joinedFmt    = $joinedAt ? date('Y/m/d', strtotime($joinedAt)) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
@@ -33,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $makeupStyle  = $_POST['makeup_style'] ?? '';
 
     try {
-        $stmt = $pdo->prepare("UPDATE users SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=?,makeup_finish=?,makeup_style=?,updated_at=NOW() WHERE username=?");
+        $stmt = $pdo->prepare("UPDATE user_profiles SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=?,makeup_finish=?,makeup_style=?,updated_at=NOW() WHERE username=?");
         $stmt->execute([$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$makeupFinish,$makeupStyle,$_SESSION['user']]);
         $message = '個人資料儲存成功！';
         $messageType = 'success';
@@ -48,9 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt = $pdo->prepare("SELECT id, username, email, created_at FROM users WHERE username = ?");
     $stmt->execute([$_SESSION['user']]);
-    $profile = $stmt->fetch();
+    $userRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $stmt = $pdo->prepare("SELECT * FROM user_profiles WHERE username = ?");
+    $stmt->execute([$_SESSION['user']]);
+    $profileRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $profile = array_merge($userRow, $profileRow);
 }
 
 /* ── Stats ── */
