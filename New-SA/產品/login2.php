@@ -48,7 +48,9 @@ if (isset($_POST['login'])) {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT id, username, password, role, skin_type FROM users WHERE username = ?");
+    $stmt = $pdo->prepare("SELECT u.id, u.username, u.password, u.role, up.skin_type
+        FROM users u LEFT JOIN user_profiles up ON u.username = up.username
+        WHERE u.username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 

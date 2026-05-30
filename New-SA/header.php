@@ -33,7 +33,7 @@ if (isset($_SESSION['user'])) {
         $hdr = $pdo->prepare("
             SELECT
                 (SELECT COUNT(*) FROM notifications WHERE recipient = :u AND is_read = FALSE) AS notif_count,
-                (SELECT avatar_url FROM users WHERE username = :u2) AS avatar_url
+                (SELECT avatar_url FROM user_profiles WHERE username = :u2) AS avatar_url
         ");
         $hdr->execute([':u' => $_SESSION['user'], ':u2' => $_SESSION['user']]);
         $hdrRow      = $hdr->fetch();

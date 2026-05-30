@@ -422,7 +422,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
         $likedTags = array_unique($likedTags);
 
         // 2. 膚質困擾標籤
-        $ps = $pdo->prepare("SELECT skin_concerns FROM users WHERE username = ?");
+        $ps = $pdo->prepare("SELECT skin_concerns FROM user_profiles WHERE username = ?");
         $ps->execute([$_SESSION['user']]);
         $pr = $ps->fetch();
         $skinTags = [];

@@ -45,7 +45,8 @@ if (!storeImageBytes($pdo, 'avatar', $username, $bytes, $mimeType)) {
 
 $publicUrl = imageUrl('avatar', $username);
 
-$pdo->prepare("UPDATE users SET avatar_url = ? WHERE username = ?")
-    ->execute([$publicUrl, $username]);
+$pdo->prepare("INSERT INTO user_profiles (username, avatar_url) VALUES (?, ?)
+    ON DUPLICATE KEY UPDATE avatar_url = VALUES(avatar_url)")
+    ->execute([$username, $publicUrl]);
 
 echo json_encode(['success' => true, 'url' => $publicUrl]);
