@@ -318,7 +318,7 @@ if (isset($_SESSION['user'])) {
     <?php else: ?>
     <a href="<?= BASE_URL ?>/首頁/profile.php"  class="mob-nav-link"><span class="icon">👤</span>個人資料</a>
     <?php endif; ?>
-    <a href="<?= BASE_URL ?>/notifications.php" class="mob-nav-link"><span class="icon">🔔</span>通知<?php if($_notifCount>0): ?> <span style="margin-left:auto;background:#c26b7c;color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;font-weight:700;"><?=$_notifCount?></span><?php endif; ?></a>
+    <a href="#" class="mob-nav-link" onclick="closeMobMenu();setTimeout(window.toggleNotifPanel,80);return false;"><span class="icon">🔔</span>通知<?php if($_notifCount>0): ?> <span style="margin-left:auto;background:#c26b7c;color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;font-weight:700;"><?=$_notifCount?></span><?php endif; ?></a>
     <?php endif; ?>
   </nav>
 
