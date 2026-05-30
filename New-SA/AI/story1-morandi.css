@@ -341,6 +341,17 @@ body { background: #f7f4f5 !important; min-height: 100vh; }
   box-shadow: 0 3px 10px rgba(194,107,124,.3) !important;
   transform: scale(.97) !important;
 }
+.back-btn {
+  background: none;
+  border: none;
+  color: #9b7b84;
+  font-size: .82rem;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: color .2s, background .2s;
+}
+.back-btn:hover { color: #6b2d3e; background: rgba(107,45,62,.07); }
 
 /* ── Next button ── */
 .next-btn-wrap { padding: 0 24px 24px !important; }

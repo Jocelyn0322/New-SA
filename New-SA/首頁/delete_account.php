@@ -30,16 +30,17 @@ if (!$user || $user['password'] !== $password) {
     exit;
 }
 
+// DDL must run outside transaction to avoid implicit commit breaking the transaction
+$pdo->exec("CREATE TABLE IF NOT EXISTS account_deletions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100),
+    reasons TEXT,
+    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 try {
     $pdo->beginTransaction();
 
-    // Log deletion reason
-    $pdo->exec("CREATE TABLE IF NOT EXISTS account_deletions (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        username VARCHAR(100),
-        reasons TEXT,
-        deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     $pdo->prepare("INSERT INTO account_deletions (username, reasons) VALUES (?, ?)")
         ->execute([$username, implode(', ', $reasons)]);
 
@@ -52,6 +53,7 @@ try {
         "DELETE FROM videos          WHERE uploaded_by = ?",
         "DELETE FROM follows         WHERE follower    = ?",
         "DELETE FROM follows         WHERE following   = ?",
+        "DELETE FROM user_profiles   WHERE username    = ?",
         "DELETE FROM users           WHERE username    = ?",
     ] as $sql) {
         $pdo->prepare($sql)->execute([$username]);

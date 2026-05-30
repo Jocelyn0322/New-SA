@@ -9,12 +9,11 @@ $user = $_SESSION['user'] ?? null;
 if (isset($_GET['test']) && $user) {
     try {
         $stmt = $pdo->prepare("
-            UPDATE users SET
-                skin_type     = :skin_type,
-                skin_tone     = :skin_tone,
-                skin_concerns = :skin_concerns,
-                updated_at    = NOW()
-            WHERE username = :username
+            INSERT INTO user_profiles (username, skin_type, skin_tone, skin_concerns, updated_at)
+            VALUES (:username, :skin_type, :skin_tone, :skin_concerns, NOW())
+            ON DUPLICATE KEY UPDATE
+                skin_type = VALUES(skin_type), skin_tone = VALUES(skin_tone),
+                skin_concerns = VALUES(skin_concerns), updated_at = NOW()
         ");
         $stmt->execute([
             ':username'      => $user,
@@ -32,7 +31,7 @@ if (isset($_GET['test']) && $user) {
 // 一般診斷
 $rows = [];
 if ($user) {
-    $stmt = $pdo->prepare("SELECT id, username, skin_type, skin_tone, skin_concerns, gender, age, allergies, makeup_finish, makeup_style, avatar_url, updated_at FROM users WHERE username = ?");
+    $stmt = $pdo->prepare("SELECT id, username, skin_type, skin_tone, skin_concerns, gender, age, allergies, makeup_finish, makeup_style, avatar_url, updated_at FROM user_profiles WHERE username = ?");
     $stmt->execute([$user]);
     $rows = $stmt->fetchAll();
 }

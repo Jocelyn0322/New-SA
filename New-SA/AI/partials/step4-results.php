@@ -16,6 +16,44 @@
         </div>
     </div>
 
+    <!-- 膚色色卡 Modal -->
+    <teleport to="body">
+    <div v-if="showSwatchCard"
+        @click.self="showSwatchCard = false"
+        style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:24px;width:min(560px,100%);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <h3 style="margin:0;font-size:17px;font-weight:800;color:#3d1520;">🎨 膚色色卡對照</h3>
+                <button @click="showSwatchCard = false"
+                    style="background:none;border:none;font-size:20px;cursor:pointer;color:#9b7b84;line-height:1;padding:4px;">✕</button>
+            </div>
+            <p style="font-size:12px;color:#9b7b84;margin:0 0 20px;">點選色卡可更換你的膚色，選完會自動關閉</p>
+
+            <!-- 色卡群組 -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div v-for="group in skinTonesByCategory" :key="group.label">
+                    <p style="font-size:11px;font-weight:700;color:#c26b7c;letter-spacing:.05em;margin:0 0 8px;">{{ group.label }}</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                        <div v-for="tone in group.tones" :key="tone.toneName"
+                            style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;"
+                            @click="selectToneFromSwatch(tone.toneName); showSwatchCard = false">
+                            <div :style="{
+                                width:'40px', height:'40px', borderRadius:'50%',
+                                background: tone.hex,
+                                border: skinTone === tone.toneName ? '3px solid #6b2d3e' : '2px solid rgba(0,0,0,.08)',
+                                boxShadow: skinTone === tone.toneName ? '0 0 0 2px #fff, 0 0 0 4px #6b2d3e' : '0 1px 4px rgba(0,0,0,.1)',
+                                transition:'all .15s'
+                            }"></div>
+                            <span style="font-size:9px;color:#9b7b84;text-align:center;line-height:1.2;max-width:44px;word-break:keep-all;">{{ tone.toneName }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </teleport>
+
     <!-- 膚質分析結果 -->
     <div class="p-5 rounded-2xl shadow-sm" style="background:linear-gradient(135deg,#fce8ec,#fdf2f4); border:1px solid #f5c6d0;">
         <h3 class="font-extrabold mb-2" style="color:#6b2d3e;">🧴 膚質分析結果</h3>
@@ -96,12 +134,21 @@
                     <span class="text-sm font-semibold text-gray-800">{{ skinCoordinate?.type || skinTone || '未選擇' }}</span>
                 </div>
                 <!-- 手動選膚色 -->
-                <select v-model="skinTone" @change="analyzeSkinTone"
-                    :disabled="confirmedSkinTone"
-                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
-                    <option disabled value="">— 選擇其他膚色 —</option>
-                    <option v-for="t in skinTonesData" :key="t.toneName" :value="t.toneName">{{ t.toneName }}</option>
-                </select>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <select v-model="skinTone" @change="analyzeSkinTone"
+                        :disabled="confirmedSkinTone"
+                        class="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        style="flex:1;min-width:0;">
+                        <option disabled value="">— 選擇其他膚色 —</option>
+                        <option v-for="t in skinTonesData" :key="t.toneName" :value="t.toneName">{{ t.toneName }}</option>
+                    </select>
+                    <button @click="showSwatchCard = true" :disabled="confirmedSkinTone"
+                        title="查看色卡"
+                        style="flex-shrink:0;padding:8px 10px;border-radius:12px;border:1.5px solid #f5c6d0;background:#fff;color:#6b2d3e;font-size:13px;cursor:pointer;transition:background .15s;white-space:nowrap;disabled:opacity:.4;"
+                        onmouseover="this.style.background='#fdf2f4'" onmouseout="this.style.background='#fff'">
+                        🎨 色卡
+                    </button>
+                </div>
             </div>
 
             <!-- 確認膚質 -->

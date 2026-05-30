@@ -70,8 +70,26 @@ if ($hasProfile) {
     } catch (Exception $e) { $rows = []; }
 
     $skw   = $skinTypeKw[$skinType] ?? $skinTypeKw['中性皮'];
-    $fkw   = $finishKw[$makeupFinish] ?? [];
-    $stykw = $styleKw[$makeupStyle]   ?? [];
+    $stykw = $styleKw[$makeupStyle] ?? [];
+
+    $dryTypes  = ['乾性皮', '混乾皮'];
+    $oilyTypes = ['油性皮', '混油皮'];
+    $rawFkw    = $finishKw[$makeupFinish] ?? [];
+
+    if (in_array($skinType, $dryTypes) && $makeupFinish === '霧面') {
+        // 乾皮 + 霧面：移除控油/持妝，保留柔霧/輕薄，補保濕
+        $oilConflictKw = ['控油', '無油', '持妝', '抗汗', '長效'];
+        $fkw = array_merge(
+            array_filter($rawFkw, fn($k) => !in_array($k, $oilConflictKw)),
+            ['保濕', '潤澤']
+        );
+    } elseif (in_array($skinType, $oilyTypes) && $makeupFinish === '水光') {
+        // 油皮 + 水光：使用者明確選水光，直接用水光關鍵字
+        // 控油由 pureSkinKw 次要加分，不蓋過水光主訴求
+        $fkw = $rawFkw; // ['水光','保濕','潤澤','光澤','水感']
+    } else {
+        $fkw = $rawFkw;
+    }
 
     $ranked = [];
     foreach ($rows as $row) {
@@ -169,30 +187,115 @@ if (isset($pdo)) {
     } catch (Exception $e) {}
 }
 
+// ── AI 關鍵字（依膚質＋妝感偏好，結果快取於 session） ───────────
+function getAIProductKeywords(string $skinType, string $makeupFinish, bool $sensitive): array {
+    $cacheKey = 'ai_kw_' . md5($skinType . $makeupFinish . ($sensitive ? '1' : '0'));
+    if (!empty($_SESSION[$cacheKey])) return $_SESSION[$cacheKey];
+
+    $groqKey  = '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';
+    $note     = $sensitive ? '，且皮膚敏感' : '';
+    $prompt   = "用戶膚質：{$skinType}{$note}，妝感偏好：{$makeupFinish}。請推薦最適合此用戶的粉底液特性關鍵字（繁體中文），只輸出5-7個關鍵字以逗號分隔，不要其他說明。";
+
+    $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode([
+            'model'       => 'llama-3.3-70b-versatile',
+            'messages'    => [['role' => 'user', 'content' => $prompt]],
+            'max_tokens'  => 60,
+            'temperature' => 0.1,
+        ]),
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $groqKey,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_TIMEOUT => 4,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code !== 200) return [];
+    $content  = trim(json_decode($resp, true)['choices'][0]['message']['content'] ?? '');
+    $keywords = array_values(array_filter(array_map('trim', explode(',', $content))));
+    $_SESSION[$cacheKey] = $keywords;
+    return $keywords;
+}
+
 // ── 天氣推薦產品（輕薄日常，舒適溫度時顯示） ─────────────────────
 $mildProducts = [];
 if (isset($pdo)) {
     try {
-        $mildKw = ['輕薄', '自然', '裸妝', '日常', '通透', '輕盈', '空氣感'];
-        $conditions = array_map(fn($k) => "purpose LIKE :kw_p_$k OR name LIKE :kw_n_$k", array_keys($mildKw));
-        $sql = "SELECT id, name, brand, purpose, image_url FROM data WHERE category = '底妝' AND (" . implode(' OR ', $conditions) . ") LIMIT 20";
-        $st = $pdo->prepare($sql);
-        foreach ($mildKw as $i => $kw) {
-            $st->bindValue(":kw_p_$i", '%' . $kw . '%');
-            $st->bindValue(":kw_n_$i", '%' . $kw . '%');
-        }
-        $st->execute();
+        // 妝感關鍵字（使用者選擇，主要，權重 2）
+        // 膚質關鍵字去掉妝感相關詞（次要，權重 1），避免油皮「霧面」蓋過使用者選的「水光」
+        $finishRelatedKw = ['霧面','柔霧','水光','裸光','光澤','光感','緞面','霧感'];
+        $pureSkinKw = array_values(array_filter(
+            $_userSkinKw ?: [],
+            fn($k) => !in_array($k, $finishRelatedKw)
+        ));
+        $scoreKw = array_merge(
+            array_fill_keys($fkw ?: ['輕薄','自然'], 2),
+            array_fill_keys($pureSkinKw ?: [], 1)
+        );
+
+        $st = $pdo->query("SELECT id, name, brand, purpose, image_url FROM data WHERE category = '底妝' ORDER BY id ASC");
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-        usort($rows, function($a, $b) use ($mildKw, $_userSkinKw) {
-            $tA = $a['purpose'] . $a['name'];
-            $tB = $b['purpose'] . $b['name'];
-            $wA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 2 : 0, $mildKw));
-            $sA = array_sum(array_map(fn($k) => mb_strpos($tA, $k) !== false ? 1 : 0, $_userSkinKw));
-            $wB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 2 : 0, $mildKw));
-            $sB = array_sum(array_map(fn($k) => mb_strpos($tB, $k) !== false ? 1 : 0, $_userSkinKw));
-            return ($wB + $sB) <=> ($wA + $sA);
-        });
-        $mildProducts = array_slice($rows, 0, 4);
+
+        // 計算每個產品的分數並存入
+        foreach ($rows as &$row) {
+            $t = $row['purpose'] . ' ' . $row['name'];
+            $row['_score'] = array_sum(array_map(
+                fn($kw, $w) => mb_strpos($t, $kw, 0, 'UTF-8') !== false ? $w : 0,
+                array_keys($scoreKw), $scoreKw
+            ));
+        }
+        unset($row);
+
+        // 由高到低排序
+        usort($rows, fn($a, $b) => $b['_score'] <=> $a['_score']);
+
+        // 只取有得分的，最多 20 個，隨機選 4 個
+        $scored = array_values(array_filter($rows, fn($r) => $r['_score'] > 0));
+        $pool   = array_slice(!empty($scored) ? $scored : $rows, 0, 20);
+        shuffle($pool);
+        $mildProducts = array_slice($pool, 0, 4);
+    } catch (Exception $e) {}
+}
+
+// ── 色號推薦：找最接近使用者膚色的色號 ──────────────────────────
+function hexColorDistance(string $hex1, string $hex2): float {
+    $parse = fn($h) => [
+        hexdec(substr(ltrim($h,'#'), 0, 2)),
+        hexdec(substr(ltrim($h,'#'), 2, 2)),
+        hexdec(substr(ltrim($h,'#'), 4, 2)),
+    ];
+    [$r1,$g1,$b1] = $parse($hex1);
+    [$r2,$g2,$b2] = $parse($hex2);
+    return sqrt(($r1-$r2)**2 + ($g1-$g2)**2 + ($b1-$b2)**2);
+}
+
+if (!empty($mildProducts) && !empty($toneHex)) {
+    try {
+        $pids = array_column($mildProducts, 'id');
+        $ph   = implode(',', array_fill(0, count($pids), '?'));
+        $cs   = $pdo->prepare("SELECT p_id, color_name, color_hex FROM product_colors WHERE p_id IN ($ph) ORDER BY p_id, color_id");
+        $cs->execute($pids);
+        $colorsByProduct = [];
+        foreach ($cs->fetchAll(PDO::FETCH_ASSOC) as $c) {
+            $colorsByProduct[$c['p_id']][] = $c;
+        }
+        foreach ($mildProducts as &$mp) {
+            $shades = $colorsByProduct[$mp['id']] ?? [];
+            if (empty($shades)) { $mp['shade'] = null; continue; }
+            $best = $shades[0]; $bestDist = PHP_FLOAT_MAX;
+            foreach ($shades as $shade) {
+                $d = hexColorDistance($toneHex, $shade['color_hex']);
+                if ($d < $bestDist) { $bestDist = $d; $best = $shade; }
+            }
+            $mp['shade'] = $best;
+        }
+        unset($mp);
     } catch (Exception $e) {}
 }
 
@@ -627,9 +730,14 @@ if (isset($pdo)) {
     $subtitleParts = [];
     if ($skinTypeLabel) $subtitleParts[] = $skinTypeLabel;
     if ($makeupFinishLabel) $subtitleParts[] = $makeupFinishLabel . '妝感';
-    $recommendSubtitle = !empty($subtitleParts)
-        ? '根據你的' . implode('、', $subtitleParts) . '，為你挑選適合的輕薄日常底妝'
-        : '根據你的膚質，為你挑選適合的輕薄日常底妝';
+    $dryMatteMismatch = in_array($skinTypeLabel, ['乾性皮', '混乾皮']) && $makeupFinishLabel === '霧面';
+    if ($dryMatteMismatch) {
+        $recommendSubtitle = '乾性皮建議優先補水，為你挑選保濕型底妝（霧面偏好已調整為保濕優先）';
+    } elseif (!empty($subtitleParts)) {
+        $recommendSubtitle = '根據你的' . implode('、', $subtitleParts) . '，為你挑選適合的輕薄日常底妝';
+    } else {
+        $recommendSubtitle = '根據你的膚質，為你挑選適合的輕薄日常底妝';
+    }
     ?>
     <!-- 日常產品推薦（永遠顯示） -->
     <div style="margin-bottom:28px;">
@@ -647,6 +755,12 @@ if (isset($pdo)) {
                 <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
                     <div style="font-size:10px; color:var(--text-3); font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($mp['brand']) ?></div>
                     <div style="font-size:12px; color:var(--text); font-weight:700; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;"><?= htmlspecialchars($mp['name']) ?></div>
+                    <?php if (!empty($mp['shade'])): ?>
+                    <div style="display:flex;align-items:center;gap:5px;margin-top:6px;">
+                        <span style="width:14px;height:14px;border-radius:50%;background:<?= htmlspecialchars($mp['shade']['color_hex']) ?>;border:1px solid rgba(0,0,0,.12);flex-shrink:0;"></span>
+                        <span style="font-size:10px;color:var(--text-3);">推薦色號 <?= htmlspecialchars($mp['shade']['color_name']) ?></span>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </a>
             <?php endforeach; ?>

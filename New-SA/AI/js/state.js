@@ -104,8 +104,25 @@ const selectedDepth         = ref('');
 const selectedHueBias       = ref('');
 const matchedFinalTone      = ref(null);
 const toneMismatchWarning   = ref('');
+const showSwatchCard        = ref(false);
 
 const canChooseMakeupPreference = computed(() => confirmedSkinTone.value && confirmedSkinType.value);
+
+const _toneCategories = {
+    'Pink': '粉調', 'Yellow': '黃調', 'Neutral': '中性調', 'Olive': '橄欖調',
+    'Red-Cool': '偏紅冷調', 'Red-Warm': '偏紅暖調',
+    'Neutral-Cool': '中性冷調', 'Neutral-Warm': '中性暖調',
+    'Green-Cool': '偏綠冷調', 'Green-Warm': '偏綠暖調',
+};
+const skinTonesByCategory = computed(() => {
+    const groups = {};
+    skinTonesData.value.forEach(t => {
+        const cat = t.category || 'Other';
+        if (!groups[cat]) groups[cat] = { label: _toneCategories[cat] || cat, tones: [] };
+        groups[cat].tones.push(t);
+    });
+    return Object.values(groups);
+});
 
 // ── Result modal ────────────────────────────────────────────────
 const openResultModal  = () => { showResultModal.value = true; };

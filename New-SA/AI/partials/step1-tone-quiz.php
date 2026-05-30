@@ -116,7 +116,10 @@
 
     <!-- 底部：膚色選項 Chips -->
     <div v-if="!toneQuizTyping && !skinQuizTyping && toneQuizStep <= toneQuizData.length" class="chip-zone">
-        <div class="chip-hint">選一個最符合的</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="chip-hint">選一個最符合的</div>
+            <button v-if="toneQuizStep > 1" class="back-btn" @click="goBackQuiz">← 上一題</button>
+        </div>
         <div class="chip-row">
             <button v-for="opt in toneQuizData[toneQuizStep - 1]?.opts" :key="opt.val"
                 class="chip" @click="setToneQuizAnswer(toneQuizData[toneQuizStep - 1].key, opt.val)">
@@ -128,7 +131,10 @@
     <!-- 底部：膚質選項 Chips -->
     <div v-if="!toneQuizTyping && !skinQuizTyping && toneQuizStep > toneQuizData.length && skinQuizStep <= skinQuizData.length"
          class="chip-zone">
-        <div class="chip-hint">選一個最符合的</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="chip-hint">選一個最符合的</div>
+            <button class="back-btn" @click="goBackQuiz">← 上一題</button>
+        </div>
         <div class="chip-row">
             <button v-for="opt in skinQuizData[skinQuizStep - 1]?.opts" :key="opt.val"
                 class="chip" @click="setQuizAnswer(skinQuizData[skinQuizStep - 1].key, opt.val)">
