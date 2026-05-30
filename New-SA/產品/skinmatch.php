@@ -11,7 +11,7 @@ $toneHex    = '';
 // ── Load user profile ─────────────────────────────────────────────
 if (isset($_SESSION['user'])) {
     try {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT * FROM user_profiles WHERE username = ?");
         $stmt->execute([$_SESSION['user']]);
         $profile    = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $hasProfile = $profile && (!empty($profile['skin_type']) || !empty($profile['skin_tone']));

@@ -73,7 +73,7 @@ $pdo->prepare('
     ':detected_b'    => $labb,
 ]);
 
-$getWeights = $pdo->prepare('SELECT weight_l, weight_a, weight_b FROM users WHERE username = :username');
+$getWeights = $pdo->prepare('SELECT weight_l, weight_a, weight_b FROM user_profiles WHERE username = :username');
 $getWeights->execute([':username' => $username]);
 $w = $getWeights->fetch(PDO::FETCH_ASSOC);
 
@@ -97,7 +97,7 @@ $weightA = clampWeight($weightA);
 $weightB = clampWeight($weightB);
 
 $pdo->prepare('
-    UPDATE users SET weight_l = :weight_l, weight_a = :weight_a, weight_b = :weight_b
+    UPDATE user_profiles SET weight_l = :weight_l, weight_a = :weight_a, weight_b = :weight_b
     WHERE username = :username
 ')->execute([
     ':username' => $username,
