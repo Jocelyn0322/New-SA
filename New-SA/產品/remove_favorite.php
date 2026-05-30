@@ -18,5 +18,10 @@ if (isset($_SESSION['user'])) {
     } catch (Exception $e) { /* 表尚未建立時跳過 */ }
 }
 
+if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true]);
+    exit;
+}
 header("Location: " . $_SERVER['HTTP_REFERER']);
 exit;

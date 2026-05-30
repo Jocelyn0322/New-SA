@@ -97,7 +97,8 @@
                 </div>
                 <!-- 手動選膚色 -->
                 <select v-model="skinTone" @change="analyzeSkinTone"
-                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none">
+                    :disabled="confirmedSkinTone"
+                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
                     <option disabled value="">— 選擇其他膚色 —</option>
                     <option v-for="t in skinTonesData" :key="t.toneName" :value="t.toneName">{{ t.toneName }}</option>
                 </select>
@@ -123,12 +124,13 @@
                 </p>
                 <!-- 手動選膚質 -->
                 <select v-model="manualSkinType"
-                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none mb-2">
+                    :disabled="confirmedSkinType"
+                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-amber-400 focus:outline-none mb-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     <option disabled value="">— 選擇其他膚質 —</option>
                     <option v-for="option in skinTypeOptions" :key="option" :value="option">{{ option }}</option>
                 </select>
-                <label class="flex items-center gap-2 text-sm text-gray-600">
-                    <input v-model="manualSensitiveSkin" type="checkbox" class="h-4 w-4 rounded border-amber-300 text-amber-500 focus:ring-amber-300" />
+                <label class="flex items-center gap-2 text-sm text-gray-600" :class="confirmedSkinType ? 'opacity-50 cursor-not-allowed' : ''">
+                    <input v-model="manualSensitiveSkin" type="checkbox" :disabled="confirmedSkinType" class="h-4 w-4 rounded border-amber-300 text-amber-500 focus:ring-amber-300" />
                     同時標記為敏感肌
                 </label>
             </div>

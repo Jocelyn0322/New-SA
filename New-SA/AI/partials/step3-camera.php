@@ -83,6 +83,14 @@
                 <p class="font-bold">3 級（三白）</p>
                 <p class="text-xs text-gray-600 mt-1">自然健康色，膚色飽滿，曬後很快就變均勻的小麥色。</p>
             </button>
+            <button @click="selectDepth('4')" :class="selectedDepth === '4' ? 'border-teal-400 bg-teal-100 text-teal-900' : 'border-teal-200 bg-white text-gray-700 hover:bg-teal-50'" class="w-full p-3 rounded-lg border transition text-left">
+                <p class="font-bold">4 級（小麥深）</p>
+                <p class="text-xs text-gray-600 mt-1">比小麥更深的暖棕色調，夏天曬後接近蜜色，通常用粉底液較深色號。</p>
+            </button>
+            <button @click="selectDepth('5')" :class="selectedDepth === '5' ? 'border-teal-400 bg-teal-100 text-teal-900' : 'border-teal-200 bg-white text-gray-700 hover:bg-teal-50'" class="w-full p-3 rounded-lg border transition text-left">
+                <p class="font-bold">5 級（深色）</p>
+                <p class="text-xs text-gray-600 mt-1">膚色明顯較深，是棕色或深蜜色系，通常粉底液用到最深色號或以上。</p>
+            </button>
         </div>
         <div class="mt-4 grid gap-2 sm:grid-cols-2">
             <button @click="manualSelectorStep = 1" class="bg-white border border-teal-200 text-teal-700 py-2.5 rounded-xl font-bold hover:bg-teal-50">上一步</button>

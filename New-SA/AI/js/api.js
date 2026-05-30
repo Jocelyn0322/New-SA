@@ -290,7 +290,7 @@ const analyzeWithGroq = async () => {
             recommendations.value  = [];
             ingredientAdvice.value = null;
         } else {
-            await fetchIngredientAdvice(fused.secondaryType || fused.finalType);
+            await fetchIngredientAdvice(manualSensitiveSkin.value ? '敏感肌' : fused.finalType);
         }
 
         await loadFeedbackHistory();
@@ -501,7 +501,7 @@ const analyzeSkinTone = async () => {
         ingredientAdvice.value = null;
     } else {
         await recommendProducts(skinTone.value, manualSensitiveSkin.value || skinTypeSecondary.value === '敏感肌');
-        await fetchIngredientAdvice(fused.secondaryType || fused.finalType);
+        await fetchIngredientAdvice(manualSensitiveSkin.value ? '敏感肌' : fused.finalType);
     }
 
     isAnalyzing.value = false;
