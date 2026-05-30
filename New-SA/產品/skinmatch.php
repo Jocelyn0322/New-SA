@@ -8,33 +8,10 @@ $products   = [];
 $hasProfile = false;
 $toneHex    = '';
 
-// ── AJAX: update makeup preference ───────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-    header('Content-Type: application/json');
-    if (!isset($_SESSION['user'])) { echo json_encode(['success'=>false]); exit; }
-    $data   = json_decode(file_get_contents('php://input'), true) ?? [];
-    $finish = trim($data['makeup_finish'] ?? '');
-    $style  = trim($data['makeup_style']  ?? '');
-    try {
-        $pdo->prepare("INSERT INTO user_profiles (username, makeup_finish, makeup_style)
-            VALUES (?,?,?) ON DUPLICATE KEY UPDATE makeup_finish=VALUES(makeup_finish),
-            makeup_style=VALUES(makeup_style), updated_at=NOW()")
-            ->execute([$_SESSION['user'], $finish, $style]);
-        echo json_encode(['success'=>true]);
-    } catch(Exception $e) {
-        echo json_encode(['success'=>false, 'error'=>$e->getMessage()]);
-    }
-    exit;
-}
-
 // ── Load user profile ─────────────────────────────────────────────
 if (isset($_SESSION['user'])) {
     try {
-        $stmt = $pdo->prepare("SELECT u.username, u.email, u.role,
-            up.gender, up.skin_type, up.skin_tone, up.skin_concerns, up.age, up.allergies,
-            up.makeup_finish, up.makeup_style, up.avatar_url, up.weight_l, up.weight_a, up.weight_b
-            FROM users u LEFT JOIN user_profiles up ON u.username = up.username
-            WHERE u.username = ?");
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
         $stmt->execute([$_SESSION['user']]);
         $profile    = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $hasProfile = $profile && (!empty($profile['skin_type']) || !empty($profile['skin_tone']));
@@ -479,10 +456,6 @@ if (isset($pdo)) {
 
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
             <a href="<?= BASE_URL ?>/AI/index.php" class="ai-cta-btn">重新 AI 檢測</a>
-            <button type="button" onclick="openMakeupModal()"
-                style="font-size:13px;color:rgba(255,255,255,.65);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">
-                ✏️ 更換妝感偏好
-            </button>
             <a href="<?= BASE_URL ?>/首頁/profile.php"
                style="font-size:13px;color:rgba(255,255,255,.65);text-decoration:none;">編輯個人資料 →</a>
         </div>
@@ -714,97 +687,6 @@ if (isset($pdo)) {
 </div>
 
 <?php include 'footer.php'; ?>
-
-<!-- 妝感偏好 Modal -->
-<div id="makeupModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:28px;width:min(440px,92vw);box-shadow:0 8px 32px rgba(0,0,0,.18);position:relative;">
-    <button onclick="closeMakeupModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
-    <h3 style="margin:0 0 20px;font-size:17px;font-weight:700;">✏️ 更換妝感偏好</h3>
-
-    <div style="margin-bottom:18px;">
-      <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:10px;">妝感</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="finishOptions">
-        <?php foreach (['霧面','水光感','自然光澤'] as $f): ?>
-        <button type="button" onclick="selectMakeupOpt('finish','<?= $f ?>')"
-          data-val="<?= $f ?>"
-          class="makeup-opt <?= $makeupFinish === $f ? 'active' : '' ?>"
-          style="padding:7px 16px;border-radius:20px;border:1.5px solid <?= $makeupFinish===$f?'#c26b7c':'#e2e8f0' ?>;background:<?= $makeupFinish===$f?'#fdf0f3':'#fff' ?>;color:<?= $makeupFinish===$f?'#c26b7c':'#555' ?>;font-size:13px;cursor:pointer;font-family:inherit;">
-          <?= $f ?>
-        </button>
-        <?php endforeach; ?>
-      </div>
-    </div>
-
-    <div style="margin-bottom:24px;">
-      <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:10px;">妝容風格</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="styleOptions">
-        <?php foreach (['日常通勤','韓系清透','歐美立體','約會精緻'] as $s): ?>
-        <button type="button" onclick="selectMakeupOpt('style','<?= $s ?>')"
-          data-val="<?= $s ?>"
-          class="makeup-opt <?= $makeupStyle === $s ? 'active' : '' ?>"
-          style="padding:7px 16px;border-radius:20px;border:1.5px solid <?= $makeupStyle===$s?'#c26b7c':'#e2e8f0' ?>;background:<?= $makeupStyle===$s?'#fdf0f3':'#fff' ?>;color:<?= $makeupStyle===$s?'#c26b7c':'#555' ?>;font-size:13px;cursor:pointer;font-family:inherit;">
-          <?= $s ?>
-        </button>
-        <?php endforeach; ?>
-      </div>
-    </div>
-
-    <button onclick="saveMakeupPref()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c26b7c;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">儲存</button>
-    <p id="makeupModalMsg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px;"></p>
-  </div>
-</div>
-
-<script>
-let _makeupFinish = '<?= addslashes($makeupFinish) ?>';
-let _makeupStyle  = '<?= addslashes($makeupStyle) ?>';
-
-function openMakeupModal()  { document.getElementById('makeupModal').style.display = 'flex'; }
-function closeMakeupModal() { document.getElementById('makeupModal').style.display = 'none'; }
-
-document.getElementById('makeupModal').addEventListener('click', function(e) {
-  if (e.target === this) closeMakeupModal();
-});
-
-function selectMakeupOpt(type, val) {
-  if (type === 'finish') _makeupFinish = val;
-  else _makeupStyle = val;
-
-  const groupId = type === 'finish' ? 'finishOptions' : 'styleOptions';
-  document.querySelectorAll('#' + groupId + ' button').forEach(btn => {
-    const active = btn.dataset.val === val;
-    btn.style.border      = active ? '1.5px solid #c26b7c' : '1.5px solid #e2e8f0';
-    btn.style.background  = active ? '#fdf0f3' : '#fff';
-    btn.style.color       = active ? '#c26b7c' : '#555';
-  });
-}
-
-async function saveMakeupPref() {
-  const msg = document.getElementById('makeupModalMsg');
-  try {
-    const res  = await fetch('skinmatch.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-      body: JSON.stringify({ makeup_finish: _makeupFinish, makeup_style: _makeupStyle })
-    });
-    const data = await res.json();
-    if (data.success) {
-      msg.style.color = '#2d7a50';
-      msg.textContent = '儲存成功！';
-      // 更新頁面上的 tag 顯示
-      document.querySelectorAll('.profile-tag').forEach(tag => {
-        const label = tag.querySelector('.tag-label');
-        if (label?.textContent === '妝感')     tag.lastChild.textContent = ' ' + _makeupFinish;
-        if (label?.textContent === '妝容風格') tag.lastChild.textContent = ' ' + _makeupStyle;
-      });
-      setTimeout(closeMakeupModal, 1000);
-    } else {
-      msg.style.color = '#c26b7c'; msg.textContent = '儲存失敗，請稍後再試';
-    }
-  } catch(e) {
-    msg.style.color = '#c26b7c'; msg.textContent = '網路錯誤';
-  }
-}
-</script>
 
 <script>
 (function () {

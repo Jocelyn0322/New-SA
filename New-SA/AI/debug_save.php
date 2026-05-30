@@ -32,7 +32,7 @@ if (isset($_GET['test']) && $user) {
 // 一般診斷
 $rows = [];
 if ($user) {
-    $stmt = $pdo->prepare("SELECT u.id, u.username, up.skin_type, up.skin_tone, up.skin_concerns, up.gender, up.age, up.allergies, up.makeup_finish, up.makeup_style, up.avatar_url, up.updated_at FROM users u LEFT JOIN user_profiles up ON u.username = up.username WHERE u.username = ?");
+    $stmt = $pdo->prepare("SELECT id, username, skin_type, skin_tone, skin_concerns, gender, age, allergies, makeup_finish, makeup_style, avatar_url, updated_at FROM users WHERE username = ?");
     $stmt->execute([$user]);
     $rows = $stmt->fetchAll();
 }

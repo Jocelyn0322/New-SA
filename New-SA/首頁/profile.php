@@ -14,12 +14,7 @@ $messageType = '';
 
 $isNewUser = isset($_GET['new']);
 
-$stmt = $pdo->prepare("SELECT u.id, u.username, u.email, u.created_at, u.role,
-    up.gender, up.skin_type, up.skin_tone, up.skin_concerns, up.age, up.allergies,
-    up.makeup_finish, up.makeup_style, up.avatar_url
-    FROM users u
-    LEFT JOIN user_profiles up ON u.username = up.username
-    WHERE u.username = ?");
+$stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
 $stmt->execute([$_SESSION['user']]);
 $profile = $stmt->fetch();
 
@@ -38,15 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $makeupStyle  = $_POST['makeup_style'] ?? '';
 
     try {
-        $pdo->prepare("INSERT INTO user_profiles
-            (username, gender, skin_type, skin_tone, skin_concerns, age, allergies, makeup_finish, makeup_style)
-            VALUES (?,?,?,?,?,?,?,?,?)
-            ON DUPLICATE KEY UPDATE
-            gender=VALUES(gender), skin_type=VALUES(skin_type), skin_tone=VALUES(skin_tone),
-            skin_concerns=VALUES(skin_concerns), age=VALUES(age), allergies=VALUES(allergies),
-            makeup_finish=VALUES(makeup_finish), makeup_style=VALUES(makeup_style),
-            updated_at=NOW()")
-            ->execute([$_SESSION['user'],$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$makeupFinish,$makeupStyle]);
+        $stmt = $pdo->prepare("UPDATE users SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=?,makeup_finish=?,makeup_style=?,updated_at=NOW() WHERE username=?");
+        $stmt->execute([$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$makeupFinish,$makeupStyle,$_SESSION['user']]);
         $message = '個人資料儲存成功！';
         $messageType = 'success';
     } catch (Exception $e) {
@@ -60,11 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT u.id, u.username, u.email, u.created_at, u.role,
-        up.gender, up.skin_type, up.skin_tone, up.skin_concerns, up.age, up.allergies,
-        up.makeup_finish, up.makeup_style, up.avatar_url
-        FROM users u LEFT JOIN user_profiles up ON u.username = up.username
-        WHERE u.username = ?");
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
     $stmt->execute([$_SESSION['user']]);
     $profile = $stmt->fetch();
 }
