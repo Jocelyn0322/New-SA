@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?php if ($mode === 'register'): ?>
         <form method="post">
           <input type="hidden" name="action" value="register">
-          <div class="form-group"><label class="form-label">帳號</label><input class="form-input" type="text" name="username" placeholder="設定帳號（英數字）" required></div>
+          <div class="form-group"><label class="form-label">帳號</label><input class="form-input" type="text" name="username" placeholder="設定帳號（暱稱）" required></div>
           <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" name="email" placeholder="your@email.com" required></div>
           <div class="form-group"><label class="form-label">密碼</label><input class="form-input" type="password" name="password" placeholder="至少 8 個字元" required></div>
           <div class="consent-row">
