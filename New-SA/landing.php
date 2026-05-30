@@ -484,7 +484,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="hidden" name="action" value="login">
           <div class="form-group">
             <label class="form-label">帳號名稱</label>
-            <input class="form-input" type="text" name="username" placeholder="輸入帳號名稱（不是 email）" required autofocus>
+            <input class="form-input" type="text" name="username" placeholder="輸入帳號名稱（暱稱）" required autofocus>
           </div>
           <div class="form-group">
             <label class="form-label">密碼</label>
