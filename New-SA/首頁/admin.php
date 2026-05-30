@@ -203,6 +203,27 @@ if (isset($_POST['update_product'])) {
     $tab = 'data_products';
 }
 
+// 刪除產品（含關聯資料；無外鍵，手動清除避免孤兒。products 為 data 鏡像，一併刪）
+if (isset($_POST['delete_product'])) {
+    $pid = (int)($_POST['product_id'] ?? 0);
+    if ($pid > 0) {
+        foreach ([
+            'product_colors'            => 'p_id',
+            'product_favorites'         => 'product_id',
+            'product_images'            => 'product_id',
+            'product_ratings'           => 'product_id',
+            'product_reports'           => 'product_id',
+            'user_product_interactions' => 'product_id',
+            'products'                  => 'p_id',
+        ] as $t => $col) {
+            try { $pdo->prepare("DELETE FROM `$t` WHERE `$col` = ?")->execute([$pid]); } catch (Throwable $e) {}
+        }
+        $pdo->prepare("DELETE FROM data WHERE id = ?")->execute([$pid]);
+        $msg = '🗑 已刪除產品'; $msgType = 'success';
+    }
+    $tab = 'data_products';
+}
+
 // 標記檢舉為已處理
 if (isset($_POST['dismiss_report'])) {
     $vid = (int)$_POST['video_id'];
@@ -257,12 +278,12 @@ if ($tab === 'data_products') {
         $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM data WHERE name LIKE ? OR brand LIKE ? OR category LIKE ?");
         $cntStmt->execute([$like,$like,$like]);
         $dpTotal = (int)$cntStmt->fetchColumn();
-        $dpStmt  = $pdo->prepare("SELECT * FROM data WHERE name LIKE ? OR brand LIKE ? OR category LIKE ? ORDER BY id LIMIT ? OFFSET ?");
-        $dpStmt->execute([$like,$like,$like,$dpPerPage,$dpOffset]);
+        $dpStmt  = $pdo->prepare("SELECT * FROM data WHERE name LIKE ? OR brand LIKE ? OR category LIKE ? ORDER BY id LIMIT " . (int)$dpPerPage . " OFFSET " . (int)$dpOffset);
+        $dpStmt->execute([$like,$like,$like]);
     } else {
         $dpTotal = (int)$pdo->query("SELECT COUNT(*) FROM data")->fetchColumn();
-        $dpStmt  = $pdo->prepare("SELECT * FROM data ORDER BY id LIMIT ? OFFSET ?");
-        $dpStmt->execute([$dpPerPage,$dpOffset]);
+        $dpStmt  = $pdo->prepare("SELECT * FROM data ORDER BY id LIMIT " . (int)$dpPerPage . " OFFSET " . (int)$dpOffset);
+        $dpStmt->execute([]);
     }
     $dpProducts = $dpStmt->fetchAll();
     $dpPages    = (int)ceil($dpTotal / $dpPerPage);
@@ -1071,7 +1092,7 @@ $medals = ['🥇','🥈','🥉'];
             </td>
             <td style="text-align:right;color:var(--text-2);font-size:13px;"><?php echo number_format((int)$v['view_count']); ?></td>
             <td style="text-align:center;color:var(--text-3);">💬 <?php echo (int)$v['comment_count']; ?></td>
-            <td style="color:var(--text-3);font-size:12px;"><?php echo date('Y-m-d', strtotime($v['upload_time'])); ?></td>
+            <td style="color:var(--text-3);font-size:12px;"><?php echo date('Y-m-d H:i', strtotime($v['upload_time'])); ?></td>
             <td>
               <div class="btn-group">
                 <button class="act-btn neutral" onclick='openVideoModal(<?php echo json_encode($v["file_path"]); ?>, <?php echo json_encode($v["title"]); ?>)'>👁 檢視</button>
@@ -1645,6 +1666,11 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
               "ingredients"  => $p["ingredients"]  ?? "",
               "precautions"  => $p["precautions"]  ?? "",
             ], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>)'>✏️ 編輯</button>
+            <form method="post" style="margin:0;display:inline;"
+                  onsubmit="return confirm('確定刪除「<?php echo htmlspecialchars(addslashes($p['name'])); ?>」？此操作無法復原，且會一併移除相關收藏、評分、圖片等資料。');">
+              <input type="hidden" name="product_id" value="<?php echo (int)$p['id']; ?>">
+              <button type="submit" name="delete_product" value="1" class="act-btn danger">🗑 刪除</button>
+            </form>
           </td>
         </tr>
       <?php endforeach; ?>

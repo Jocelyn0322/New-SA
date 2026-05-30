@@ -3,6 +3,27 @@ require_once __DIR__ . '/../auth_check.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 include __DIR__ . '/../db.php';
 
+// 管理員：刪除產品（含關聯資料；無外鍵，手動清除避免孤兒。products 為 data 鏡像，一併刪）
+if (($_SESSION['role'] ?? '') === 'admin' && isset($_POST['delete_product'])) {
+    $del_pid = (int)($_POST['product_id'] ?? 0);
+    if ($del_pid > 0) {
+        foreach ([
+            'product_colors'            => 'p_id',
+            'product_favorites'         => 'product_id',
+            'product_images'            => 'product_id',
+            'product_ratings'           => 'product_id',
+            'product_reports'           => 'product_id',
+            'user_product_interactions' => 'product_id',
+            'products'                  => 'p_id',
+        ] as $t => $col) {
+            try { $conn->prepare("DELETE FROM `$t` WHERE `$col` = ?")->execute([$del_pid]); } catch (Throwable $e) {}
+        }
+        $conn->prepare("DELETE FROM data WHERE id = ?")->execute([$del_pid]);
+    }
+    header('Location: ' . $_SERVER['REQUEST_URI']); // PRG：避免重新整理重送刪除
+    exit;
+}
+
 $keyword      = $_GET['keyword']  ?? '';
 $category     = $_GET['category'] ?? '';
 $color_filter = $_GET['color']    ?? '';
@@ -10,14 +31,38 @@ $sort         = $_GET['sort']     ?? 'newest';
 $page         = max(1, intval($_GET['page'] ?? 1));
 $per_page     = 12;
 
+// ── 推薦小框：依登入者已儲存的膚質，算出系統前 6 名推薦產品（沒登入或沒填膚質則不顯示）──
+require_once __DIR__ . '/../AI/recommend_helper.php';
+$recommendedSet = [];
+$recommendedIds = []; // 依推薦分數排序的 id（給「推薦」篩選用）
+if (!empty($_SESSION['user'])) {
+    $profStmt = $conn->prepare("SELECT skin_type, makeup_finish, allergies FROM user_profiles WHERE username = ?");
+    $profStmt->execute([$_SESSION['user']]);
+    $prof = $profStmt->fetch();
+    if ($prof && !empty($prof['skin_type'])) {
+        $isSensitive = ($prof['skin_type'] === '敏感肌') || (trim((string)($prof['allergies'] ?? '')) !== '');
+        $recRanked = getRecommendedProductRanking($conn, (string)$prof['skin_type'], (string)($prof['makeup_finish'] ?? ''), $isSensitive, 6);
+        foreach ($recRanked as $r) { $recommendedSet[(int)$r['id']] = true; $recommendedIds[] = (int)$r['id']; }
+    }
+}
+// 「推薦您的產品」篩選（只有真的有推薦時才有效）
+$recommended_filter = (($_GET['recommended'] ?? '') === '1') && !empty($recommendedIds);
+
 $sql_base = "SELECT DISTINCT p.*, p.id AS p_id, p.image_url FROM data p";
 $sql_count = "SELECT COUNT(DISTINCT p.id) AS total FROM data p";
 $joins    = "";
 $wheres   = [];
 
-if ($keyword)      { $kw = strtolower($keyword); $wheres[] = "(LOWER(p.name) LIKE '%$kw%' OR LOWER(p.brand) LIKE '%$kw%')"; }
-if ($category)     $wheres[] = "p.category='$category'";
-if ($color_filter) { $joins .= " LEFT JOIN product_colors pc ON p.id = pc.p_id"; $wheres[] = "pc.color_name='$color_filter'"; }
+$rec_id_list = $recommendedIds ? implode(',', array_map('intval', $recommendedIds)) : '0';
+
+if ($recommended_filter) {
+    // 只顯示推薦的產品（忽略分類），並依推薦分數排名排序
+    $wheres[] = "p.id IN ($rec_id_list)";
+} else {
+    if ($keyword)      { $kw = strtolower($keyword); $wheres[] = "(LOWER(p.name) LIKE '%$kw%' OR LOWER(p.brand) LIKE '%$kw%')"; }
+    if ($category)     $wheres[] = "p.category='$category'";
+    if ($color_filter) { $joins .= " LEFT JOIN product_colors pc ON p.id = pc.p_id"; $wheres[] = "pc.color_name='$color_filter'"; }
+}
 
 $where_clause = !empty($wheres) ? " WHERE " . implode(" AND ", $wheres) : "";
 $order = match($sort) {
@@ -25,6 +70,7 @@ $order = match($sort) {
   'brand'  => "ORDER BY p.brand ASC, p.name ASC",
   default  => "ORDER BY p.brand ASC, p.name ASC",
 };
+if ($recommended_filter) $order = "ORDER BY FIELD(p.id, $rec_id_list)";
 
 $total_row = $conn->query($sql_count . $joins . $where_clause)->fetch();
 $total     = intval($total_row['total'] ?? 0);
@@ -130,6 +176,14 @@ function page_url($p) {
       .nav-tabs-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
     }
 
+    .product-card { position: relative; }
+    .rec-badge {
+      position: absolute; top: 10px; left: 10px; z-index: 2;
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg, #9d2942, #c26b7c); color: #fff;
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+      box-shadow: 0 2px 6px rgba(157,41,66,.35); pointer-events: none;
+    }
     .product-card-img { height: 220px; overflow: hidden; }
     .product-card-img img { width: 100%; height: 100%; object-fit: contain; background: #f5f5f5; padding: 8px; display: block; }
     .product-card-body {
@@ -219,7 +273,10 @@ function page_url($p) {
     $base_params = array_filter(['keyword' => $keyword, 'sort' => $sort !== 'newest' ? $sort : '']);
     $all_href = 'products.php' . ($base_params ? '?' . http_build_query(array_filter($base_params)) : '');
     ?>
-    <a class="filter-pill <?= !$category ? 'active' : '' ?>" href="<?= $all_href ?>">全部</a>
+    <a class="filter-pill <?= (!$category && !$recommended_filter) ? 'active' : '' ?>" href="<?= $all_href ?>">全部</a>
+    <?php if (!empty($recommendedIds)): ?>
+      <a class="filter-pill <?= $recommended_filter ? 'active' : '' ?>" href="?recommended=1">推薦您的產品</a>
+    <?php endif; ?>
     <?php while ($cat = $categories_result->fetch()): ?>
       <?php
       $cat_params = array_filter(['category' => $cat['category'], 'keyword' => $keyword, 'sort' => $sort !== 'newest' ? $sort : '']);
@@ -242,6 +299,9 @@ function page_url($p) {
         $colors = $colorsMap[$row['p_id']] ?? [];
       ?>
       <div class="product-card">
+        <?php if (isset($recommendedSet[(int)$row['p_id']])): ?>
+          <span class="rec-badge">✨ 推薦您的產品</span>
+        <?php endif; ?>
         <div class="product-card-img">
           <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $row['p_id'] ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.style.display='none';this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
         </div>
@@ -279,6 +339,11 @@ function page_url($p) {
             </form>
             <?php if (isset($_SESSION['user']) && ($_SESSION['role'] ?? '') !== 'admin'): ?>
               <button type="button" class="btn btn-danger" style="padding:7px 10px;" onclick="openReportModal(<?= $row['p_id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>')">回報</button>
+            <?php elseif (($_SESSION['role'] ?? '') === 'admin'): ?>
+              <form method="post" style="margin:0;" onsubmit="return confirm('確定刪除「<?= htmlspecialchars(addslashes($row['name'])) ?>」？此操作無法復原，且會一併移除相關收藏、評分、圖片等資料。');">
+                <input type="hidden" name="product_id" value="<?= $row['p_id'] ?>">
+                <button type="submit" name="delete_product" value="1" class="btn btn-danger" style="padding:7px 10px;">🗑 刪除</button>
+              </form>
             <?php endif; ?>
           </div>
         </div>
