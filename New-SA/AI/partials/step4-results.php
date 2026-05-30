@@ -84,23 +84,6 @@
     </div>
 
 
-    <!-- 歷史回饋 -->
-    <div v-if="feedbackHistory.length > 0" class="p-5 border border-cyan-100 rounded-2xl bg-gradient-to-br from-cyan-50 to-sky-50 shadow-sm">
-        <h3 class="font-extrabold mb-3 text-gray-900">🧾 歷史回饋清單</h3>
-        <div class="space-y-2">
-            <div v-for="item in feedbackHistory" :key="`${item.product_id}-${item.updated_at}`" class="p-3 rounded-xl border border-cyan-100 bg-white/90">
-                <p class="text-sm text-gray-700">產品 ID：<span class="font-semibold">{{ item.product_id }}</span></p>
-                <p class="text-xs text-cyan-700 mt-1">最近回饋：{{ feedbackTypeText(item.feedback_type) }} ｜ {{ item.updated_at }}</p>
-                <div class="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    <button type="button" @click="submitProductFeedback({ id: item.product_id }, 'just_right')" class="text-xs py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">改成：剛好</button>
-                    <button type="button" @click="submitProductFeedback({ id: item.product_id }, 'too_yellow')" class="text-xs py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition">改成：偏黃</button>
-                    <button type="button" @click="submitProductFeedback({ id: item.product_id }, 'too_dark')" class="text-xs py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition">改成：偏暗</button>
-                    <button type="button" @click="submitProductFeedback({ id: item.product_id }, 'too_dry')" class="text-xs py-2 rounded-lg border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition">改成：太乾</button>
-                    <button type="button" @click="submitProductFeedback({ id: item.product_id }, 'too_oily')" class="text-xs py-2 rounded-lg border border-lime-200 bg-lime-50 text-lime-700 hover:bg-lime-100 transition">改成：太油</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- 分析中 -->
     <div v-if="isAnalyzing" class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium animate-pulse">
@@ -142,7 +125,7 @@
                         <option disabled value="">— 選擇其他膚色 —</option>
                         <option v-for="t in skinTonesData" :key="t.toneName" :value="t.toneName">{{ t.toneName }}</option>
                     </select>
-                    <button @click="showSwatchCard = true" :disabled="confirmedSkinTone"
+                    <button @click="showSwatchCard = true" v-show="!confirmedSkinTone"
                         title="查看色卡"
                         style="flex-shrink:0;padding:8px 10px;border-radius:12px;border:1.5px solid #f5c6d0;background:#fff;color:#6b2d3e;font-size:13px;cursor:pointer;transition:background .15s;white-space:nowrap;disabled:opacity:.4;"
                         onmouseover="this.style.background='#fdf2f4'" onmouseout="this.style.background='#fff'">

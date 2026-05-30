@@ -86,16 +86,6 @@ const mapProduct = (item, index) => {
     };
 };
 
-const feedbackTypeText = (type) => {
-    const mapping = {
-        just_right: '色號剛好',
-        too_yellow: '偏黃',
-        too_dark:   '偏暗',
-        too_dry:    '太乾',
-        too_oily:   '太油'
-    };
-    return mapping[type] || type || '未標記';
-};
 
 const extractDetectedLab = () => {
     const raw = skinCoordinate.value?.rawRgb;
@@ -122,41 +112,6 @@ const recordProductClick = async (productId) => {
     }
 };
 
-const loadFeedbackHistory = async () => {
-    try {
-        const response = await fetch('./getProductFeedbackHistory.php');
-        const result   = await response.json().catch(() => ({}));
-        if (!response.ok || result.error) return;
-        feedbackHistory.value = Array.isArray(result.history) ? result.history : [];
-    } catch (error) {
-        console.warn('loadFeedbackHistory failed:', error);
-    }
-};
-
-const submitProductFeedback = async (product, feedbackType) => {
-    try {
-        const productId = product?.id ?? product?.p_id ?? product?.ProductID ?? product?.productId;
-        if (!productId) { alert('找不到產品編號，無法送出回饋'); return; }
-
-        await recordProductClick(productId);
-
-        const response = await fetch('./recordProductFeedback.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId: String(productId), feedbackType, detectedLab: extractDetectedLab() })
-        });
-
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || result.error) throw new Error(result.message || '回饋提交失敗');
-
-        const weights = result.weights || {};
-        alert(`${result.message || '回饋已儲存'}\n目前 LAB 權重：L=${weights.L ?? '-'} / a=${weights.a ?? '-'} / b=${weights.b ?? '-'}`);
-        await loadFeedbackHistory();
-    } catch (error) {
-        console.error('submitProductFeedback failed:', error);
-        alert(`回饋提交失敗：${error.message}`);
-    }
-};
 
 // ── Ingredient advice ────────────────────────────────────────────
 const fetchIngredientAdvice = async (skinType) => {
@@ -293,7 +248,6 @@ const analyzeWithGroq = async () => {
             await fetchIngredientAdvice(manualSensitiveSkin.value ? '敏感肌' : fused.finalType);
         }
 
-        await loadFeedbackHistory();
         await loadAnalysisHistory();
         if (!isAnalyzing.value) return;
         currentStep.value = 4;

@@ -204,7 +204,17 @@ CREATE TABLE IF NOT EXISTS `follows` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================
--- 11. data（美妝產品）
+-- 11. product_origins（產地，正規化）
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `product_origins` (
+  `id`   INT(11)     NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(30) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================================
+-- 12. data（美妝產品）
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `data` (
   `id`          INT(11)      NOT NULL AUTO_INCREMENT,
@@ -212,17 +222,38 @@ CREATE TABLE IF NOT EXISTS `data` (
   `category`    VARCHAR(20)  DEFAULT NULL,
   `name`        VARCHAR(100) DEFAULT NULL,
   `purpose`     TEXT         DEFAULT NULL,
-  `origin`      VARCHAR(30)  DEFAULT NULL,
-  `ingredients` TEXT         DEFAULT NULL,
+  `origin_id`   INT(11)      DEFAULT NULL,
   `precautions` TEXT         DEFAULT NULL,
   `image_url`   TEXT         DEFAULT NULL,
   `view_count`  INT(11)      DEFAULT 0,
   `created_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_data_origin` FOREIGN KEY (`origin_id`) REFERENCES `product_origins` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================
--- 12. product_colors（產品色號）
+-- 13. ingredients（成分字典，正規化）
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `ingredients` (
+  `id`   INT(11)      NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================================
+-- 14. product_ingredients（產品↔成分，多對多）
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `product_ingredients` (
+  `product_id`    INT(11) NOT NULL,
+  `ingredient_id` INT(11) NOT NULL,
+  PRIMARY KEY (`product_id`, `ingredient_id`),
+  CONSTRAINT `fk_pi_product`    FOREIGN KEY (`product_id`)    REFERENCES `data`(`id`)        ON DELETE CASCADE,
+  CONSTRAINT `fk_pi_ingredient` FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================================
+-- 15. product_colors（產品色號）
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `product_colors` (
   `color_id`   INT(11)      NOT NULL AUTO_INCREMENT,
@@ -235,7 +266,7 @@ CREATE TABLE IF NOT EXISTS `product_colors` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================
--- 13. skintones（膚色配對）
+-- 16. skintones（膚色配對）
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `skintones` (
   `id`           INT(11)     NOT NULL AUTO_INCREMENT,
@@ -249,7 +280,7 @@ CREATE TABLE IF NOT EXISTS `skintones` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================
--- 14. product_favorites（產品收藏）
+-- 17. product_favorites（產品收藏）
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `product_favorites` (
   `id`         INT(11)      NOT NULL AUTO_INCREMENT,
@@ -261,7 +292,7 @@ CREATE TABLE IF NOT EXISTS `product_favorites` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================
--- 15. product_ratings（產品評分）
+-- 18. product_ratings（產品評分）
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `product_ratings` (
   `id`         INT(11)      NOT NULL AUTO_INCREMENT,

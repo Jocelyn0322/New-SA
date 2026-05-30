@@ -44,23 +44,28 @@ if ($hasProfile) {
     ];
     $finishKw = [
         '霧面'    => ['霧面','控油','柔霧','無油','持妝'],
-        '水光'    => ['水光','保濕','潤澤','光澤','水感'],
-        '自然光感' => ['自然','裸妝','輕薄','日常'],
-        '緞面'    => ['緞面','光感','光澤','亮澤'],
+        '水光感'  => ['水光','保濕','潤澤','光澤','水感'],
+        '自然光澤' => ['自然','裸妝','輕薄','日常'],
     ];
     $styleKw = [
         '日常通勤' => ['輕薄','自然','日常','裸妝'],
-        '韓系裸妝' => ['保濕','裸妝','輕薄','水光'],
-        '歐美濃妝' => ['持妝','遮瑕','高遮瑕','長效'],
-        '派對夜妝' => ['光澤','持妝','緞面','長效'],
+        '韓系清透' => ['保濕','裸妝','輕薄','水光'],
+        '歐美立體' => ['持妝','遮瑕','高遮瑕','長效'],
+        '約會精緻' => ['光澤','持妝','緞面','長效'],
     ];
     $sensitiveKw = ['無香料','無酒精','溫和','舒敏','低刺激','敏感肌','保濕','養膚','修護'];
 
     try {
         $stmt = $pdo->query(
-            "SELECT d.*, GROUP_CONCAT(pc.color_name ORDER BY pc.color_id SEPARATOR ',') AS color_names,
-                    GROUP_CONCAT(pc.color_hex  ORDER BY pc.color_id SEPARATOR ',') AS color_hexes
+            "SELECT d.*,
+                    po.name AS origin,
+                    GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients,
+                    GROUP_CONCAT(DISTINCT pc.color_name ORDER BY pc.color_id SEPARATOR ',') AS color_names,
+                    GROUP_CONCAT(DISTINCT pc.color_hex  ORDER BY pc.color_id SEPARATOR ',') AS color_hexes
              FROM data d
+             LEFT JOIN product_origins po ON d.origin_id = po.id
+             LEFT JOIN product_ingredients pi ON d.id = pi.product_id
+             LEFT JOIN ingredients i ON pi.ingredient_id = i.id
              LEFT JOIN product_colors pc ON d.id = pc.p_id
              WHERE d.category = '底妝'
              GROUP BY d.id
@@ -425,6 +430,28 @@ if (isset($pdo)) {
             border-radius: 50%;
             border: 1px solid rgba(0,0,0,0.13);
         }
+        .makeup-pill {
+            padding: 7px 16px;
+            border-radius: 24px;
+            border: 1.5px solid rgba(255,255,255,.4);
+            background: rgba(255,255,255,.1);
+            color: rgba(255,255,255,.85);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .15s;
+            font-family: inherit;
+        }
+        .makeup-pill:hover {
+            background: rgba(255,255,255,.2);
+            border-color: rgba(255,255,255,.7);
+        }
+        .makeup-pill--active {
+            background: #fff;
+            border-color: #fff;
+            color: #6b2d3e;
+            font-weight: 700;
+        }
         .ai-cta-btn {
             display: inline-block;
             background: #fff;
@@ -526,10 +553,8 @@ if (isset($pdo)) {
             <?php if ($skinTone): ?>
             <div class="profile-tag">
                 <span class="tag-label">膚色</span>
-                <?php if ($toneHex): ?>
-                <span class="tone-dot" style="background:<?= htmlspecialchars($toneHex) ?>;"></span>
-                <?php endif; ?>
-                <?= htmlspecialchars($skinTone) ?>
+                <span id="profileToneDot" class="tone-dot" style="background:<?= htmlspecialchars($toneHex) ?>;"></span>
+                <span id="profileToneLabel"><?= htmlspecialchars($skinTone) ?></span>
             </div>
             <?php endif; ?>
 
@@ -545,22 +570,68 @@ if (isset($pdo)) {
             <?php if ($makeupFinish): ?>
             <div class="profile-tag">
                 <span class="tag-label">妝感</span>
-                <?= htmlspecialchars($makeupFinish) ?>
+                <span id="profileFinishLabel"><?= htmlspecialchars($makeupFinish) ?></span>
             </div>
             <?php endif; ?>
 
             <?php if ($makeupStyle): ?>
             <div class="profile-tag">
                 <span class="tag-label">妝容風格</span>
-                <?= htmlspecialchars($makeupStyle) ?>
+                <span id="profileStyleLabel"><?= htmlspecialchars($makeupStyle) ?></span>
             </div>
             <?php endif; ?>
         </div>
 
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <!-- 妝容快速編輯面板 -->
+        <div id="makeupEditPanel" style="display:none;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:16px;padding:16px 18px;margin-bottom:16px;">
+            <p style="font-size:11px;color:rgba(255,255,255,.65);margin:0 0 10px;font-weight:600;letter-spacing:.04em;">妝感偏好</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+                <?php foreach (['霧面','水光感','自然光澤'] as $f): ?>
+                <button type="button"
+                    onclick="selectMakeupOption('finish','<?= $f ?>')"
+                    data-finish="<?= $f ?>"
+                    class="makeup-pill <?= $makeupFinish === $f ? 'makeup-pill--active' : '' ?>">
+                    <?= $f ?>
+                </button>
+                <?php endforeach; ?>
+            </div>
+            <p style="font-size:11px;color:rgba(255,255,255,.65);margin:0 0 10px;font-weight:600;letter-spacing:.04em;">妝容風格偏好</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+                <?php foreach (['日常通勤','韓系清透','歐美立體','約會精緻'] as $s): ?>
+                <button type="button"
+                    onclick="selectMakeupOption('style','<?= $s ?>')"
+                    data-style="<?= $s ?>"
+                    class="makeup-pill <?= $makeupStyle === $s ? 'makeup-pill--active' : '' ?>">
+                    <?= $s ?>
+                </button>
+                <?php endforeach; ?>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button onclick="saveMakeupPrefs()" style="padding:8px 20px;border-radius:24px;border:none;background:#fff;color:#6b2d3e;font-size:13px;font-weight:700;cursor:pointer;">儲存</button>
+                <button onclick="document.getElementById('makeupEditPanel').style.display='none'" style="padding:8px 14px;border-radius:24px;border:1.5px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.7);font-size:13px;cursor:pointer;">取消</button>
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <a href="<?= BASE_URL ?>/AI/index.php" class="ai-cta-btn">重新 AI 檢測</a>
+            <button onclick="openSwatchModal()" style="padding:9px 16px;border-radius:24px;border:1.5px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.22)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">🎨 色卡</button>
+            <button onclick="toggleMakeupEdit()" style="padding:9px 16px;border-radius:24px;border:1.5px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.22)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">✏️ 更改妝容</button>
             <a href="<?= BASE_URL ?>/首頁/profile.php"
-               style="font-size:13px;color:rgba(255,255,255,.65);text-decoration:none;">編輯個人資料 →</a>
+               style="font-size:13px;color:rgba(255,255,255,.55);text-decoration:none;">編輯個人資料 →</a>
+        </div>
+    </div>
+
+    <!-- 色卡 Modal -->
+    <div id="swatchModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);justify-content:center;align-items:center;">
+        <div style="background:#fff;border-radius:20px;padding:24px;max-width:500px;width:92%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <h3 style="margin:0;font-size:17px;font-weight:800;color:#3d1520;">🎨 膚色色卡對照</h3>
+                <button onclick="closeSwatchModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;padding:0 4px;">✕</button>
+            </div>
+            <p style="font-size:12px;color:#9b7b84;margin:0 0 16px;">點選色卡可更換你的膚色，選完會自動儲存</p>
+            <div id="swatchGroups" style="display:flex;flex-direction:column;gap:16px;">
+                <p style="color:#aaa;font-size:13px;text-align:center;">載入中...</p>
+            </div>
         </div>
     </div>
 
@@ -755,12 +826,10 @@ if (isset($pdo)) {
                 <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
                     <div style="font-size:10px; color:var(--text-3); font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($mp['brand']) ?></div>
                     <div style="font-size:12px; color:var(--text); font-weight:700; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;"><?= htmlspecialchars($mp['name']) ?></div>
-                    <?php if (!empty($mp['shade'])): ?>
-                    <div style="display:flex;align-items:center;gap:5px;margin-top:6px;">
-                        <span style="width:14px;height:14px;border-radius:50%;background:<?= htmlspecialchars($mp['shade']['color_hex']) ?>;border:1px solid rgba(0,0,0,.12);flex-shrink:0;"></span>
-                        <span style="font-size:10px;color:var(--text-3);">推薦色號 <?= htmlspecialchars($mp['shade']['color_name']) ?></span>
+                    <div id="shade-<?= $mp['id'] ?>" style="display:<?= !empty($mp['shade']) ? 'flex' : 'none' ?>;align-items:center;gap:5px;margin-top:6px;">
+                        <span id="shade-dot-<?= $mp['id'] ?>" style="width:14px;height:14px;border-radius:50%;background:<?= htmlspecialchars($mp['shade']['color_hex'] ?? '') ?>;border:1px solid rgba(0,0,0,.12);flex-shrink:0;"></span>
+                        <span id="shade-name-<?= $mp['id'] ?>" style="font-size:10px;color:var(--text-3);">推薦色號 <?= htmlspecialchars($mp['shade']['color_name'] ?? '') ?></span>
                     </div>
-                    <?php endif; ?>
                 </div>
             </a>
             <?php endforeach; ?>
@@ -930,6 +999,132 @@ function closeSkinReport() {
 document.getElementById('skinReportModal').addEventListener('click', function(e) {
   if (e.target === this) closeSkinReport();
 });
+// ── 色卡 & 妝容快速編輯 ──────────────────────────────────────────
+const BASE = '<?= BASE_URL ?>';
+const MILD_PRODUCT_IDS = [<?= implode(',', array_column($mildProducts ?? [], 'id')) ?>];
+let _swatchLoaded = false;
+
+function openSwatchModal() {
+    const modal = document.getElementById('swatchModal');
+    modal.style.display = 'flex';
+    if (_swatchLoaded) return;
+    _swatchLoaded = true;
+    fetch(BASE + '/AI/getSkinTones.php')
+        .then(r => r.json())
+        .then(tones => {
+            if (!Array.isArray(tones)) return;
+            const groups = {};
+            tones.forEach(t => {
+                const cat = t.category || '其他';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(t);
+            });
+            const container = document.getElementById('swatchGroups');
+            container.innerHTML = '';
+            Object.entries(groups).forEach(([cat, items]) => {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:#9b7b84;margin-bottom:8px;">${cat}</div>`;
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;';
+                items.forEach(t => {
+                    const btn = document.createElement('button');
+                    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:4px;';
+                    const isCurrent = (t.toneName === '<?= addslashes($skinTone ?? '') ?>');
+                    btn.innerHTML = `
+                        <span style="width:40px;height:40px;border-radius:50%;display:block;background:${t.hex || '#ccc'};
+                            border:${isCurrent ? '3px solid #6b2d3e;box-shadow:0 0 0 2px #fff,0 0 0 4px #6b2d3e' : '2px solid rgba(0,0,0,.1)'};"></span>
+                        <span style="font-size:10px;color:#9b7b84;text-align:center;max-width:48px;line-height:1.2;">${t.toneName}</span>`;
+                    btn.onclick = () => selectSkinTone(t.toneName, t.hex || '', btn);
+                    row.appendChild(btn);
+                });
+                wrap.appendChild(row);
+                container.appendChild(wrap);
+            });
+        })
+        .catch(() => {
+            document.getElementById('swatchGroups').innerHTML = '<p style="color:#e74c3c;font-size:13px;">載入失敗，請稍後再試</p>';
+        });
+}
+function closeSwatchModal() {
+    document.getElementById('swatchModal').style.display = 'none';
+}
+document.getElementById('swatchModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSwatchModal();
+});
+
+async function selectSkinTone(toneName, hex, btnEl) {
+    try {
+        const resp = await fetch('updatePreferences.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skin_tone: toneName })
+        });
+        const result = await resp.json();
+        if (!result.ok) return;
+
+        closeSwatchModal();
+
+        // 更新膚色 tag
+        const dot = document.getElementById('profileToneDot');
+        const label = document.getElementById('profileToneLabel');
+        if (dot) dot.style.background = hex;
+        if (label) label.textContent = toneName;
+
+        // 更新產品卡色號
+        if (MILD_PRODUCT_IDS.length === 0) return;
+        const shadesResp = await fetch(
+            'getShadesByTone.php?skin_tone=' + encodeURIComponent(toneName) +
+            '&pids=' + MILD_PRODUCT_IDS.join(',')
+        );
+        const shadesData = await shadesResp.json();
+        if (!shadesData.shades) return;
+
+        MILD_PRODUCT_IDS.forEach(pid => {
+            const shade = shadesData.shades[pid];
+            const wrap  = document.getElementById('shade-' + pid);
+            if (!wrap) return;
+            if (!shade) { wrap.style.display = 'none'; return; }
+            document.getElementById('shade-dot-'  + pid).style.background = shade.color_hex;
+            document.getElementById('shade-name-' + pid).textContent = '推薦色號 ' + shade.color_name;
+            wrap.style.display = 'flex';
+        });
+    } catch(e) {}
+}
+
+function selectMakeupOption(type, value) {
+    const attr = type === 'finish' ? 'data-finish' : 'data-style';
+    document.querySelectorAll(`[${attr}]`).forEach(btn => {
+        btn.classList.toggle('makeup-pill--active', btn.getAttribute(attr) === value);
+    });
+}
+
+function toggleMakeupEdit() {
+    const panel = document.getElementById('makeupEditPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveMakeupPrefs() {
+    const finishBtn = document.querySelector('.makeup-pill--active[data-finish]');
+    const styleBtn  = document.querySelector('.makeup-pill--active[data-style]');
+    const finish = finishBtn ? finishBtn.getAttribute('data-finish') : '';
+    const style  = styleBtn  ? styleBtn.getAttribute('data-style')  : '';
+    try {
+        const resp = await fetch('updatePreferences.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ makeup_finish: finish, makeup_style: style })
+        });
+        const result = await resp.json();
+        if (result.ok) {
+            document.getElementById('makeupEditPanel').style.display = 'none';
+            const finishTag = document.getElementById('profileFinishLabel');
+            const styleTag  = document.getElementById('profileStyleLabel');
+            if (finishTag) finishTag.textContent = finish;
+            if (styleTag)  styleTag.textContent  = style;
+        }
+    } catch(e) {}
+}
+
 async function submitSkinReport() {
   const type = document.getElementById('skinReportType').value;
   const msg  = document.getElementById('skinReportMsg');

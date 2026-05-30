@@ -85,7 +85,6 @@ const retestMessage         = ref('');
 const recommendations       = ref([]);
 const ingredientAdvice      = ref(null);
 const ingredientLoading     = ref(false);
-const feedbackHistory       = ref([]);
 const quizDerivedSkinType   = ref('');
 const aiDetectedSkinType    = ref('');
 const analysisHistory       = ref([]);

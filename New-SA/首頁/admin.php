@@ -151,15 +151,14 @@ if (isset($_POST['review_submission'])) {
         if ($decision === 'approved' && $subRow) {
             try {
                 $pdo->prepare("
-                    INSERT INTO data (name, brand, category, purpose, image_url, ingredients)
-                    VALUES (:name, :brand, :category, :purpose, :image_url, :ingredients)
+                    INSERT INTO data (name, brand, category, purpose, image_url)
+                    VALUES (:name, :brand, :category, :purpose, :image_url)
                 ")->execute([
-                    ':name'        => $subRow['product_name'] ?? '',
-                    ':brand'       => $subRow['brand']        ?? '',
-                    ':category'    => $subRow['category'] ?: '未分類',
-                    ':purpose'     => $subRow['description']  ?? '',
-                    ':image_url'   => '',
-                    ':ingredients' => '',
+                    ':name'      => $subRow['product_name'] ?? '',
+                    ':brand'     => $subRow['brand']        ?? '',
+                    ':category'  => $subRow['category'] ?: '未分類',
+                    ':purpose'   => $subRow['description']  ?? '',
+                    ':image_url' => '',
                 ]);
             } catch (Exception $_e) {
                 // 欄位不符時記錄但不中止審核流程
@@ -187,17 +186,40 @@ if (isset($_POST['update_product'])) {
     $pid  = (int)$_POST['product_id'];
     $name = trim($_POST['name'] ?? '');
     if ($pid > 0 && $name !== '') {
-        $pdo->prepare("UPDATE data SET name=?, brand=?, category=?, origin=?, purpose=?, ingredients=?, precautions=? WHERE id=?")
+        $origin      = trim($_POST['origin']      ?? '');
+        $ingredients = trim($_POST['ingredients'] ?? '');
+        $pdo->prepare("UPDATE data SET name=?, brand=?, category=?, purpose=?, precautions=? WHERE id=?")
             ->execute([
                 $name,
-                trim($_POST['brand']        ?? ''),
-                trim($_POST['category']     ?? ''),
-                trim($_POST['origin']       ?? ''),
-                trim($_POST['purpose']      ?? ''),
-                trim($_POST['ingredients']  ?? ''),
-                trim($_POST['precautions']  ?? ''),
+                trim($_POST['brand']       ?? ''),
+                trim($_POST['category']    ?? ''),
+                trim($_POST['purpose']     ?? ''),
+                trim($_POST['precautions'] ?? ''),
                 $pid,
             ]);
+        // 更新產地
+        if ($origin !== '') {
+            $pdo->prepare("INSERT IGNORE INTO product_origins (name) VALUES (?)")->execute([$origin]);
+            $oid = $pdo->prepare("SELECT id FROM product_origins WHERE name = ?");
+            $oid->execute([$origin]);
+            $pdo->prepare("UPDATE data SET origin_id = ? WHERE id = ?")->execute([$oid->fetchColumn(), $pid]);
+        } else {
+            $pdo->prepare("UPDATE data SET origin_id = NULL WHERE id = ?")->execute([$pid]);
+        }
+        // 更新成分
+        $pdo->prepare("DELETE FROM product_ingredients WHERE product_id = ?")->execute([$pid]);
+        if ($ingredients !== '') {
+            $parts = preg_split('/[、,，]+/u', $ingredients);
+            $insI = $pdo->prepare("INSERT IGNORE INTO ingredients (name) VALUES (?)");
+            $getI = $pdo->prepare("SELECT id FROM ingredients WHERE name = ?");
+            $insJ = $pdo->prepare("INSERT IGNORE INTO product_ingredients (product_id, ingredient_id) VALUES (?, ?)");
+            foreach ($parts as $p2) {
+                $p2 = trim($p2); if ($p2 === '') continue;
+                $insI->execute([$p2]); $getI->execute([$p2]);
+                $iid = $getI->fetchColumn();
+                if ($iid) $insJ->execute([$pid, $iid]);
+            }
+        }
         $msg = '✅ 已更新「' . htmlspecialchars($name) . '」'; $msgType = 'success';
     }
     $tab = 'data_products';
@@ -278,12 +300,12 @@ if ($tab === 'data_products') {
         $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM data WHERE name LIKE ? OR brand LIKE ? OR category LIKE ?");
         $cntStmt->execute([$like,$like,$like]);
         $dpTotal = (int)$cntStmt->fetchColumn();
-        $dpStmt  = $pdo->prepare("SELECT * FROM data WHERE name LIKE ? OR brand LIKE ? OR category LIKE ? ORDER BY id LIMIT " . (int)$dpPerPage . " OFFSET " . (int)$dpOffset);
-        $dpStmt->execute([$like,$like,$like]);
+        $dpStmt  = $pdo->prepare("SELECT d.*, po.name AS origin, GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients FROM data d LEFT JOIN product_origins po ON d.origin_id=po.id LEFT JOIN product_ingredients pi ON d.id=pi.product_id LEFT JOIN ingredients i ON pi.ingredient_id=i.id WHERE d.name LIKE ? OR d.brand LIKE ? OR d.category LIKE ? GROUP BY d.id ORDER BY d.id LIMIT ? OFFSET ?");
+        $dpStmt->execute([$like,$like,$like,$dpPerPage,$dpOffset]);
     } else {
         $dpTotal = (int)$pdo->query("SELECT COUNT(*) FROM data")->fetchColumn();
-        $dpStmt  = $pdo->prepare("SELECT * FROM data ORDER BY id LIMIT " . (int)$dpPerPage . " OFFSET " . (int)$dpOffset);
-        $dpStmt->execute([]);
+        $dpStmt  = $pdo->prepare("SELECT d.*, po.name AS origin, GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients FROM data d LEFT JOIN product_origins po ON d.origin_id=po.id LEFT JOIN product_ingredients pi ON d.id=pi.product_id LEFT JOIN ingredients i ON pi.ingredient_id=i.id GROUP BY d.id ORDER BY d.id LIMIT ? OFFSET ?");
+        $dpStmt->execute([$dpPerPage,$dpOffset]);
     }
     $dpProducts = $dpStmt->fetchAll();
     $dpPages    = (int)ceil($dpTotal / $dpPerPage);

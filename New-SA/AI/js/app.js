@@ -7,7 +7,6 @@ const app = createApp({
         onUnmounted(() => stopCamera());
 
         initSkinToneData();
-        loadFeedbackHistory();
         loadAnalysisHistory();
 
         const scrollToLatest = () => nextTick(() => {
@@ -63,7 +62,6 @@ const app = createApp({
             recommendations,
             ingredientAdvice,
             ingredientLoading,
-            feedbackHistory,
             quizDerivedSkinType,
             aiDetectedSkinType,
             analysisHistory,
@@ -118,8 +116,6 @@ const app = createApp({
             confirmManualToneSelection,
 
             // ── API (api.js) ────────────────────────────────────
-            feedbackTypeText,
-            submitProductFeedback,
             analyzeManual,
             analyzeSkinTone,
             analyzeWithGroq,

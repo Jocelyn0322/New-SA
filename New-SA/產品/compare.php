@@ -311,7 +311,17 @@ if (empty($ids)):
   </div>
 <?php else:
   $id_list = implode(',', array_map('intval', $ids));
-  $result  = $conn->query("SELECT *, id AS p_id FROM data WHERE id IN ($id_list)");
+  $result  = $conn->query("
+    SELECT d.*, d.id AS p_id,
+      po.name AS origin,
+      GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients
+    FROM data d
+    LEFT JOIN product_origins po ON d.origin_id = po.id
+    LEFT JOIN product_ingredients pi ON d.id = pi.product_id
+    LEFT JOIN ingredients i ON pi.ingredient_id = i.id
+    WHERE d.id IN ($id_list)
+    GROUP BY d.id
+  ");
   $grouped = [];
   while ($row = $result->fetch()) $grouped[$row['category']][] = $row;
   $total = count($ids);
