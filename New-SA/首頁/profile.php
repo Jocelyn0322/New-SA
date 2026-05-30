@@ -39,8 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $makeupStyle  = $_POST['makeup_style'] ?? '';
 
     try {
-        $stmt = $pdo->prepare("UPDATE user_profiles SET gender=?,skin_type=?,skin_tone=?,skin_concerns=?,age=?,allergies=?,makeup_finish=?,makeup_style=?,updated_at=NOW() WHERE username=?");
-        $stmt->execute([$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$makeupFinish,$makeupStyle,$_SESSION['user']]);
+        $stmt = $pdo->prepare("
+            INSERT INTO user_profiles (username, gender, skin_type, skin_tone, skin_concerns, age, allergies, makeup_finish, makeup_style, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+              gender=VALUES(gender), skin_type=VALUES(skin_type), skin_tone=VALUES(skin_tone),
+              skin_concerns=VALUES(skin_concerns), age=VALUES(age), allergies=VALUES(allergies),
+              makeup_finish=VALUES(makeup_finish), makeup_style=VALUES(makeup_style), updated_at=NOW()
+        ");
+        $stmt->execute([$_SESSION['user'],$gender,$skinType,$skinTone,$skinConcerns,$age,$allergies,$makeupFinish,$makeupStyle]);
         $message = '個人資料儲存成功！';
         $messageType = 'success';
     } catch (Exception $e) {

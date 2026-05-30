@@ -436,23 +436,29 @@ function page_url($p) {
     </div>
     <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImgFile(this.files[0])">
     <input type="file" id="imgCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImgFile(this.files[0])">
-    <div style="margin-top:14px;">
-      <label style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;display:block;">產品類別（選填，可提高搜尋準確度）</label>
-      <select id="imgCategoryFilter" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--text-2);background:var(--bg);outline:none;transition:border var(--t);" onfocus="this.style.borderColor='var(--rose)'" onblur="this.style.borderColor='var(--border)'">
-        <option value="">讓 AI 自動判斷</option>
-        <option value="底妝">底妝</option>
-        <option value="遮瑕">遮瑕</option>
-        <option value="眼影">眼影</option>
-        <option value="眼線">眼線</option>
-        <option value="睫毛膏">睫毛膏</option>
-        <option value="腮紅">腮紅</option>
-        <option value="修容">修容</option>
-        <option value="打亮">打亮</option>
-        <option value="唇彩">唇彩</option>
-        <option value="護膚">護膚</option>
-        <option value="護唇">護唇</option>
-        <option value="防曬">防曬</option>
-      </select>
+    <div style="margin-top:14px;display:flex;gap:10px;">
+      <div style="flex:1;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;display:block;">品牌（選填）</label>
+        <input type="text" id="imgBrandFilter" placeholder="例：Too Faced、CHANEL" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--text-2);background:var(--bg);outline:none;transition:border var(--t);" onfocus="this.style.borderColor='var(--rose)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;display:block;">產品類別（選填）</label>
+        <select id="imgCategoryFilter" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--text-2);background:var(--bg);outline:none;transition:border var(--t);" onfocus="this.style.borderColor='var(--rose)'" onblur="this.style.borderColor='var(--border)'">
+          <option value="">讓 AI 自動判斷</option>
+          <option value="底妝">底妝</option>
+          <option value="遮瑕">遮瑕</option>
+          <option value="眼影">眼影</option>
+          <option value="眼線">眼線</option>
+          <option value="睫毛膏">睫毛膏</option>
+          <option value="腮紅">腮紅</option>
+          <option value="修容">修容</option>
+          <option value="打亮">打亮</option>
+          <option value="唇彩">唇彩</option>
+          <option value="護膚">護膚</option>
+          <option value="護唇">護唇</option>
+          <option value="防曬">防曬</option>
+        </select>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button id="imgAnalyzeBtn" onclick="runImgSearch()" disabled class="btn btn-primary" style="flex:1;opacity:.5;cursor:not-allowed;">開始搜尋</button>
@@ -514,6 +520,7 @@ function resetImgSearch() {
   ['imgLoading','imgParsedTags','imgResults','imgNoResult'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('imgFileInput').value='';
   document.getElementById('imgCategoryFilter').value='';
+  document.getElementById('imgBrandFilter').value='';
   document.getElementById('imgResetBtn').style.display='none';
 }
 function handleImgDrop(e) {
@@ -547,7 +554,8 @@ async function runImgSearch() {
   document.getElementById('imgAnalyzeBtn').disabled=true;
   try {
     const userCategory=document.getElementById('imgCategoryFilter').value;
-    const res=await fetch('image_search_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:imgBase64,mimeType:imgMime,userCategory:userCategory})});
+    const userBrand=document.getElementById('imgBrandFilter').value.trim();
+    const res=await fetch('image_search_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:imgBase64,mimeType:imgMime,userCategory:userCategory,userBrand:userBrand})});
     const data=await res.json();
     document.getElementById('imgLoading').style.display='none';
     document.getElementById('imgAnalyzeBtn').disabled=false;
@@ -557,7 +565,13 @@ async function runImgSearch() {
       document.getElementById('imgParsedTags').style.display='block';
     }
     if(!data.products||data.products.length===0){document.getElementById('imgNoResult').style.display='block';return;}
-    document.getElementById('imgResultsTitle').textContent=`找到 ${data.products.length} 個相關產品`;
+    let titleText = `找到 ${data.products.length} 個相關產品`;
+    if(data.detectedBrand && !data.brandInDb){
+      titleText = `資料庫中尚無「${data.detectedBrand}」，以下為同類別推薦`;
+    } else if(data.detectedBrand && data.detectedCategory && !data.brandCategoryInDb){
+      titleText = `資料庫有「${data.detectedBrand}」但尚無${data.detectedCategory}產品，以下為同類別推薦`;
+    }
+    document.getElementById('imgResultsTitle').textContent=titleText;
     document.getElementById('imgResultsGrid').innerHTML=data.products.map(p=>{
       const img=`<img src="<?= BASE_URL ?>/image_file.php?type=product&id=${p.id}" alt="${p.name}" style="width:100%;height:90px;object-fit:cover;border-radius:var(--r-sm);" onerror="this.style.display='none';this.parentElement.style.background='var(--rose-50)';">`;
       return `<a href="product.php?id=${p.id}" style="text-decoration:none;color:inherit;display:block;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='var(--shadow)'" onmouseout="this.style.boxShadow='none'">${img}<div style="padding:8px;"><p style="font-size:12px;font-weight:600;margin:0 0 2px;line-height:1.3;">${p.name}</p><p style="font-size:11px;color:var(--text-3);margin:0;">${p.brand} · ${p.category}</p></div></a>`;

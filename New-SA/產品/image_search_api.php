@@ -102,6 +102,12 @@ $keywords = array_filter(array_map('trim', $parsed['keywords'] ?? []));
 
 $validCategories = ['底妝','遮瑕','眼影','眼線','睫毛膏','腮紅','修容','打亮','唇彩','護膚','護唇','防曬'];
 
+// 使用者手動輸入品牌時，覆蓋 AI 判斷
+$userBrand = trim($payload['userBrand'] ?? '');
+if ($userBrand) {
+    $brand = $userBrand;
+}
+
 // 使用者手動選類別時直接覆蓋 AI 的判斷（更準確）
 $userCategory = trim($payload['userCategory'] ?? '');
 if ($userCategory && in_array($userCategory, $validCategories)) {
@@ -169,6 +175,21 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($allParams);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// 確認品牌是否在資料庫，以及品牌+類別的組合是否存在
+$brandInDb = true;
+$brandCategoryInDb = true;
+if ($brand) {
+    $chk = $pdo->prepare("SELECT 1 FROM data WHERE brand LIKE ? LIMIT 1");
+    $chk->execute(["%$brand%"]);
+    $brandInDb = (bool)$chk->fetchColumn();
+
+    if ($brandInDb && $category) {
+        $chk2 = $pdo->prepare("SELECT 1 FROM data WHERE brand LIKE ? AND category = ? LIMIT 1");
+        $chk2->execute(["%$brand%", $category]);
+        $brandCategoryInDb = (bool)$chk2->fetchColumn();
+    }
+}
+
 // 顯示給前端的標籤
 $displayTerms = array_filter(array_merge(
     $brand    ? [$brand]    : [],
@@ -177,7 +198,11 @@ $displayTerms = array_filter(array_merge(
 ));
 
 echo json_encode([
-    'products' => $products,
-    'parsed'   => $parsed,
-    'terms'    => array_values($displayTerms)
+    'products'         => $products,
+    'parsed'           => $parsed,
+    'terms'            => array_values($displayTerms),
+    'brandInDb'        => $brandInDb,
+    'brandCategoryInDb'=> $brandCategoryInDb,
+    'detectedBrand'    => $brand,
+    'detectedCategory' => $category,
 ], JSON_UNESCAPED_UNICODE);

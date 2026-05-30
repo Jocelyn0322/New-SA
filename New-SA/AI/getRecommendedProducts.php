@@ -19,12 +19,11 @@ function contains_any(string $text, array $keywords): bool
 }
 
 try {
-    $skinType = trim((string)($_GET['skinType'] ?? ''));
-    $sensitive = filter_var($_GET['sensitive'] ?? false, FILTER_VALIDATE_BOOLEAN);
-    $limit = (int)($_GET['limit'] ?? 6);
-    if ($limit <= 0 || $limit > 12) {
-        $limit = 6;
-    }
+    $skinType    = trim((string)($_GET['skinType']    ?? ''));
+    $makeupFinish = trim((string)($_GET['makeupFinish'] ?? ''));
+    $sensitive   = filter_var($_GET['sensitive'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    $limit       = (int)($_GET['limit'] ?? 6);
+    if ($limit <= 0 || $limit > 12) $limit = 6;
 
     $skinTypeKeywords = [
         '乾性皮' => ['保濕', '潤澤', '水光', '裸光', '養膚', '滋潤', '霜', '精華', '乳霜'],
@@ -35,14 +34,42 @@ try {
         '敏感肌' => ['敏感', '溫和', '舒敏', '無香料', '無酒精', '低刺激', '修護']
     ];
 
+    $finishKeywords = [
+        '霧面'    => ['霧面', '控油', '柔霧', '無油', '持妝'],
+        '水光'    => ['水光', '保濕', '潤澤', '光澤', '水感'],
+        '自然光感' => ['自然', '裸妝', '輕薄', '日常'],
+        '緞面'    => ['緞面', '光感', '光澤', '亮澤'],
+    ];
+    $dryTypes  = ['乾性皮', '混乾皮'];
+    $oilyTypes = ['油性皮', '混油皮'];
+    $rawFkw    = $finishKeywords[$makeupFinish] ?? [];
+
+    if (in_array($skinType, $dryTypes) && $makeupFinish === '霧面') {
+        $oilConflictKw = ['控油', '無油', '持妝', '抗汗', '長效'];
+        $fkw = array_merge(
+            array_filter($rawFkw, fn($k) => !in_array($k, $oilConflictKw)),
+            ['保濕', '潤澤']
+        );
+    } elseif (in_array($skinType, $oilyTypes) && $makeupFinish === '水光') {
+        $fkw = $rawFkw; // 使用者明確選水光，直接用水光關鍵字
+    } else {
+        $fkw = $rawFkw;
+    }
+
     $sensitiveBoostKeywords = ['無香料', '無酒精', '溫和', '舒敏', '低刺激', '敏感肌', '保濕', '養膚', '修護'];
+
+    // 乾性皮、混乾皮額外納入護膚類別
+    $dryTypes = ['乾性皮', '混乾皮', '敏感肌'];
+    $categories = in_array($skinType, $dryTypes)
+        ? "('底妝', '護膚')"
+        : "('底妝')";
 
     $stmt = $pdo->query(
         "SELECT d.*, GROUP_CONCAT(pc.color_name ORDER BY pc.color_id SEPARATOR ',') AS color_names,
                 GROUP_CONCAT(pc.color_hex ORDER BY pc.color_id SEPARATOR ',') AS color_hexes
          FROM data d
          LEFT JOIN product_colors pc ON d.id = pc.p_id
-         WHERE d.category = '底妝'
+         WHERE d.category IN $categories
          GROUP BY d.id
          ORDER BY d.created_at DESC"
     );
@@ -68,6 +95,12 @@ try {
             if ($keyword !== '' && mb_strpos($searchText, normalize_text($keyword), 0, 'UTF-8') !== false) {
                 $score += 2.0;
                 $reasons[] = $keyword;
+            }
+        }
+
+        foreach ($fkw as $kw) {
+            if ($kw !== '' && mb_strpos($searchText, normalize_text($kw), 0, 'UTF-8') !== false) {
+                $score += 1.5;
             }
         }
 

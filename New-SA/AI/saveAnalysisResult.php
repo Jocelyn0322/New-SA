@@ -24,14 +24,15 @@ $username = $_SESSION['user'];
 
 try {
     $stmt = $pdo->prepare("
-        UPDATE users SET
-            skin_type     = :skin_type,
-            skin_tone     = :skin_tone,
-            skin_concerns = :skin_concerns,
-            makeup_finish = :makeup_finish,
-            makeup_style  = :makeup_style,
+        INSERT INTO user_profiles (username, skin_type, skin_tone, skin_concerns, makeup_finish, makeup_style, updated_at)
+        VALUES (:username, :skin_type, :skin_tone, :skin_concerns, :makeup_finish, :makeup_style, NOW())
+        ON DUPLICATE KEY UPDATE
+            skin_type     = VALUES(skin_type),
+            skin_tone     = VALUES(skin_tone),
+            skin_concerns = VALUES(skin_concerns),
+            makeup_finish = VALUES(makeup_finish),
+            makeup_style  = VALUES(makeup_style),
             updated_at    = NOW()
-        WHERE username = :username
     ");
     $stmt->execute([
         ':username'     => $username,

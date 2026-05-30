@@ -309,7 +309,7 @@ const analyzeWithGroq = async () => {
 // ── Product recommendations ──────────────────────────────────────
 const recommendProducts = async (skinType, sensitive = false) => {
     try {
-        const response = await fetch(`./getRecommendedProducts.php?skinType=${encodeURIComponent(skinType || '')}&sensitive=${sensitive ? '1' : '0'}&limit=6`);
+        const response = await fetch(`./getRecommendedProducts.php?skinType=${encodeURIComponent(skinType || '')}&sensitive=${sensitive ? '1' : '0'}&limit=6&makeupFinish=${encodeURIComponent(makeupFinish.value || '')}`);
         const data     = await response.json();
         if (!response.ok || data.status !== 'success') throw new Error(data.message || '無法取得推薦產品');
         recommendations.value = Array.isArray(data.products) ? data.products : [];

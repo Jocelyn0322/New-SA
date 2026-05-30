@@ -67,6 +67,44 @@ const applyToneGuessToSelection = () => {
     if (matched?.toneName) skinTone.value = matched.toneName;
 };
 
+const selectToneFromSwatch = (toneName) => {
+    skinTone.value = toneName;
+    confirmedSkinTone.value = false;
+    const tone = skinTonesData.value.find(t => t.toneName === toneName);
+    if (tone) {
+        skinCoordinate.value = {
+            ...(skinCoordinate.value || {}),
+            type: tone.toneName,
+            hex:  tone.hex,
+        };
+    }
+};
+
+const goBackQuiz = () => {
+    const toneLen = toneQuizData.length;
+    if (toneQuizStep.value > toneLen) {
+        if (skinQuizStep.value > 1) {
+            const prevKey = skinQuizData[skinQuizStep.value - 2]?.key;
+            if (prevKey) quizAnswers.value[prevKey] = '';
+            skinQuizStep.value--;
+        } else {
+            const lastToneKey = toneQuizData[toneLen - 1]?.key;
+            if (lastToneKey) toneQuizAnswers.value[lastToneKey] = '';
+            toneQuizStep.value = toneLen;
+            toneGuess.value = inferToneGuess();
+        }
+    } else if (toneQuizStep.value > 1) {
+        const prevKey = toneQuizData[toneQuizStep.value - 2]?.key;
+        if (prevKey) toneQuizAnswers.value[prevKey] = '';
+        toneQuizStep.value--;
+        toneGuess.value = inferToneGuess();
+    }
+    nextTick(() => {
+        const el = document.getElementById('chatEnd');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+};
+
 const goToSkinTypeStep = () => {
     if (!ensureToneQuizCompleted()) return;
     applyToneGuessToSelection();
