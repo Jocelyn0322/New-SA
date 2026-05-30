@@ -97,8 +97,10 @@ $weightA = clampWeight($weightA);
 $weightB = clampWeight($weightB);
 
 $pdo->prepare('
-    UPDATE user_profiles SET weight_l = :weight_l, weight_a = :weight_a, weight_b = :weight_b
-    WHERE username = :username
+    INSERT INTO user_profiles (username, weight_l, weight_a, weight_b)
+    VALUES (:username, :weight_l, :weight_a, :weight_b)
+    ON DUPLICATE KEY UPDATE
+      weight_l = VALUES(weight_l), weight_a = VALUES(weight_a), weight_b = VALUES(weight_b)
 ')->execute([
     ':username' => $username,
     ':weight_l' => $weightL,

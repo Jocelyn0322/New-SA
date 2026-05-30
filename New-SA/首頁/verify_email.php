@@ -34,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, 'user', 1)
             ")->execute([$username, $email, $sessionPwd]);
 
+            $pdo->prepare("
+                INSERT IGNORE INTO user_profiles (username) VALUES (?)
+            ")->execute([$username]);
+
             $stmt = $pdo->prepare("SELECT role FROM users WHERE username = ?");
             $stmt->execute([$username]);
             $newUser = $stmt->fetch();
