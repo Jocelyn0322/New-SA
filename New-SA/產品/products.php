@@ -303,7 +303,7 @@ function page_url($p) {
           <span class="rec-badge">✨ 推薦您的產品</span>
         <?php endif; ?>
         <div class="product-card-img">
-          <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $row['p_id'] ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.style.display='none';this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
+          <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $row['p_id'] ?><?= (!empty($row['image_url']) && preg_match('/[?&]v=([A-Za-z0-9]+)/', $row['image_url'], $vm)) ? '&v=' . $vm[1] : '' ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.style.display='none';this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
         </div>
 
         <button type="button"

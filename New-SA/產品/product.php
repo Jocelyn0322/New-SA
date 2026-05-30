@@ -109,7 +109,9 @@ if (empty($_SESSION[$viewedKey])) {
     <div class="product-detail-grid">
         <div>
             <?php
-            $imgSrc = BASE_URL . '/image_file.php?type=product&id=' . $row['p_id'];
+            // 帶上每次上傳都會更新的 &v=，換圖後網址就會變，瀏覽器一定抓新圖（不靠快取標頭）
+            $imgVer = (!empty($row['image_url']) && preg_match('/[?&]v=([A-Za-z0-9]+)/', $row['image_url'], $vm)) ? '&v=' . $vm[1] : '';
+            $imgSrc = BASE_URL . '/image_file.php?type=product&id=' . $row['p_id'] . $imgVer;
             ?>
             <img id="mainProductImg"
                  src="<?php echo $imgSrc; ?>"

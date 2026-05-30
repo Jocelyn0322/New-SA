@@ -37,8 +37,16 @@ $mime = $row['mime'] ?: 'image/jpeg';
 
 while (ob_get_level()) { ob_end_clean(); }  // 清緩衝，避免污染二進位
 
+// 用 ETag + 重新驗證：圖片內容有換 → ETag 變 → 抓新圖；沒換 → 回 304 省流量。
+// 解決重新上傳後（網址不變）瀏覽器仍顯示舊圖的快取問題。
+$etag = '"' . md5($data) . '"';
+header('Cache-Control: no-cache, must-revalidate');
+header('ETag: ' . $etag);
+if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {
+    http_response_code(304);
+    exit;
+}
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . strlen($data));
-header('Cache-Control: public, max-age=86400');
 echo $data;
 exit;
