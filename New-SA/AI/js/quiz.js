@@ -89,7 +89,13 @@ const goToCameraStep = () => {
 };
 
 const confirmSkinTone = () => { confirmedSkinTone.value = !confirmedSkinTone.value; };
-const confirmSkinType = () => { confirmedSkinType.value = !confirmedSkinType.value; };
+const confirmSkinType = () => {
+    confirmedSkinType.value = !confirmedSkinType.value;
+    if (confirmedSkinType.value) {
+        const type = manualSkinType.value || skinTypeResult.value;
+        if (type) fetchIngredientAdvice(manualSensitiveSkin.value ? '敏感肌' : type);
+    }
+};
 
 const backToToneAndSkinPage = () => { stopCamera(); currentStep.value = 3; };
 

@@ -209,19 +209,20 @@ const selectHueBias = (bias) => {
 };
 
 const findMatchingTone = (base, depth, hueBias) => {
+    const d = (parseInt(depth) > 3) ? '3' : depth;
     let toneName = '', searchTerms = [];
 
     if (base === 'A') {
-        if (hueBias === 'α')                       { toneName = `偏紅暖${depth}白`; searchTerms = ['偏紅', '暖', depth, '白']; }
-        else if (hueBias === 'β' || hueBias === 'γ') { toneName = `黃${depth}白`;   searchTerms = ['黃', depth, '白']; }
+        if (hueBias === 'α')                       { toneName = `偏紅暖${d}白`; searchTerms = ['偏紅', '暖', d, '白']; }
+        else if (hueBias === 'β' || hueBias === 'γ') { toneName = `黃${d}白`;   searchTerms = ['黃', d, '白']; }
     } else if (base === 'B') {
-        if (hueBias === 'α')                       { toneName = `偏紅冷${depth}白`; searchTerms = ['偏紅', '冷', depth, '白']; }
-        else if (hueBias === 'β' || hueBias === 'γ') { toneName = `粉${depth}白`;   searchTerms = ['粉', depth, '白']; }
+        if (hueBias === 'α')                       { toneName = `偏紅冷${d}白`; searchTerms = ['偏紅', '冷', d, '白']; }
+        else if (hueBias === 'β' || hueBias === 'γ') { toneName = `粉${d}白`;   searchTerms = ['粉', d, '白']; }
     } else if (base === 'C') {
-        if (hueBias === 'α' || hueBias === 'γ')   { toneName = `中性暖${depth}白`; searchTerms = ['中性', '暖', depth, '白']; }
-        else if (hueBias === 'β')                   { toneName = `中性冷${depth}白`; searchTerms = ['中性', '冷', depth, '白']; }
+        if (hueBias === 'α' || hueBias === 'γ')   { toneName = `中性暖${d}白`; searchTerms = ['中性', '暖', d, '白']; }
+        else if (hueBias === 'β')                   { toneName = `中性冷${d}白`; searchTerms = ['中性', '冷', d, '白']; }
     } else if (base === 'D') {
-        toneName = `橄欖${depth}白`; searchTerms = ['橄欖', depth, '白'];
+        toneName = `橄欖${d}白`; searchTerms = ['橄欖', d, '白'];
     }
 
     console.log(`Finding tone: base=${base}, depth=${depth}, bias=${hueBias}, expected=${toneName}`);
@@ -232,6 +233,11 @@ const findMatchingTone = (base, depth, hueBias) => {
         if (!matching && searchTerms.length) {
             matching = skinTonesData.value.find(t =>
                 searchTerms.slice(0, -1).every(term => t.toneName.includes(term))
+            );
+        }
+        if (!matching && searchTerms.length >= 2) {
+            matching = skinTonesData.value.find(t =>
+                searchTerms.slice(0, 2).every(term => t.toneName.includes(term))
             );
         }
         if (!matching && searchTerms.length) {

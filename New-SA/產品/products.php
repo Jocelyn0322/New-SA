@@ -246,17 +246,15 @@ function page_url($p) {
           <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $row['p_id'] ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.style.display='none';this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
         </div>
 
-        <?php if ($isFav): ?>
-          <form action="remove_favorite.php" method="POST" style="position:absolute;top:10px;right:10px;margin:0;">
-            <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
-            <button type="submit" class="fav-btn active" title="移除收藏">♥</button>
-          </form>
-        <?php else: ?>
-          <form action="add_favorite.php" method="POST" style="position:absolute;top:10px;right:10px;margin:0;">
-            <input type="hidden" name="id" value="<?= $row['p_id'] ?>">
-            <button type="submit" class="fav-btn" title="加入收藏">♡</button>
-          </form>
-        <?php endif; ?>
+        <button type="button"
+                class="fav-btn <?= $isFav ? 'active' : '' ?>"
+                style="position:absolute;top:10px;right:10px;"
+                title="<?= $isFav ? '移除收藏' : '加入收藏' ?>"
+                data-id="<?= $row['p_id'] ?>"
+                data-fav="<?= $isFav ? '1' : '0' ?>"
+                onclick="toggleFav(this)">
+          <?= $isFav ? '♥' : '♡' ?>
+        </button>
 
         <div class="product-card-body">
           <div class="product-card-brand"><?= htmlspecialchars($row['brand']) ?></div>
@@ -613,6 +611,24 @@ async function submitReport() {
     msg.textContent=result.message;
     if(result.success) setTimeout(closeReportModal,2000);
   } catch(e){document.getElementById('reportMsg').textContent='網路錯誤，請稍後再試';}
+}
+
+async function toggleFav(btn) {
+  const id  = btn.dataset.id;
+  const fav = btn.dataset.fav === '1';
+  const url = fav ? 'remove_favorite.php' : 'add_favorite.php';
+  btn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('id', id);
+    await fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd });
+    const nowFav = !fav;
+    btn.dataset.fav   = nowFav ? '1' : '0';
+    btn.textContent   = nowFav ? '♥' : '♡';
+    btn.title         = nowFav ? '移除收藏' : '加入收藏';
+    btn.classList.toggle('active', nowFav);
+  } catch(e) {}
+  btn.disabled = false;
 }
 </script>
 </body>
