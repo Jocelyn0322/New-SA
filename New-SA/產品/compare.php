@@ -334,7 +334,7 @@ if (empty($ids)):
       <?= $total ?> / 5<?= $total >= 5 ? '　已達上限' : '' ?>
     </span>
     <div class="cmp-titlebar-right">
-      <a href="products.php" class="btn btn-outline btn-sm">← 返回產品</a>
+      <a href="products.php" onclick="event.preventDefault(); history.back();" class="btn btn-outline btn-sm">← 返回產品</a>
       <a href="compare.php?clear=1" class="btn btn-danger btn-sm">清除全部</a>
     </div>
   </div>

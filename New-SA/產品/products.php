@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../auth_check.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
-include __DIR__ . '/../db.php';
+if (!defined('BASE_URL')) require_once __DIR__ . '/../db.php';
+else include __DIR__ . '/../db.php';
 
 // 管理員：刪除產品（含關聯資料；無外鍵，手動清除避免孤兒。products 為 data 鏡像，一併刪）
 if (($_SESSION['role'] ?? '') === 'admin' && isset($_POST['delete_product'])) {
@@ -306,6 +306,7 @@ function page_url($p) {
           <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $row['p_id'] ?><?= (!empty($row['image_url']) && preg_match('/[?&]v=([A-Za-z0-9]+)/', $row['image_url'], $vm)) ? '&v=' . $vm[1] : '' ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.style.display='none';this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
         </div>
 
+        <?php if (isset($_SESSION['user'])): ?>
         <button type="button"
                 class="fav-btn <?= $isFav ? 'active' : '' ?>"
                 style="position:absolute;top:10px;right:10px;"
@@ -315,6 +316,7 @@ function page_url($p) {
                 onclick="toggleFav(this)">
           <?= $isFav ? '♥' : '♡' ?>
         </button>
+        <?php endif; ?>
 
         <div class="product-card-body">
           <div class="product-card-brand"><?= htmlspecialchars($row['brand']) ?></div>
@@ -709,6 +711,7 @@ async function toggleFav(btn) {
   } catch(e) {}
   btn.disabled = false;
 }
+
 </script>
 </body>
 </html>

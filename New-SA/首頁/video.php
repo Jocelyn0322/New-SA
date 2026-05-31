@@ -1,8 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-require __DIR__ . '/../db.php';
+require_once __DIR__ . '/../auth_check.php';
 require_once __DIR__ . '/../notify_helper.php';
 
 // 確保欄位存在
@@ -22,9 +19,7 @@ try {
     $existingTags = array_values(array_unique($existingTags));
 } catch (Exception $e) {}
 
-// 檢查是否已登入
-$isLoggedIn = isset($_SESSION['user']);
-$isAdmin    = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+$isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 
 // 確保影片 BLOB 資料表存在（影片二進位存在資料庫）
 function ensureVideoFilesTable(PDO $pdo): void {
@@ -304,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_view']) && iss
 }
 
 // 追蹤 / 取消追蹤
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow']) && $isLoggedIn) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow']) && true) {
     $targetUser = trim($_POST['target_user'] ?? '');
     if ($targetUser && $targetUser !== $_SESSION['user']) {
         $check = $pdo->prepare("SELECT id FROM follows WHERE follower = ? AND following = ?");
@@ -328,12 +323,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow']) && $
 // 獲取影片列表
 $view = $_GET['view'] ?? 'home';
 if ($view === 'admin') $view = 'home';
-if ($view === 'following' && !$isLoggedIn) $view = 'home';
+if ($view === 'following' && !true) $view = 'home';
 $activeTag = ltrim(trim($_GET['tag'] ?? ''), '#');
 
 // 目前使用者追蹤的人（陣列，供 JS 判斷按鈕狀態）
 $myFollowings = [];
-if ($isLoggedIn) {
+if (true) {
     $fStmt = $pdo->prepare("SELECT following FROM follows WHERE follower = ?");
     $fStmt->execute([$_SESSION['user']]);
     $myFollowings = $fStmt->fetchAll(PDO::FETCH_COLUMN);
@@ -405,7 +400,7 @@ if ($view === 'following') {
 // ── 推薦演算法（僅主頁、登入狀態） ──
 $recommended   = [];
 $recReason     = '';   // 'personalized' | 'popular' | ''
-if ($isLoggedIn && $view === 'home' && $activeTag === '') {
+if (true && $view === 'home' && $activeTag === '') {
     try {
         // 1. 使用者已按讚的影片 ID + 標籤
         $ls = $pdo->prepare("SELECT v.id, v.tags FROM likes l JOIN videos v ON l.video_id = v.id WHERE l.user_id = ?");
@@ -954,13 +949,6 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
 <?php include __DIR__ . '/../header.php'; ?>
 
 <main class="video-page">
-    <?php if (!$isLoggedIn): ?>
-    <div style="max-width: 1400px; margin: 100px auto; text-align: center; padding: 40px;">
-        <h1 style="font-size: 32px; margin-bottom: 20px; color: #333;">✨ 影片交流</h1>
-        <p style="font-size: 18px; color: #666; margin-bottom: 30px;">需要登入才能查看和上傳影片</p>
-        <a href="login.php" style="display: inline-block; background: linear-gradient(135deg, #ff5a7e 0%, #ff3a6f 100%); color: white; padding: 12px 40px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600; cursor: pointer;">📱 前往登入</a>
-    </div>
-    <?php else: ?>
     <div class="video-wrapper">
         <div class="vp-header">
             <div class="vp-header-left">
@@ -997,7 +985,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
 
         <div class="nav-tabs">
             <a href="?view=home" class="nav-tab <?php echo ($view === 'home') ? 'active' : ''; ?>">🏠 主頁</a>
-            <?php if ($isLoggedIn): ?>
+            <?php if (true): ?>
             <a href="?view=following" class="nav-tab <?php echo ($view === 'following') ? 'active' : ''; ?>" style="position:relative;">
                 📡 追蹤中
                 <?php
@@ -1436,7 +1424,6 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
             <?php endif; ?>
         <?php endif; ?>
     </div>
-    <?php endif; ?>
 
     <!-- 影片詳情浮層 -->
     <div id="videoDetailOverlay" class="video-detail-overlay">
@@ -1453,7 +1440,7 @@ if ($isLoggedIn && $view === 'home' && $activeTag === '') {
                 <div class="video-detail-meta">
                     <div class="video-detail-author" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:8px;"></div>
-                        <?php if ($isLoggedIn): ?>
+                        <?php if (true): ?>
                         <button id="detailFollowBtn" class="follow-btn<?php echo $isAdmin ? ' admin-no-action' : ''; ?>"
                                 style="display:none;"
                                 onclick="<?php echo $isAdmin ? 'return false;' : "toggleFollow('', this)"; ?>">+ 追蹤</button>

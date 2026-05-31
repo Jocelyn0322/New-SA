@@ -494,6 +494,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <button type="submit" class="btn-submit">登入</button>
         </form>
       <?php endif; ?>
+
+      <!-- 訪客瀏覽 -->
+      <div style="margin-top:16px;text-align:center;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <div style="flex:1;height:1px;background:#e8dde8;"></div>
+          <span style="font-size:12px;color:#b0a0b0;">或</span>
+          <div style="flex:1;height:1px;background:#e8dde8;"></div>
+        </div>
+        <a href="<?= BASE_URL ?>/產品/products.php"
+           style="display:block;width:100%;padding:12px;border-radius:50px;border:1.5px solid #c26b7c;background:transparent;color:#6b2d3e;font-size:14px;font-weight:600;text-decoration:none;text-align:center;transition:background .15s;"
+           onmouseover="this.style.background='#fdf2f4'" onmouseout="this.style.background='transparent'">
+          👀 以訪客身分瀏覽產品
+        </a>
+        <p style="font-size:11px;color:#b0a0b0;margin-top:8px;">登入後可使用收藏、AI 檢測、評分等功能</p>
+      </div>
     </div>
   </div>
 

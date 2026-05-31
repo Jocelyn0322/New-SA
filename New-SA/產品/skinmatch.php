@@ -684,27 +684,71 @@ if (isset($pdo)) {
         <!-- 內容區 -->
         <div style="background:#fdf2f4; padding:20px 24px;">
 
-            <!-- 三明治定妝法 -->
-            <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:12px;">三明治定妝法（新手 3 步驟）</div>
-            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;">
-                <?php
+            <?php
+            $dryTypes = ['乾性皮', '混乾皮'];
+            $oilyTypes = ['油性皮', '混油皮'];
+            $currentSkinType = $profile['skin_type'] ?? '';
+
+            if (in_array($currentSkinType, $dryTypes)) {
+                $methodTitle = '補水定妝法'; $methodSub = '不卡紋 3 步驟';
                 $steps = [
-                    ['num'=>'1','title'=>'散粉打底',    'desc'=>'打完底妝後用大刷輕掃蜂巢散粉，吸走多餘油脂'],
-                    ['num'=>'2','title'=>'噴定妝噴霧',  'desc'=>'距臉 20cm 以 Z 字形均勻噴灑，等 30 秒自然乾'],
-                    ['num'=>'3','title'=>'再掃一層散粉', 'desc'=>'鎖住噴霧，三明治順序讓持妝效果翻倍'],
+                    ['icon'=>'💧','num'=>'1','title'=>'妝前補水',   'desc'=>'上妝前敷保濕面膜或噴保濕噴霧，讓肌膚充飽水分再上妝'],
+                    ['icon'=>'🧴','num'=>'2','title'=>'保濕妝前乳', 'desc'=>'含玻尿酸的妝前乳打底，填平乾紋防浮粉卡紋'],
+                    ['icon'=>'🪄','num'=>'3','title'=>'海綿輕拍',   'desc'=>'用海綿輕拍取代刷塗，鎖住水分同時讓底妝更服帖'],
                 ];
-                foreach ($steps as $s): ?>
-                <div style="background:#fff; border-radius:14px; padding:14px 12px; border:1px solid #f5c6d0;">
-                    <div style="width:26px; height:26px; border-radius:50%; background:#c26b7c; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px;"><?= $s['num'] ?></div>
-                    <div style="font-size:13px; font-weight:700; color:#6b2d3e; margin-bottom:4px;"><?= $s['title'] ?></div>
-                    <div style="font-size:11px; color:#c09aaa; line-height:1.6;"><?= $s['desc'] ?></div>
+                $tip = '散粉只需少量輕掃 T 字，用量過多會讓乾皮更顯卡粉，保濕噴霧才是你的最佳補妝工具。';
+            } elseif ($currentSkinType === '敏感肌' || $isSensitive) {
+                $methodTitle = '溫和上妝法'; $methodSub = '低刺激 3 步驟';
+                $steps = [
+                    ['icon'=>'🌿','num'=>'1','title'=>'鎮靜打底',    'desc'=>'上妝前用溫和化妝水輕拍臉部，靜待 5 分鐘讓肌膚穩定'],
+                    ['icon'=>'✨','num'=>'2','title'=>'礦物粉底',    'desc'=>'選無香料、無酒精的礦物粉底，以海綿輕柔按壓避免摩擦'],
+                    ['icon'=>'🪶','num'=>'3','title'=>'礦物散粉定妝','desc'=>'用礦物蜜粉輕掃定妝，刷具接觸肌膚次數越少越好'],
+                ];
+                $tip = '補妝時先用吸油紙輕壓，再用礦物粉輕拍，避免刷具反覆摩擦造成泛紅。';
+            } else {
+                $methodTitle = '三明治定妝法'; $methodSub = '新手 3 步驟';
+                $steps = [
+                    ['icon'=>'🖌️','num'=>'1','title'=>'散粉打底',    'desc'=>'打完底妝後用大刷輕掃蜂巢散粉，吸走多餘油脂'],
+                    ['icon'=>'💨','num'=>'2','title'=>'噴定妝噴霧',  'desc'=>'距臉 20cm 以 Z 字形均勻噴灑，等 30 秒自然乾'],
+                    ['icon'=>'✨','num'=>'3','title'=>'再掃一層散粉', 'desc'=>'鎖住噴霧，三明治順序讓持妝效果翻倍'],
+                ];
+                $tip = '出門前最後一步才噴，隨身帶一瓶定妝噴霧，中午直接噴臉補妝，不用補粉也能維持妝感。';
+            }
+            ?>
+            <!-- 定妝法標題 -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="font-size:16px;font-weight:800;color:#3d1520;"><?= htmlspecialchars($methodTitle) ?></div>
+                <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(107,45,62,.12);color:#6b2d3e;"><?= htmlspecialchars($methodSub) ?></span>
+            </div>
+
+            <!-- 橫向大卡 -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;">
+                <?php
+                $bgs = [
+                    'linear-gradient(145deg,#fff5f7,#fce8ed)',
+                    'linear-gradient(145deg,#fce8ed,#f8dde4)',
+                    'linear-gradient(145deg,#6b2d3e,#9d3f55)',
+                ];
+                foreach ($steps as $i => $s):
+                    $isDark = $i === 2;
+                    $textColor    = $isDark ? '#fff' : '#3d1520';
+                    $subColor     = $isDark ? 'rgba(255,255,255,.5)' : '#c09aaa';
+                    $descColor    = $isDark ? 'rgba(255,255,255,.7)' : '#b08090';
+                    $borderStyle  = $isDark ? 'transparent' : '#f5c6d0';
+                ?>
+                <div style="background:<?= $bgs[$i] ?>;border-radius:20px;padding:22px 18px;border:1.5px solid <?= $borderStyle ?>;box-shadow:0 2px 12px rgba(107,45,62,.1);">
+                    <div style="font-size:32px;margin-bottom:12px;"><?= $s['icon'] ?></div>
+                    <div style="font-size:10px;font-weight:700;color:<?= $subColor ?>;letter-spacing:.1em;margin-bottom:5px;">STEP <?= $i+1 ?></div>
+                    <div style="font-size:15px;font-weight:800;color:<?= $textColor ?>;margin-bottom:8px;"><?= $s['title'] ?></div>
+                    <div style="font-size:11px;color:<?= $descColor ?>;line-height:1.7;"><?= $s['desc'] ?></div>
                 </div>
                 <?php endforeach; ?>
             </div>
 
             <!-- 小提醒 -->
-            <div style="background:#fff; border:1px solid #f5c6d0; border-radius:12px; padding:10px 16px; font-size:12px; color:#6b2d3e; margin-bottom:20px;">
-                出門前最後一步才噴，隨身帶一瓶定妝噴霧，中午直接噴臉補妝，不用補粉也能維持妝感。
+            <div style="display:flex;gap:12px;align-items:flex-start;background:rgba(107,45,62,.06);border-left:3px solid #c26b7c;border-radius:0 12px 12px 0;padding:12px 16px;margin-bottom:20px;">
+                <span style="font-size:16px;flex-shrink:0;margin-top:1px;">💡</span>
+                <span style="font-size:12px;color:#6b2d3e;line-height:1.7;"><?= htmlspecialchars($tip) ?></span>
             </div>
 
             <?php if (!empty($heatProducts)): ?>

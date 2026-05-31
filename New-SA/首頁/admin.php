@@ -300,12 +300,12 @@ if ($tab === 'data_products') {
         $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM data WHERE name LIKE ? OR brand LIKE ? OR category LIKE ?");
         $cntStmt->execute([$like,$like,$like]);
         $dpTotal = (int)$cntStmt->fetchColumn();
-        $dpStmt  = $pdo->prepare("SELECT d.*, po.name AS origin, GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients FROM data d LEFT JOIN product_origins po ON d.origin_id=po.id LEFT JOIN product_ingredients pi ON d.id=pi.product_id LEFT JOIN ingredients i ON pi.ingredient_id=i.id WHERE d.name LIKE ? OR d.brand LIKE ? OR d.category LIKE ? GROUP BY d.id ORDER BY d.id LIMIT ? OFFSET ?");
-        $dpStmt->execute([$like,$like,$like,$dpPerPage,$dpOffset]);
+        $dpStmt  = $pdo->prepare("SELECT d.*, po.name AS origin, GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients FROM data d LEFT JOIN product_origins po ON d.origin_id=po.id LEFT JOIN product_ingredients pi ON d.id=pi.product_id LEFT JOIN ingredients i ON pi.ingredient_id=i.id WHERE d.name LIKE ? OR d.brand LIKE ? OR d.category LIKE ? GROUP BY d.id ORDER BY d.id LIMIT {$dpPerPage} OFFSET {$dpOffset}");
+        $dpStmt->execute([$like,$like,$like]);
     } else {
         $dpTotal = (int)$pdo->query("SELECT COUNT(*) FROM data")->fetchColumn();
-        $dpStmt  = $pdo->prepare("SELECT d.*, po.name AS origin, GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients FROM data d LEFT JOIN product_origins po ON d.origin_id=po.id LEFT JOIN product_ingredients pi ON d.id=pi.product_id LEFT JOIN ingredients i ON pi.ingredient_id=i.id GROUP BY d.id ORDER BY d.id LIMIT ? OFFSET ?");
-        $dpStmt->execute([$dpPerPage,$dpOffset]);
+        $dpStmt  = $pdo->prepare("SELECT d.*, po.name AS origin, GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR '、') AS ingredients FROM data d LEFT JOIN product_origins po ON d.origin_id=po.id LEFT JOIN product_ingredients pi ON d.id=pi.product_id LEFT JOIN ingredients i ON pi.ingredient_id=i.id GROUP BY d.id ORDER BY d.id LIMIT {$dpPerPage} OFFSET {$dpOffset}");
+        $dpStmt->execute();
     }
     $dpProducts = $dpStmt->fetchAll();
     $dpPages    = (int)ceil($dpTotal / $dpPerPage);
@@ -1353,7 +1353,7 @@ function adminTakedownPrompt(form) {
         </div>
       <?php endif; ?>
       <div class="report-card-actions">
-        <a href="video.php?video=<?php echo (int)$rv['id']; ?>" target="_blank" class="act-btn neutral">▶ 查看</a>
+        <button type="button" class="act-btn neutral" onclick="previewVideo(<?php echo (int)$rv['id']; ?>, <?php echo htmlspecialchars(json_encode($rv['file_path']), ENT_QUOTES); ?>, <?php echo htmlspecialchars(json_encode($rv['title']), ENT_QUOTES); ?>)">▶ 查看</button>
         <form method="post" style="margin:0;">
           <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
           <button type="submit" name="dismiss_report" value="1" class="act-btn success">✓ 標記已處理</button>
@@ -1891,6 +1891,53 @@ function collapseAdminSidebar() {
     if (main)    main.classList.add('sidebar-collapsed');
     if (icon)    icon.textContent = '›';
   }
+})();
+</script>
+<!-- 影片預覽 Modal -->
+<div id="videoPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeVideoPreview()">
+  <div style="background:#1a1a2e;border-radius:16px;overflow:hidden;max-width:860px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.1);">
+      <div id="videoPreviewTitle" style="color:#fff;font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%;"></div>
+      <button onclick="closeVideoPreview()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">&times;</button>
+    </div>
+    <video id="videoPreviewPlayer" controls style="width:100%;max-height:70vh;background:#000;display:block;"></video>
+  </div>
+</div>
+
+<script>
+function previewVideo(id, filePath, title) {
+  const modal  = document.getElementById('videoPreviewModal');
+  const player = document.getElementById('videoPreviewPlayer');
+  const ttl    = document.getElementById('videoPreviewTitle');
+  ttl.textContent = title;
+  const src = (filePath && filePath.startsWith('http'))
+    ? filePath
+    : '<?= BASE_URL ?>/video_file.php?id=' + id;
+  player.src = src;
+  modal.style.display = 'flex';
+  player.play().catch(() => {});
+}
+function closeVideoPreview() {
+  const modal  = document.getElementById('videoPreviewModal');
+  const player = document.getElementById('videoPreviewPlayer');
+  player.pause();
+  player.src = '';
+  modal.style.display = 'none';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVideoPreview(); });
+
+// admin 頁面不走公開 header，手動維護 sa_session 讓新開分頁能繼承登入狀態
+(function(){
+  var KEY = 'sa_session', TAB = 'sa_tab_count';
+  localStorage.setItem(KEY, '1');
+  sessionStorage.setItem(KEY, '1');
+  var cnt = parseInt(localStorage.getItem(TAB) || '0');
+  localStorage.setItem(TAB, cnt + 1);
+  window.addEventListener('beforeunload', function(){
+    var n = parseInt(localStorage.getItem(TAB) || '1');
+    if (n <= 1) { localStorage.removeItem(KEY); localStorage.removeItem(TAB); }
+    else        { localStorage.setItem(TAB, n - 1); }
+  });
 })();
 </script>
 </body>

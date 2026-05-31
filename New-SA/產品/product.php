@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../auth_check.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
-include __DIR__ . '/../db.php';
+if (!defined('BASE_URL')) require_once __DIR__ . '/../db.php';
+else include __DIR__ . '/../db.php';
 
 // 依分類決定評分屬性
 $attributeMap = [
@@ -188,17 +188,21 @@ if (empty($_SESSION[$viewedKey])) {
             <?php endif; ?>
 
             <div class="action-buttons">
-                <?php if($isFav){ ?>
+                <?php if (isset($_SESSION['user'])): ?>
+                    <?php if($isFav){ ?>
                     <form action="remove_favorite.php" method="POST" style="flex: 1;">
                         <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
                         <button type="submit" class="btn btn-primary" style="width: 100%;">❤️ 取消收藏</button>
                     </form>
-                <?php }else{ ?>
+                    <?php }else{ ?>
                     <form action="add_favorite.php" method="POST" style="flex: 1;">
                         <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
                         <button type="submit" class="btn btn-primary" style="width: 100%;">🤍 加入收藏</button>
                     </form>
-                <?php } ?>
+                    <?php } ?>
+                <?php else: ?>
+                    <a href="<?= BASE_URL ?>/landing.php" class="btn btn-primary" style="flex:1;text-align:center;">🤍 登入後加入收藏</a>
+                <?php endif; ?>
 
                 <form action="add_compare.php" method="POST" style="flex: 1;">
                     <input type="hidden" name="id" value="<?php echo $row['p_id']; ?>">
