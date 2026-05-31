@@ -176,7 +176,13 @@ function page_url($p) {
       .nav-tabs-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
     }
 
-    .product-card { position: relative; }
+    .product-card { position: relative; cursor: pointer; }
+    .product-card .card-link {
+      position: absolute; inset: 0; z-index: 0;
+      border-radius: inherit;
+    }
+    .product-card .fav-btn,
+    .product-card .product-card-actions { position: relative; z-index: 1; }
     .rec-badge {
       position: absolute; top: 10px; left: 10px; z-index: 2;
       display: inline-flex; align-items: center; gap: 4px;
@@ -299,6 +305,7 @@ function page_url($p) {
         $colors = $colorsMap[$row['p_id']] ?? [];
       ?>
       <div class="product-card">
+        <a class="card-link" href="product.php?id=<?= $row['p_id'] ?>" aria-label="<?= htmlspecialchars($row['name']) ?>"></a>
         <?php if (isset($recommendedSet[(int)$row['p_id']])): ?>
           <span class="rec-badge">✨ 推薦您的產品</span>
         <?php endif; ?>
