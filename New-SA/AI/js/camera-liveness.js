@@ -13,13 +13,27 @@ const startCamera = async () => {
         });
         cameraActive.value = true;
         await nextTick();
+        // 自動捲到相機區塊，讓桌機用戶不需手動滾動
+        document.getElementById('cameraWrap')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         if (!video.value) {
             const domVideo = document.querySelector('video');
             if (!domVideo) throw new Error('視頻元素尚未渲染，請稍候再試');
             video.value = domVideo;
         }
+        const startPreviewCheck = () => {
+            if (_cameraPreviewTimer) return;
+            video.value.play().catch(() => {});
+            setTimeout(() => {
+                _runLiveCheck();
+                _cameraPreviewTimer = setInterval(_runLiveCheck, 2500);
+            }, 800);
+        };
+
         video.value.srcObject = stream;
-        video.value.onloadedmetadata = () => { video.value.play().catch(() => {}); };
+        // 用 addEventListener 避免 race condition，同時加 readyState fallback
+        video.value.addEventListener('loadedmetadata', startPreviewCheck, { once: true });
+        // 若 metadata 已載入（readyState >= 1），直接啟動
+        if (video.value.readyState >= 1) startPreviewCheck();
         stream.getTracks().forEach(track => {
             track.addEventListener('ended', () => { cameraActive.value = false; });
         });
@@ -34,7 +48,45 @@ const startCamera = async () => {
     }
 };
 
+let _cameraPreviewTimer = null;
+
+const _runLiveCheck = async () => {
+    if (!cameraActive.value || faceDetectionBusy.value) return;
+    try {
+        const face = await detectFacesInFrame();
+        // 帽子檢查
+        try {
+            const foreheadPatch = sampleForeheadPatch(face);
+            if (computeSkinRatioFlat(foreheadPatch) < 0.20) {
+                cameraWarning.value = '⚠️ 偵測到額頭被遮住（帽子／頭帶），請移除後再拍攝';
+                return;
+            }
+        } catch (e) {}
+        // 口罩檢查
+        const patch = sampleFacePatch(face, 128);
+        if (computeSkinRatioRegion(patch, 'lower') < 0.25) {
+            cameraWarning.value = '⚠️ 偵測到口罩或下方遮擋物，請移除後再拍攝';
+            return;
+        }
+        if (computeSkinRatioRegion(patch, 'upper') < 0.40) {
+            cameraWarning.value = '⚠️ 偵測到眼部或上臉遮擋物，請撥開頭髮或移除遮擋物';
+            return;
+        }
+        // 照片/紋理檢查
+        const coherenceScore = analyzeSkinTextureCoherence(patch);
+        if (coherenceScore < 50) {
+            cameraWarning.value = '⚠️ 偵測到可能是照片或光線不足，請使用真實鏡頭並確保光線充足';
+            return;
+        }
+        cameraWarning.value = '';
+    } catch (err) {
+        cameraWarning.value = `⚠️ ${err.message}`;
+    }
+};
+
 const stopCamera = () => {
+    if (_cameraPreviewTimer) { clearInterval(_cameraPreviewTimer); _cameraPreviewTimer = null; }
+    cameraWarning.value = '';
     if (video.value && video.value.srcObject) {
         video.value.srcObject.getTracks().forEach(track => track.stop());
         video.value.srcObject = null;
@@ -137,8 +189,9 @@ const detectFacesInFrame = async () => {
 const captureImage = async () => {
     if (!video.value)  video.value  = document.querySelector('video');
     if (!canvas.value) canvas.value = document.querySelector('canvas');
-    if (!video.value || !canvas.value) { alert('相機未啟動或畫布未準備好'); return; }
+    if (!video.value || !canvas.value) { cameraWarning.value = '相機未啟動或畫布未準備好'; return; }
     if (faceDetectionBusy.value) return;
+    if (cameraWarning.value) return; // 有未解決的警告時直接擋住
 
     faceDetectionBusy.value = true;
     try {
@@ -155,11 +208,11 @@ const captureImage = async () => {
             });
             if (!challengeOk) return;
         } catch (checkErr) {
-            alert(checkErr.message || '活體或遮擋檢測失敗');
+            cameraWarning.value = checkErr.message || '活體或遮擋檢測失敗，請重試';
             return;
         }
     } catch (error) {
-        alert(`無法拍照：${error.message}`);
+        cameraWarning.value = error.message || '無法拍照，請重試';
         return;
     } finally {
         faceDetectionBusy.value = false;
@@ -182,7 +235,8 @@ const isSkinPixel = (r, g, b) => {
     const y  = 0.299 * r + 0.587 * g + 0.114 * b;
     const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
     const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-    return (cb >= 70 && cb <= 135) && (cr >= 128 && cr <= 180) && y > 35;
+    // cb <= 118 排除白色/灰色口罩（口罩 cb≈120-128，膚色 cb≈90-115）
+    return (y > 80 && y < 230) && (cb >= 77 && cb <= 118) && (cr >= 133 && cr <= 173);
 };
 
 const sampleFacePatch = (face, size = 128) => {
@@ -190,6 +244,8 @@ const sampleFacePatch = (face, size = 128) => {
     off.width = size; off.height = size;
     const ctx = off.getContext('2d');
     const bb  = face.boundingBox;
+    const vw = video.value.videoWidth, vh = video.value.videoHeight;
+    console.log('[patch] video:', vw, 'x', vh, '| faceBB:', Math.floor(bb.x), Math.floor(bb.y), Math.floor(bb.width), 'x', Math.floor(bb.height));
     ctx.drawImage(video.value,
         Math.max(0, Math.floor(bb.x)), Math.max(0, Math.floor(bb.y)),
         Math.max(1, Math.floor(bb.width)), Math.max(1, Math.floor(bb.height)),
@@ -197,20 +253,34 @@ const sampleFacePatch = (face, size = 128) => {
     return ctx.getImageData(0, 0, size, size);
 };
 
-// 額頭採樣：在 bounding box 上方 0.5 倍高度的區域取 128×48 patch
+// 額頭採樣：用眼睛特徵點定位（BlazeFace），fallback 到 bounding box 頂端
 const sampleForeheadPatch = (face) => {
-    const bb     = face.boundingBox;
-    const fw     = Math.max(1, Math.floor(bb.width));
-    const fh     = Math.max(1, Math.floor(bb.height));
-    const pH     = Math.max(1, Math.floor(fh * 0.50));   // 取臉高的一半作為額頭採樣高度
-    const pY     = Math.max(0, Math.floor(bb.y) - pH);   // 從 bounding box 上方開始
-    const xPad   = Math.floor(fw * 0.20);
-    const pX     = Math.max(0, Math.floor(bb.x) + xPad);
-    const pW     = Math.max(1, fw - xPad * 2);
-    const W = 128, H = 48;
+    const bb  = face.boundingBox;
+    const lms = (face.raw || {}).landmarks || (face.raw || {}).landmark || null;
+
+    let pX, pY, pW, pH;
+    if (Array.isArray(lms) && lms.length >= 2) {
+        // 用眼睛特徵點：額頭在雙眼上方約 0.8 倍眼距
+        const re = lms[0], le = lms[1]; // [x, y]
+        const eyeY    = (re[1] + le[1]) / 2;
+        const eyeDist = Math.abs(le[0] - re[0]);
+        pY = Math.max(0, Math.floor(eyeY - eyeDist * 0.9));
+        pX = Math.max(0, Math.floor(Math.min(re[0], le[0]) - eyeDist * 0.1));
+        pW = Math.max(1, Math.floor(eyeDist * 1.2));
+        pH = Math.max(1, Math.floor(eyeDist * 0.5));
+    } else {
+        // Fallback：bounding box 頂端 20%
+        pX = Math.max(0, Math.floor(bb.x));
+        pY = Math.max(0, Math.floor(bb.y));
+        pW = Math.max(1, Math.floor(bb.width));
+        pH = Math.max(1, Math.floor(bb.height * 0.20));
+    }
+
+    const W = 64, H = 16;
     const off = document.createElement('canvas');
     off.width = W; off.height = H;
     const ctx = off.getContext('2d');
+    console.log('[patch] foreheadSample at:', pX, pY, 'size:', pW, 'x', pH);
     ctx.drawImage(video.value, pX, pY, pW, pH, 0, 0, W, H);
     return ctx.getImageData(0, 0, W, H);
 };
@@ -579,34 +649,49 @@ const checkObstacleAndLiveness = async (face) => {
     const skinRatioLower = computeSkinRatioRegion(patch, 'lower');
     const skinRatioUpper = computeSkinRatioRegion(patch, 'upper');
 
-    if (skinRatioLower < 0.25) {
-        alert('❌ 檢測到口罩或下方遮擋物。\n請移除口罩/圍巾以便系統讀取真正的臉部肌膚。');
+    if (skinRatioLower < 0.30) {
+        cameraWarning.value = '❌ 臉部下半疑似戴口罩或有遮擋，請移除後再拍攝';
         return false;
     }
-    if (skinRatioUpper < 0.40) {
-        alert('❌ 檢測到眼部或上臉遮擋物。\n請撥開頭髮或移除遮擋物再重試。');
+    if (skinRatioUpper < 0.35) {
+        cameraWarning.value = '❌ 臉部上半疑似有遮擋（眼鏡／頭髮），請移除或撥開後再拍攝';
         return false;
     }
 
-    // 額頭專屬檢查：在臉的 bounding box 上方採樣，若膚色比例低表示有帽子遮住
+    // 額頭檢查：比較額頭（頂端25%）vs 臉中段（中間50%）的膚色比
+    // 有帽子時額頭膚色比遠低於臉中段；正常臉兩者相近
     try {
+        const lms = (face.raw || {}).landmarks || (face.raw || {}).landmark || null;
         const foreheadPatch = sampleForeheadPatch(face);
-        const skinRatioForehead = computeSkinRatioFlat(foreheadPatch);
-        if (skinRatioForehead < 0.20) {
-            alert('❌ 偵測到額頭被遮住（帽子／頭帶）。\n請移除後再拍攝，以便正確讀取膚色。');
+        const foreheadRatio = computeSkinRatioFlat(foreheadPatch);
+        const midRatio      = computeSkinRatioRegion(patch, 'upper');
+        const hasLandmarks  = Array.isArray(lms) && lms.length >= 2;
+        console.log('[liveness] forehead:', foreheadRatio.toFixed(3),
+                    'midFace:', midRatio.toFixed(3),
+                    'ratio:', (foreheadRatio / Math.max(midRatio, 0.01)).toFixed(2),
+                    'hasLandmarks:', hasLandmarks);
+        if (midRatio > 0.15 && foreheadRatio / midRatio < 0.55) {
+            cameraWarning.value = '❌ 偵測到額頭被遮住（帽子／頭帶），請移除後再拍攝';
             return false;
         }
-    } catch (e) { /* 無法取得額頭區域時跳過此項檢查 */ }
+    } catch (e) { console.log('[liveness] forehead error:', e.message); }
 
-    const rotationResult = await detectHeadRotation();
-    if (!rotationResult.success) return false;
+    console.log('[liveness] skinRatioLower:', skinRatioLower.toFixed(3), 'skinRatioUpper:', skinRatioUpper.toFixed(3));
 
     const coherenceScore = analyzeSkinTextureCoherence(patch);
+    console.log('[liveness] coherenceScore:', coherenceScore.toFixed(1));
+
+    const rotationResult = await detectHeadRotation();
+    console.log('[liveness] rotationResult:', rotationResult);
+    if (!rotationResult.success) return false;
+
     if (coherenceScore < 50) {
-        updateDebugPanel({ isLive: false, reason: '皮膚紋理不自然，可能是照片或低品質圖像。請使用高質量鏡頭並確保光線充足。' });
+        cameraWarning.value = '❌ 偵測到可能是照片或光線不足，請確保使用真實鏡頭並光線充足';
+        updateDebugPanel({ isLive: false, reason: '皮膚紋理不自然，可能是照片或低品質圖像。' });
         return false;
     }
 
+    cameraWarning.value = '';
     updateDebugPanel({ isLive: true, instruction: '活體驗證通過' });
     return true;
 };

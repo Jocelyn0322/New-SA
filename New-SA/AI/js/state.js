@@ -90,6 +90,7 @@ const aiDetectedSkinType    = ref('');
 const analysisHistory       = ref([]);
 const isAnalyzing           = ref(false);
 const faceDetectionBusy     = ref(false);
+const cameraWarning         = ref('');
 const showResultModal       = ref(false);
 const hasShownNaturalLightReminder = ref(false);
 const alertVisible          = ref(false);

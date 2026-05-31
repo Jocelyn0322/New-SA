@@ -27,7 +27,6 @@ DROP TABLE IF EXISTS `video_appeals`;
 DROP TABLE IF EXISTS `video_comments`;
 DROP TABLE IF EXISTS `likes`;
 DROP TABLE IF EXISTS `follows`;
-DROP TABLE IF EXISTS `carousel_images`;
 DROP TABLE IF EXISTS `data`;
 DROP TABLE IF EXISTS `videos`;
 DROP TABLE IF EXISTS `users`;
@@ -66,19 +65,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   `weight_b`            FLOAT         DEFAULT 1.0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- 2. carousel_images（首頁輪播）
--- =====================================================
-CREATE TABLE IF NOT EXISTS `carousel_images` (
-  `id`         INT(11)      NOT NULL AUTO_INCREMENT,
-  `filename`   VARCHAR(255) DEFAULT '',
-  `image_path` VARCHAR(255) NOT NULL DEFAULT '',
-  `sort_order` INT(11)      NOT NULL DEFAULT 0,
-  `is_active`  TINYINT(1)   NOT NULL DEFAULT 1,
-  `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================

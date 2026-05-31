@@ -13,18 +13,38 @@
         <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white text-violet-700 border border-violet-200">Camera</span>
     </div>
     <p class="text-sm text-gray-600 mb-3">請拍攝臉部照片，系統會先分析結果，再讓你進行確認。</p>
-    <button @click="startCamera" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 active:scale-[0.99] transition duration-200 shadow-lg shadow-gray-900/20">
+    <button v-if="!cameraActive" @click="startCamera" id="startCameraBtn" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 active:scale-[0.99] transition duration-200 shadow-lg shadow-gray-900/20">
         啟動相機
     </button>
-    <video ref="video" v-show="cameraActive" autoplay playsinline class="mt-4 w-full rounded-xl border border-violet-100 shadow-md" style="transform: scaleX(-1);"></video>
-    <div v-if="cameraActive" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <button @click="captureImage" :disabled="faceDetectionBusy" :class="faceDetectionBusy ? 'bg-gray-400 text-white py-2.5 rounded-xl font-bold cursor-not-allowed' : 'bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-500 transition duration-200'">
-            <span v-if="!faceDetectionBusy">拍攝並分析</span>
-            <span v-else>偵測中… 請稍候</span>
-        </button>
-        <button @click="stopCamera" class="bg-white text-rose-600 py-2.5 rounded-xl font-bold border border-rose-200 hover:bg-rose-50 transition duration-200">
-            停止相機
-        </button>
+
+    <!-- 影片 + overlay 容器 -->
+    <div v-if="cameraActive" id="cameraWrap" style="position:relative;margin-top:12px;">
+        <video ref="video" autoplay playsinline class="w-full rounded-xl border border-violet-100 shadow-md" style="transform:scaleX(-1);display:block;"></video>
+
+        <!-- 警告 overlay（疊在影片上方） -->
+        <div v-if="cameraWarning"
+             style="position:absolute;top:0;left:0;right:0;padding:12px 16px;background:rgba(127,0,20,0.82);backdrop-filter:blur(4px);border-radius:12px 12px 0 0;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;flex-shrink:0;">🚫</span>
+            <span style="color:#fff;font-size:13px;font-weight:700;line-height:1.4;">{{ cameraWarning }}</span>
+        </div>
+
+        <!-- 拍攝按鈕 overlay（疊在影片底部） -->
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(to top,rgba(0,0,0,0.55),transparent);border-radius:0 0 12px 12px;display:flex;gap:10px;align-items:center;justify-content:center;">
+            <button @click="captureImage"
+                :disabled="faceDetectionBusy || !!cameraWarning"
+                style="flex:1;max-width:260px;padding:12px 20px;border-radius:50px;border:none;font-size:15px;font-weight:800;cursor:pointer;transition:all .15s;"
+                :style="(faceDetectionBusy || cameraWarning)
+                    ? 'background:rgba(255,255,255,0.25);color:rgba(255,255,255,0.5);cursor:not-allowed;'
+                    : 'background:#fff;color:#6b2d3e;box-shadow:0 4px 20px rgba(0,0,0,0.3);'">
+                <span v-if="faceDetectionBusy">⏳ 偵測中…</span>
+                <span v-else-if="cameraWarning">⚠️ 請先解決上方問題</span>
+                <span v-else>📸 拍攝並分析</span>
+            </button>
+            <button @click="stopCamera"
+                style="padding:12px 16px;border-radius:50px;border:1.5px solid rgba(255,255,255,0.5);background:transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
+                停止
+            </button>
+        </div>
     </div>
     <canvas ref="canvas" class="hidden"></canvas>
 

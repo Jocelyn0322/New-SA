@@ -69,6 +69,7 @@ const app = createApp({
             quizAiMatch,
             isAnalyzing,
             faceDetectionBusy,
+            cameraWarning,
             showResultModal,
             toneMismatchWarning,
             showSwatchCard,
