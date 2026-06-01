@@ -193,7 +193,7 @@ if (isset($_SESSION['user'])) {
       </svg>
     </button>
     <a href="<?= BASE_URL ?>/產品/index.php" class="logo">
-      <div class="logo-mark">💄</div>COSMETIC
+      COSMETIC
     </a>
     <nav class="nav">
       <a href="<?= BASE_URL ?>/產品/index.php"    class="nav-link <?= $_navHome   ? 'active' : '' ?>">首頁</a>
@@ -282,7 +282,7 @@ if (isset($_SESSION['user'])) {
 <div class="mob-overlay" id="mobOverlay" onclick="closeMobMenu()"></div>
 <div class="mob-drawer" id="mobDrawer">
   <div class="mob-drawer-head">
-    <div class="mob-drawer-logo">💄 COSMETIC</div>
+    <div class="mob-drawer-logo">COSMETIC</div>
     <button class="mob-close" onclick="closeMobMenu()">✕</button>
   </div>
 
@@ -419,6 +419,8 @@ window.closeMobMenu = function(){ document.getElementById('mobDrawer').classList
               link = `${BASE}/首頁/appeal.php?video_id=${n.video_id}`;
             } else if (n.type === 'appeal_result' || n.type === 'new_video') {
               link = BASE + '/首頁/video.php';
+            } else if (n.type === 'product_review') {
+              link = BASE + '/產品/products.php';
             } else {
               link = BASE + '/首頁/video.php';
             }
@@ -426,6 +428,15 @@ window.closeMobMenu = function(){ document.getElementById('mobDrawer').classList
             const title = n.video_title ? `「${n.video_title}」` : '新影片';
             text = `<strong>${n.actor}</strong> 發布了新影片 ${title}`;
             link = BASE + '/首頁/video.php';
+          }
+          // 狀態標籤
+          let statusTag = '';
+          if (n.type === 'product_review') {
+            if (n.message && n.message.includes('核准')) {
+              statusTag = `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#d4edda;color:#155724;vertical-align:middle;">✓ 核准</span>`;
+            } else if (n.message && n.message.includes('拒絕')) {
+              statusTag = `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#f8d7da;color:#721c24;vertical-align:middle;">✕ 拒絕</span>`;
+            }
           }
           const appealedTag = n.has_appealed
             ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#e8f4fd;color:#2471a3;vertical-align:middle;">已申訴</span>`
@@ -435,7 +446,7 @@ window.closeMobMenu = function(){ document.getElementById('mobDrawer').classList
           return `<a href="${link}" class="notif-item${n.is_read ? '' : ' unread'}">
             <div class="notif-avatar">${initial}</div>
             <div class="notif-body">
-              <div class="notif-text">${text}${appealedTag}</div>
+              <div class="notif-text">${text}${statusTag}${appealedTag}</div>
               <div class="notif-time">${timeAgo(n.created_at)}</div>
             </div>
           </a>`;
