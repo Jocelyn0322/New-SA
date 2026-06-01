@@ -200,12 +200,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete']) && isset($_
         $canDelete = ($_SESSION['role'] ?? '') === 'admin' || $video['uploaded_by'] === $_SESSION['user'];
 
         if ($canDelete) {
-            // 刪除影片 BLOB 與紀錄
-            try { $pdo->prepare("DELETE FROM video_files WHERE video_id = ?")->execute([$videoId]); } catch (Exception $e) {}
-            $stmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
-            $stmt->execute([$videoId]);
+            // 軟下架（保留影片與資料，可於後台復原，不永久刪除）
+            $pdo->prepare("UPDATE videos SET is_active = 0,
+                              removed_reason = CASE WHEN removed_reason IS NULL OR removed_reason = '' THEN '使用者刪除' ELSE removed_reason END,
+                              removed_at = NOW()
+                           WHERE id = ?")->execute([$videoId]);
 
-            $message = '影片刪除成功！';
+            $message = '影片已刪除！';
             $messageType = 'success';
         } else {
             $message = '您沒有權限刪除此影片';

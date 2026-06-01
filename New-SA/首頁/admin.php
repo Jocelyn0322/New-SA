@@ -272,23 +272,61 @@ if (isset($_POST['update_product'])) {
     $tab = 'data_products';
 }
 
-// 刪除產品（含關聯資料；無外鍵，手動清除避免孤兒。products 為 data 鏡像，一併刪）
+// 已刪除產品封存表（可復原）
+$pdo->exec("CREATE TABLE IF NOT EXISTS deleted_products (
+    id INT PRIMARY KEY,
+    name VARCHAR(255), brand VARCHAR(255), category VARCHAR(255),
+    snapshot LONGTEXT, deleted_by VARCHAR(100),
+    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// 刪除產品（留存快照可復原；只刪 data 與 products 鏡像，色號/圖片/成分/評分原地保留以便復原）
 if (isset($_POST['delete_product'])) {
     $pid = (int)($_POST['product_id'] ?? 0);
     if ($pid > 0) {
-        foreach ([
-            'product_colors'            => 'p_id',
-            'product_favorites'         => 'product_id',
-            'product_images'            => 'product_id',
-            'product_ratings'           => 'product_id',
-            'product_reports'           => 'product_id',
-            'user_product_interactions' => 'product_id',
-            'products'                  => 'p_id',
-        ] as $t => $col) {
-            try { $pdo->prepare("DELETE FROM `$t` WHERE `$col` = ?")->execute([$pid]); } catch (Throwable $e) {}
+        $dr = $pdo->prepare("SELECT * FROM data WHERE id = ?");
+        $dr->execute([$pid]);
+        $drow = $dr->fetch(PDO::FETCH_ASSOC);
+        if ($drow) {
+            $pdo->prepare("INSERT INTO deleted_products (id, name, brand, category, snapshot, deleted_by)
+                           VALUES (?,?,?,?,?,?)
+                           ON DUPLICATE KEY UPDATE name=VALUES(name), brand=VALUES(brand),
+                               category=VALUES(category), snapshot=VALUES(snapshot),
+                               deleted_by=VALUES(deleted_by), deleted_at=NOW()")
+                ->execute([$pid, $drow['name'] ?? '', $drow['brand'] ?? '', $drow['category'] ?? '',
+                           json_encode($drow, JSON_UNESCAPED_UNICODE), $adminUser]);
+            $pdo->prepare("DELETE FROM data WHERE id = ?")->execute([$pid]);
+            try { $pdo->prepare("DELETE FROM products WHERE p_id = ?")->execute([$pid]); } catch (Throwable $e) {}
+            $msg = '🗑 已刪除產品（已留存紀錄，可於下方復原）'; $msgType = 'success';
+        } else {
+            $msg = '找不到產品'; $msgType = 'error';
         }
-        $pdo->prepare("DELETE FROM data WHERE id = ?")->execute([$pid]);
-        $msg = '🗑 已刪除產品'; $msgType = 'success';
+    }
+    $tab = 'data_products';
+}
+
+// 復原已刪除產品
+if (isset($_POST['restore_product'])) {
+    $pid = (int)($_POST['product_id'] ?? 0);
+    if ($pid > 0) {
+        $sr = $pdo->prepare("SELECT snapshot FROM deleted_products WHERE id = ?");
+        $sr->execute([$pid]);
+        $snap = $sr->fetchColumn();
+        $row  = $snap ? json_decode($snap, true) : null;
+        if ($row && is_array($row)) {
+            try {
+                $cols    = array_keys($row);
+                $colSql  = implode(',', array_map(fn($c) => "`$c`", $cols));
+                $place   = implode(',', array_fill(0, count($cols), '?'));
+                $pdo->prepare("INSERT INTO data ($colSql) VALUES ($place)")->execute(array_values($row));
+                $pdo->prepare("DELETE FROM deleted_products WHERE id = ?")->execute([$pid]);
+                $msg = '✅ 已復原產品'; $msgType = 'success';
+            } catch (Throwable $e) {
+                $msg = '復原失敗：' . $e->getMessage(); $msgType = 'error';
+            }
+        } else {
+            $msg = '找不到可復原的紀錄'; $msgType = 'error';
+        }
     }
     $tab = 'data_products';
 }
@@ -356,6 +394,12 @@ if ($tab === 'data_products') {
     }
     $dpProducts = $dpStmt->fetchAll();
     $dpPages    = (int)ceil($dpTotal / $dpPerPage);
+
+    // 已刪除（可復原）的產品
+    try {
+        $deletedProducts = $pdo->query("SELECT id, name, brand, category, deleted_by, deleted_at
+                                        FROM deleted_products ORDER BY deleted_at DESC")->fetchAll();
+    } catch (Throwable $e) { $deletedProducts = []; }
 }
 
 if ($tab === 'products') {
@@ -1893,6 +1937,39 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
   </div>
   <?php endif; ?>
 </div>
+
+<!-- 已刪除產品（可復原） -->
+<?php if (!empty($deletedProducts)): ?>
+<div class="card" style="margin-top:18px;">
+  <div class="card-header">
+    <div class="card-header-title">🗑 已刪除產品（可復原）</div>
+    <span class="badge badge-orange"><?php echo count($deletedProducts); ?> 筆</span>
+  </div>
+  <div class="table-wrap">
+    <table class="adm-table">
+      <thead><tr><th>#</th><th>名稱</th><th>品牌</th><th>分類</th><th>刪除者</th><th>刪除時間</th><th>操作</th></tr></thead>
+      <tbody>
+        <?php foreach ($deletedProducts as $dp): ?>
+        <tr>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo (int)$dp['id']; ?></td>
+          <td><strong><?php echo htmlspecialchars($dp['name'] ?? ''); ?></strong></td>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo htmlspecialchars($dp['brand'] ?? ''); ?></td>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo htmlspecialchars($dp['category'] ?? ''); ?></td>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo htmlspecialchars($dp['deleted_by'] ?? ''); ?></td>
+          <td style="color:var(--text-3);font-size:12px;"><?php echo $dp['deleted_at'] ? date('Y/m/d H:i', strtotime($dp['deleted_at'])) : '—'; ?></td>
+          <td>
+            <form method="post" onsubmit="return confirm('確定復原此產品？')" style="margin:0;">
+              <input type="hidden" name="product_id" value="<?php echo (int)$dp['id']; ?>">
+              <button type="submit" name="restore_product" value="1" class="act-btn success">↩ 復原</button>
+            </form>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- 編輯 Modal -->
 <div id="dpModalBg" class="dp-modal-bg" onclick="if(event.target===this)closeEdit()">

@@ -3,22 +3,28 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 if (!defined('BASE_URL')) require_once __DIR__ . '/../db.php';
 else include __DIR__ . '/../db.php';
 
-// 管理員：刪除產品（含關聯資料；無外鍵，手動清除避免孤兒。products 為 data 鏡像，一併刪）
+// 管理員：刪除產品（封存可復原；只移除 data 與 products 鏡像，其餘關聯保留以便復原）
 if (($_SESSION['role'] ?? '') === 'admin' && isset($_POST['delete_product'])) {
     $del_pid = (int)($_POST['product_id'] ?? 0);
     if ($del_pid > 0) {
-        foreach ([
-            'product_colors'            => 'p_id',
-            'product_favorites'         => 'product_id',
-            'product_images'            => 'product_id',
-            'product_ratings'           => 'product_id',
-            'product_reports'           => 'product_id',
-            'user_product_interactions' => 'product_id',
-            'products'                  => 'p_id',
-        ] as $t => $col) {
-            try { $conn->prepare("DELETE FROM `$t` WHERE `$col` = ?")->execute([$del_pid]); } catch (Throwable $e) {}
+        $conn->exec("CREATE TABLE IF NOT EXISTS deleted_products (
+            id INT PRIMARY KEY, name VARCHAR(255), brand VARCHAR(255), category VARCHAR(255),
+            snapshot LONGTEXT, deleted_by VARCHAR(100), deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $dr = $conn->prepare("SELECT * FROM data WHERE id = ?");
+        $dr->execute([$del_pid]);
+        $drow = $dr->fetch(PDO::FETCH_ASSOC);
+        if ($drow) {
+            $conn->prepare("INSERT INTO deleted_products (id, name, brand, category, snapshot, deleted_by)
+                            VALUES (?,?,?,?,?,?)
+                            ON DUPLICATE KEY UPDATE name=VALUES(name), brand=VALUES(brand),
+                                category=VALUES(category), snapshot=VALUES(snapshot),
+                                deleted_by=VALUES(deleted_by), deleted_at=NOW()")
+                 ->execute([$del_pid, $drow['name'] ?? '', $drow['brand'] ?? '', $drow['category'] ?? '',
+                            json_encode($drow, JSON_UNESCAPED_UNICODE), ($_SESSION['user'] ?? 'Admin')]);
+            try { $conn->prepare("DELETE FROM data WHERE id = ?")->execute([$del_pid]); } catch (Throwable $e) {}
+            try { $conn->prepare("DELETE FROM products WHERE p_id = ?")->execute([$del_pid]); } catch (Throwable $e) {}
         }
-        $conn->prepare("DELETE FROM data WHERE id = ?")->execute([$del_pid]);
     }
     header('Location: ' . $_SERVER['REQUEST_URI']); // PRG：避免重新整理重送刪除
     exit;

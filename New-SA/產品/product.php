@@ -344,6 +344,28 @@ if (empty($_SESSION[$viewedKey])) {
         <?php endif; ?>
     <?php } ?>
 
+    <?php if ($isAdmin):
+        $delColors = [];
+        try {
+            $dc = $pdo->prepare("SELECT color_id, color_name FROM deleted_colors WHERE p_id = ? ORDER BY deleted_at DESC");
+            $dc->execute([$id]);
+            $delColors = $dc->fetchAll();
+        } catch (Throwable $e) {}
+        if ($delColors): ?>
+        <div style="margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:var(--r-sm);background:#fafafa;">
+            <div style="font-size:12px;color:#888;margin-bottom:8px;">🗑 已刪除色號（可復原）</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <?php foreach ($delColors as $dcr): ?>
+                <button type="button" onclick="restoreColor(<?php echo (int)$dcr['color_id']; ?>)"
+                        style="font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;background:#fff;cursor:pointer;">
+                    ↩ <?php echo htmlspecialchars($dcr['color_name'] ?: ('#' . $dcr['color_id'])); ?>
+                </button>
+            <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    <?php endif; ?>
+
 <?php
 // 決定評分屬性
 $category   = $row['category'] ?? '';
@@ -610,10 +632,22 @@ async function addColor() {
     }
 }
 
+async function restoreColor(colorId) {
+    if (!confirm('復原此色號？')) return;
+    var form = new FormData();
+    form.append('color_id', colorId);
+    try {
+        var res  = await fetch('restore_color.php', { method:'POST', body: form });
+        var data = await res.json();
+        if (data.success) { location.reload(); }
+        else { alert('復原失敗：' + (data.message || '')); }
+    } catch(e) { alert('網路錯誤'); }
+}
+
 async function deleteColor() {
     if (!selectedColorId) return;
     var msg = document.getElementById('colorUploadMsg');
-    if (!confirm('確定要刪除此色號？')) return;
+    if (!confirm('刪除此色號？（已留存紀錄，可在下方「已刪除色號」復原）')) return;
 
     msg.style.color='#999'; msg.textContent='刪除中…';
     var form = new FormData();
