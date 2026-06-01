@@ -152,6 +152,48 @@ try {
         exit;
     }
 
+    // ───────── 改帳號名稱（用目前密碼確認，不需驗證碼；連動更新所有相關資料表）─────────
+    if ($action === 'update_username') {
+        $newName = trim($body['username'] ?? '');
+        $pwd     = $body['current_password'] ?? '';
+        if ($me['password'] !== $pwd) { echo json_encode(['success'=>false,'message'=>'目前密碼不正確']); exit; }
+        if ($newName === '')          { echo json_encode(['success'=>false,'message'=>'請填寫帳號名稱']); exit; }
+        if ($newName === $username)   { echo json_encode(['success'=>false,'message'=>'新帳號名稱與目前相同']); exit; }
+        if (!preg_match('/^[\w\x{4e00}-\x{9fff}]{2,20}$/u', $newName)) {
+            echo json_encode(['success'=>false,'message'=>'帳號名稱只能含字母、數字、底線、中文，2-20 字元']); exit;
+        }
+        $chk = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+        $chk->execute([$newName]);
+        if ($chk->fetch()) { echo json_encode(['success'=>false,'message'=>'此帳號名稱已被使用']); exit; }
+
+        // 所有存「帳號名稱」的欄位，改名時一起更新（避免資料變孤兒）
+        $cascade = [
+            ['users','username'], ['user_profiles','username'], ['avatar_images','username'],
+            ['videos','uploaded_by'], ['videos','removed_by'],
+            ['video_comments','username'], ['video_appeals','username'], ['video_reports','reported_by'],
+            ['follows','follower'], ['follows','following'],
+            ['likes','user_id'], ['comment_likes','user_id'], ['comment_reports','reported_by'],
+            ['notifications','recipient'], ['notifications','actor'],
+            ['product_favorites','username'], ['product_ratings','username'], ['product_reports','username'],
+            ['product_requests','username'], ['product_submissions','username'],
+            ['user_product_interactions','username'], ['analysis_history','username'], ['account_deletions','username'],
+        ];
+        $pdo->beginTransaction();
+        try {
+            foreach ($cascade as [$t, $c]) {
+                try { $pdo->prepare("UPDATE `$t` SET `$c` = ? WHERE `$c` = ?")->execute([$newName, $username]); }
+                catch (Throwable $e) { /* 某表/欄位不存在則略過 */ }
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            echo json_encode(['success'=>false,'message'=>'更新失敗，已還原']); exit;
+        }
+        $_SESSION['user'] = $newName;
+        echo json_encode(['success'=>true,'message'=>'帳號名稱已更新為 '.$newName,'new_username'=>$newName]);
+        exit;
+    }
+
     echo json_encode(['success' => false, 'message' => '不支援的操作']);
 
 } catch (PDOException $e) {

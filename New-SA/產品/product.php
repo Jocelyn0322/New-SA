@@ -47,12 +47,20 @@ require_once __DIR__ . '/rating_attributes.php';
 $id = intval($_GET['id'] ?? 0);
 
 if ($id <= 0) {
-    echo '<div class="products"><div class="empty-state"><h3>缺少產品編號</h3><p><a href="products.php">返回產品列表</a></p></div></div>';
-    include 'footer.php';
+
+include 'footer.php';
     exit;
 }
 
-$sql = "SELECT *, id AS p_id FROM data WHERE id=$id";
+// 產地、成分從正規化的表讀（不動資料庫，純程式 JOIN）
+$sql = "SELECT d.*, d.id AS p_id,
+    po.name AS origin,
+    (SELECT GROUP_CONCAT(i.name ORDER BY i.name SEPARATOR '、')
+       FROM product_ingredients pi JOIN ingredients i ON pi.ingredient_id = i.id
+      WHERE pi.product_id = d.id) AS ingredients
+  FROM data d
+  LEFT JOIN product_origins po ON d.origin_id = po.id
+  WHERE d.id = $id";
 $result = $conn->query($sql);
 if (!$result) {
     echo '<div class="products"><div class="empty-state"><h3>查詢失敗</h3><p>產品資料表可能尚未匯入，或資料庫連線名稱不正確。</p><p><a href="products.php">返回產品列表</a></p></div></div>';
@@ -118,7 +126,7 @@ if (empty($_SESSION[$viewedKey])) {
                 <?php endif; ?>
             </div>
 
-            <h3>成分</h3>
+            <h3>主要成分</h3>
             <?php $ing = htmlspecialchars($row['ingredients'] ?? ''); ?>
             <div id="ingWrap">
                 <p id="ingText" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
@@ -212,7 +220,7 @@ if (empty($_SESSION[$viewedKey])) {
         <input id="ep_origin" type="text" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;margin-bottom:10px;">
         <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">用途</label>
         <textarea id="ep_purpose" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
-        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">成分</label>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">主要成分</label>
         <textarea id="ep_ingredients" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
         <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">注意事項</label>
         <textarea id="ep_precautions" rows="2" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:12px;"></textarea>
@@ -240,6 +248,7 @@ if (empty($_SESSION[$viewedKey])) {
         <div class="color-swatch <?php echo $hasImg ? 'color-has-img' : ''; ?>"
              data-color-id="<?php echo (int)$color['color_id']; ?>"
              data-color-name="<?php echo htmlspecialchars($color['color_name']); ?>"
+             data-color-hex="<?php echo htmlspecialchars($color['color_hex'] ?? ''); ?>"
              data-color-img="<?php echo htmlspecialchars($color['color_img'] ?? ''); ?>"
              onclick="switchColor(this)">
             <div class="color-circle-lg" style="background:<?php echo htmlspecialchars($color['color_hex']); ?>;"></div>
@@ -261,6 +270,19 @@ if (empty($_SESSION[$viewedKey])) {
             <button onclick="closeColorUpload()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>
         </div>
         <p id="colorUploadName" style="font-size:13px;color:var(--rose);margin-bottom:10px;"></p>
+
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色號名稱</label>
+        <input type="text" id="editColorName" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">色票顏色</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <input type="color" id="editColorHex" value="#E0AC7A" style="width:48px;height:38px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;padding:2px;" oninput="document.getElementById('editColorHexText').value=this.value;">
+            <input type="text" id="editColorHexText" value="#E0AC7A" placeholder="#RRGGBB" maxlength="7"
+                   style="flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;"
+                   oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value))document.getElementById('editColorHex').value=this.value;">
+        </div>
+        <button onclick="updateColorHex()" class="btn btn-primary" style="width:100%;margin-bottom:10px;">儲存</button>
+        <hr style="border:none;border-top:1px solid var(--border);margin-bottom:10px;">
+
         <p style="font-size:12px;color:#888;margin-bottom:6px;">更換照片</p>
         <input type="file" id="colorImgInput" accept="image/*" style="font-size:13px;width:100%;margin-bottom:8px;">
         <button onclick="uploadColorImg()" class="btn btn-primary" style="width:100%;margin-bottom:10px;">上傳</button>
@@ -284,6 +306,8 @@ if (empty($_SESSION[$viewedKey])) {
                    style="flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;"
                    oninput="syncHexText(this.value)">
         </div>
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">照片（可選）</label>
+        <input type="file" id="newColorImg" accept="image/*" style="font-size:13px;width:100%;margin-bottom:10px;">
         <button onclick="addColor()" class="btn btn-primary" style="width:100%;">新增</button>
         <p id="addColorMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
     </div>
@@ -312,6 +336,8 @@ if (empty($_SESSION[$viewedKey])) {
                        style="flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;"
                        oninput="syncHexText(this.value)">
                 </div>
+                <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">照片（可選）</label>
+                <input type="file" id="newColorImg" accept="image/*" style="font-size:13px;width:100%;margin-bottom:10px;">
                 <button onclick="addColor()" class="btn btn-primary" style="width:100%;">新增</button>
                 <p id="addColorMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
             </div>
@@ -465,7 +491,49 @@ function switchColor(el) {
         document.getElementById('colorUploadName').textContent = '色號：' + name;
         document.getElementById('colorUploadMsg').textContent = '';
         document.getElementById('colorImgInput').value = '';
+        var hex = el.dataset.colorHex || '#E0AC7A';
+        if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) hex = '#E0AC7A';
+        document.getElementById('editColorHex').value = hex;
+        document.getElementById('editColorHexText').value = hex;
+        document.getElementById('editColorName').value = name;
         panel.classList.add('show');
+    }
+}
+
+async function updateColorHex() {
+    if (!selectedColorId) return;
+    var hex  = document.getElementById('editColorHexText').value.trim() || document.getElementById('editColorHex').value;
+    var name = (document.getElementById('editColorName').value || '').trim();
+    var msg  = document.getElementById('colorUploadMsg');
+    if (!name) { msg.style.color='#e05'; msg.textContent='請輸入色號名稱'; return; }
+    if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) { msg.style.color='#e05'; msg.textContent='顏色格式不正確'; return; }
+
+    msg.style.color='#999'; msg.textContent='儲存中…';
+    var form = new FormData();
+    form.append('color_id', selectedColorId);
+    form.append('color_hex', hex);
+    form.append('color_name', name);
+
+    try {
+        var res  = await fetch('update_color.php', { method:'POST', body: form });
+        var data = await res.json();
+        if (data.success) {
+            msg.style.color='#27ae60'; msg.textContent='✓ 已更新';
+            if (activeSwatch) {
+                activeSwatch.dataset.colorHex  = hex;
+                activeSwatch.dataset.colorName = name;
+                var circle = activeSwatch.querySelector('.color-circle-lg');
+                if (circle) circle.style.background = hex;
+                var label = activeSwatch.querySelector('.color-label');
+                if (label) label.textContent = name;
+            }
+            document.getElementById('colorUploadName').textContent = '色號：' + name;
+            if (colorNameEl) colorNameEl.textContent = name;
+        } else {
+            msg.style.color='#e05'; msg.textContent='失敗：' + data.message;
+        }
+    } catch(e) {
+        msg.style.color='#e05'; msg.textContent='網路錯誤';
     }
 }
 
@@ -484,6 +552,7 @@ function openAddColor() {
     if (panel) {
         document.getElementById('addColorMsg').textContent = '';
         document.getElementById('newColorName').value = '';
+        var ai = document.getElementById('newColorImg'); if (ai) ai.value = '';
         panel.classList.add('show');
     }
 }
@@ -511,6 +580,8 @@ async function addColor() {
     form.append('p_id', <?php echo $id; ?>);
     form.append('color_name', name);
     form.append('color_hex', hex);
+    var imgInput = document.getElementById('newColorImg');
+    if (imgInput && imgInput.files && imgInput.files[0]) form.append('image', imgInput.files[0]);
 
     try {
         var res  = await fetch('add_color.php', { method:'POST', body: form });
@@ -521,10 +592,11 @@ async function addColor() {
             var wrap = document.querySelector('.colors-flex');
             if (!wrap) { location.reload(); return; }
             var el = document.createElement('div');
-            el.className = 'color-swatch';
+            el.className = 'color-swatch' + (data.url ? ' color-has-img' : '');
             el.dataset.colorId   = data.color_id;
             el.dataset.colorName = name;
-            el.dataset.colorImg  = '';
+            el.dataset.colorHex  = hex;
+            el.dataset.colorImg  = data.url || '';
             el.setAttribute('onclick', 'switchColor(this)');
             el.innerHTML = '<div class="color-circle-lg" style="background:'+hex+';"></div>'
                          + '<div class="color-label">'+name+'</div>';

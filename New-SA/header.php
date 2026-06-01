@@ -420,6 +420,8 @@ window.closeMobMenu = function(){ document.getElementById('mobDrawer').classList
             text = n.message;
             if (n.type === 'video_removed' && n.video_id) {
               link = `${BASE}/首頁/appeal.php?video_id=${n.video_id}`;
+            } else if (n.type === 'comment_removed') {
+              link = `${BASE}/首頁/comment_appeal.php`;
             } else if (n.type === 'appeal_result' || n.type === 'new_video') {
               link = BASE + '/首頁/video.php';
             } else if (n.type === 'product_review') {
@@ -443,7 +445,7 @@ window.closeMobMenu = function(){ document.getElementById('mobDrawer').classList
           }
           const appealedTag = n.has_appealed
             ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#e8f4fd;color:#2471a3;vertical-align:middle;">已申訴</span>`
-            : (n.type === 'video_removed' && n.video_id
+            : ((n.type === 'video_removed' && n.video_id) || n.type === 'comment_removed'
                 ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fff3cd;color:#856404;vertical-align:middle;">可申訴</span>`
                 : '');
           return `<a href="${link}" class="notif-item${n.is_read ? '' : ' unread'}">

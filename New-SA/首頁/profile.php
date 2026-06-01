@@ -80,9 +80,9 @@ try {
     $s->execute([$_SESSION['user']]); $statVideos = (int)$s->fetchColumn();
 } catch(Exception $e) { $statVideos = 0; }
 try {
-    $s = $pdo->prepare("SELECT COUNT(*) FROM product_ratings WHERE username = ?");
-    $s->execute([$_SESSION['user']]); $statRatings = (int)$s->fetchColumn();
-} catch(Exception $e) { $statRatings = 0; }
+    $s = $pdo->prepare("SELECT COUNT(*) FROM follows WHERE following = ?");
+    $s->execute([$_SESSION['user']]); $statFollowers = (int)$s->fetchColumn();
+} catch(Exception $e) { $statFollowers = 0; }
 
 /* ── Liked Videos ── */
 $likedVideos = [];
@@ -261,7 +261,7 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
       <div class="profile-stats">
         <div class="profile-stat"><div class="profile-stat-num"><?= $statLikes ?></div><div class="profile-stat-label">影片收藏</div></div>
         <div class="profile-stat"><div class="profile-stat-num"><?= $statVideos ?></div><div class="profile-stat-label">影片</div></div>
-        <div class="profile-stat"><div class="profile-stat-num"><?= $statRatings ?></div><div class="profile-stat-label">評分</div></div>
+        <div class="profile-stat"><div class="profile-stat-num"><?= $statFollowers ?></div><div class="profile-stat-label">粉絲</div></div>
       </div>
     </div>
 
@@ -286,18 +286,20 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
       <div class="setting-row">
         <div class="form-group">
           <label class="form-label">帳號</label>
-          <input class="form-input" value="<?= htmlspecialchars($_SESSION['user']) ?>" readonly style="background:var(--bg);color:var(--text-3);">
+          <input class="form-input" id="accountField" value="<?= htmlspecialchars($_SESSION['user']) ?>" readonly style="background:var(--bg);color:var(--text-3);">
         </div>
         <div class="form-group">
           <label class="form-label">Email</label>
-          <input class="form-input" id="emailField" type="email" value="<?= htmlspecialchars($currentEmail) ?>">
+          <input class="form-input" id="emailField" type="email" value="<?= htmlspecialchars($currentEmail) ?>" readonly style="background:var(--bg);color:var(--text-3);">
         </div>
       </div>
       <div id="emailPwdRow" style="display:none;margin-bottom:12px;">
         <label class="form-label">請輸入目前密碼以確認修改</label>
-        <input class="form-input" id="emailConfirmPwd" type="password" placeholder="目前密碼" style="max-width:320px;">
+        <input class="form-input" id="emailConfirmPwd" type="password" placeholder="目前密碼" autocomplete="new-password" style="max-width:320px;">
       </div>
-      <button class="btn btn-primary btn-sm" id="emailSendBtn" onclick="saveEmail()">寄送驗證碼</button>
+      <button class="btn btn-outline btn-sm" id="editInfoBtn" onclick="editInfo()">修改</button>
+      <button class="btn btn-primary btn-sm" id="usernameSaveBtn" onclick="saveUsername()" style="display:none;">儲存帳號名稱</button>
+      <button class="btn btn-primary btn-sm" id="emailSendBtn" onclick="saveEmail()" style="display:none;">更新 Email（寄驗證碼）</button>
       <div id="emailCodeRow" style="display:none;margin-top:12px;">
         <label class="form-label" id="emailCodeLabel">輸入驗證碼</label>
         <div style="display:flex;gap:8px;max-width:340px;">
@@ -318,11 +320,11 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
       <div class="setting-row">
         <div class="form-group">
           <label class="form-label">目前密碼</label>
-          <input class="form-input" id="pwdCurrent" type="password" placeholder="輸入目前密碼">
+          <input class="form-input" id="pwdCurrent" type="password" placeholder="輸入目前密碼" autocomplete="new-password">
         </div>
         <div class="form-group">
           <label class="form-label">新密碼</label>
-          <input class="form-input" id="pwdNew" type="password" placeholder="至少 6 個字元">
+          <input class="form-input" id="pwdNew" type="password" placeholder="至少 6 個字元" autocomplete="new-password">
           <div style="font-size:12px;color:#aaa;margin-top:4px;">密碼需至少 6 個字元</div>
         </div>
       </div>
@@ -584,11 +586,35 @@ function switchTab(i, el) {
 const emailField = document.getElementById('emailField');
 const emailPwdRow = document.getElementById('emailPwdRow');
 let emailStage = null;  // 'old' | 'new'
-emailField.addEventListener('input', () => {
-  emailPwdRow.style.display = emailField.value !== '<?= addslashes($currentEmail) ?>' ? '' : 'none';
-});
 function emShow(cls, t){ const m=document.getElementById('emailMsg'); m.className='inline-msg '+cls; m.textContent=t; }
 async function emPost(p){ const r=await fetch('update_account.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)}); return r.json(); }
+// 按「修改」→ 解鎖 帳號 + Email（灰字變黑、可編輯），顯示目前密碼與儲存按鈕
+function editInfo() {
+  const acc = document.getElementById('accountField');
+  acc.readOnly = false; acc.style.background = ''; acc.style.color = '';
+  emailField.readOnly = false; emailField.style.background = ''; emailField.style.color = '';
+  emailPwdRow.style.display = '';                                   // 目前密碼（改帳號或 Email 都要）
+  document.getElementById('editInfoBtn').style.display = 'none';
+  document.getElementById('usernameSaveBtn').style.display = '';
+  document.getElementById('emailSendBtn').style.display = '';
+  acc.focus();
+}
+// 儲存帳號名稱（用目前密碼確認，不需驗證碼）
+async function saveUsername() {
+  const newName = document.getElementById('accountField').value.trim();
+  emShow('', '');
+  if (!newName) return emShow('err','請填寫帳號名稱');
+  if (newName === '<?= addslashes($_SESSION['user']) ?>') return emShow('ok','帳號名稱未變更');
+  const pwd = document.getElementById('emailConfirmPwd').value;
+  if (!pwd) return emShow('err','請輸入目前密碼');
+  emShow('', '更新中…');
+  try {
+    const d = await emPost({action:'update_username', username:newName, current_password:pwd});
+    if (!d.success) return emShow('err', d.message);
+    emShow('ok', d.message);
+    setTimeout(()=>location.reload(), 1000);
+  } catch(e){ emShow('err','網路錯誤'); }
+}
 // 步驟1：寄驗證碼到「原信箱」
 async function saveEmail() {
   const newEmail = emailField.value.trim();
@@ -645,9 +671,19 @@ async function emailCancel() {
   document.getElementById('emailCodeRow').style.display = 'none';
   document.getElementById('emailCode').value = '';
   emailField.value = '<?= addslashes($currentEmail) ?>';
+  emailField.readOnly = true;
+  emailField.style.background = 'var(--bg)';
+  emailField.style.color = 'var(--text-3)';
   emailPwdRow.style.display = 'none';
   document.getElementById('emailConfirmPwd').value = '';
-  emShow('ok', '已取消，Email 維持原本的');
+  // 帳號欄位也鎖回
+  const acc = document.getElementById('accountField');
+  acc.value = '<?= addslashes($_SESSION['user']) ?>';
+  acc.readOnly = true; acc.style.background = 'var(--bg)'; acc.style.color = 'var(--text-3)';
+  document.getElementById('editInfoBtn').style.display = '';
+  document.getElementById('usernameSaveBtn').style.display = 'none';
+  document.getElementById('emailSendBtn').style.display = 'none';
+  emShow('ok', '已取消，維持原本的帳號與 Email');
 }
 
 /* ── 改密碼（寄驗證碼到信箱）── */

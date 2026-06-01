@@ -291,6 +291,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_view']) && iss
         try {
             $pdo->prepare("UPDATE videos SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ? AND is_active = 1")
                 ->execute([$vid]);
+            // 記錄個人觀看紀錄（供推薦把看過的往後排）
+            if (isset($_SESSION['user'])) {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS video_views (
+                    username VARCHAR(100), video_id INT, viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (username, video_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+                $pdo->prepare("INSERT INTO video_views (username, video_id) VALUES (?, ?)
+                               ON DUPLICATE KEY UPDATE viewed_at = NOW()")
+                    ->execute([$_SESSION['user'], $vid]);
+            }
         } catch (Exception $e) {}
     }
     header('Content-Type: application/json');
@@ -438,6 +448,18 @@ if (true && $view === 'home' && $activeTag === '') {
         }
         $candidates = $cs->fetchAll();
 
+        // 3.5 已看過的影片（推薦時往後排，讓推薦會輪替、不每次都一樣）
+        $watchedIds = [];
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS video_views (
+                username VARCHAR(100), video_id INT, viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (username, video_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            $wv = $pdo->prepare("SELECT video_id FROM video_views WHERE username = ?");
+            $wv->execute([$_SESSION['user']]);
+            $watchedIds = array_flip($wv->fetchAll(PDO::FETCH_COLUMN));
+        } catch (Exception $e) { $watchedIds = []; }
+
         // 4. 計分
         $hasSignals = !empty($likedTags) || !empty($myFollowings) || !empty($skinTags);
 
@@ -456,19 +478,31 @@ if (true && $view === 'home' && $activeTag === '') {
         }
         unset($v);
 
-        if ($hasSignals) {
-            usort($candidates, fn($a, $b) => $b['rec_score'] <=> $a['rec_score']);
-            $recommended = array_slice($candidates, 0, 6);
-            $recReason   = 'personalized';
-        } else {
-            // 無互動紀錄 → 熱門推薦
-            usort($candidates, fn($a, $b) => $b['likes'] <=> $a['likes']);
-            $recommended = array_slice($candidates, 0, 6);
-            $recReason   = 'popular';
-        }
+        // 看過的一律往後排（未看過的優先），同組內再依分數/讚數排序
+        $primary = $hasSignals ? 'rec_score' : 'likes';
+        usort($candidates, function ($a, $b) use ($watchedIds, $primary) {
+            $aw = isset($watchedIds[$a['id']]) ? 1 : 0;
+            $bw = isset($watchedIds[$b['id']]) ? 1 : 0;
+            if ($aw !== $bw) return $aw <=> $bw;          // 未看過(0)排前面
+            return $b[$primary] <=> $a[$primary];
+        });
+        $recommended = array_slice($candidates, 0, 6);
+        $recReason   = $hasSignals ? 'personalized' : 'popular';
     } catch (Exception $e) {
         $recommended = [];
     }
+}
+
+// 頭貼：載入真實頭貼，失敗則退回名字首字
+function avatarInner($user) {
+    $init = htmlspecialchars(mb_strtoupper(mb_substr((string)$user, 0, 1)));
+    $u    = rawurlencode((string)$user);
+    $base = defined('BASE_URL') ? BASE_URL : '';
+    return '<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">' . $init . '</span>'
+         . '<img src="' . $base . '/image_file.php?type=avatar&user=' . $u . '" loading="lazy" '
+         . 'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;" '
+         . 'onload="this.style.display=\'\';this.previousElementSibling.style.display=\'none\';" '
+         . 'onerror="this.remove();">';
 }
 ?>
 <!DOCTYPE html>
@@ -1117,8 +1151,8 @@ if (true && $view === 'home' && $activeTag === '') {
 
                                 <div class="video-meta">
                                     <div class="author-info">
-                                        <div class="author-avatar">
-                                            <?php echo strtoupper($video['uploaded_by'][0]); ?>
+                                        <div class="author-avatar" style="position:relative;overflow:hidden;">
+                                            <?php echo avatarInner($video['uploaded_by']); ?>
                                         </div>
                                         <div class="author-details">
                                             <div class="author-name"><?php echo htmlspecialchars($video['uploaded_by']); ?></div>
@@ -1178,8 +1212,8 @@ if (true && $view === 'home' && $activeTag === '') {
 
                                 <div class="video-meta">
                                     <div class="author-info">
-                                        <div class="author-avatar">
-                                            <?php echo strtoupper($video['uploaded_by'][0]); ?>
+                                        <div class="author-avatar" style="position:relative;overflow:hidden;">
+                                            <?php echo avatarInner($video['uploaded_by']); ?>
                                         </div>
                                         <div class="author-details">
                                             <div class="author-name"><?php echo htmlspecialchars($video['uploaded_by']); ?></div>
@@ -1223,7 +1257,7 @@ if (true && $view === 'home' && $activeTag === '') {
             <div style="margin-bottom:32px;">
                 <?php foreach ($followingUsers as $fu): ?>
                 <div class="following-user-card">
-                    <div class="following-avatar"><?php echo mb_strtoupper(mb_substr($fu['following'],0,1)); ?></div>
+                    <div class="following-avatar" style="position:relative;overflow:hidden;"><?php echo avatarInner($fu['following']); ?></div>
                     <div>
                         <div style="font-weight:700;font-size:14px;color:#1c1c1e;"><?php echo htmlspecialchars($fu['following']); ?></div>
                         <div style="font-size:12px;color:#8e8e93;">共 <?php echo (int)$fu['video_count']; ?> 支影片 · 追蹤於 <?php echo date('m/d', strtotime($fu['created_at'])); ?></div>
@@ -1275,7 +1309,7 @@ if (true && $view === 'home' && $activeTag === '') {
                             </div>
                             <?php endif; ?>
                             <div class="vc-footer">
-                                <div class="vc-avatar"><?php echo mb_strtoupper(mb_substr($video['uploaded_by'], 0, 1)); ?></div>
+                                <div class="vc-avatar" style="position:relative;overflow:hidden;"><?php echo avatarInner($video['uploaded_by']); ?></div>
                                 <span class="vc-author"><?php echo htmlspecialchars($video['uploaded_by']); ?></span>
                                 <span class="vc-likes">❤️ <?php echo (int)$video['likes']; ?></span>
                             </div>
@@ -1355,7 +1389,7 @@ if (true && $view === 'home' && $activeTag === '') {
                         <div class="rec-info">
                             <div class="rec-card-title"><?= htmlspecialchars($rv['title']) ?></div>
                             <div class="rec-card-meta">
-                                <span class="vc-avatar" style="width:20px;height:20px;font-size:10px;"><?= mb_strtoupper(mb_substr($rv['uploaded_by'], 0, 1)) ?></span>
+                                <span class="vc-avatar" style="width:20px;height:20px;font-size:10px;position:relative;overflow:hidden;display:inline-flex;"><?= avatarInner($rv['uploaded_by']) ?></span>
                                 <?= htmlspecialchars($rv['uploaded_by']) ?>
                                 <?php if (!empty($rvTags)): ?>
                                     · <?php foreach (array_slice($rvTags, 0, 2) as $t): ?>
@@ -1406,7 +1440,7 @@ if (true && $view === 'home' && $activeTag === '') {
                             </div>
                             <?php endif; ?>
                             <div class="vc-footer">
-                                <div class="vc-avatar"><?php echo mb_strtoupper(mb_substr($video['uploaded_by'], 0, 1)); ?></div>
+                                <div class="vc-avatar" style="position:relative;overflow:hidden;"><?php echo avatarInner($video['uploaded_by']); ?></div>
                                 <span class="vc-author"><?php echo htmlspecialchars($video['uploaded_by']); ?></span>
                                 <span class="vc-likes">❤️ <?php echo (int)$video['likes']; ?></span>
                             </div>
@@ -1747,7 +1781,14 @@ if (true && $view === 'home' && $activeTag === '') {
                     video.load();
                     video.play().catch(e => console.warn('自動播放失敗:', e.message));
                     video.onended = function() {
-                        nextVideo();
+                        // 檢舉面板開啟時，影片重複播放，避免檢舉到一半被切到下一支
+                        const rf = document.getElementById('reportForm');
+                        if (rf && rf.classList.contains('active')) {
+                            video.currentTime = 0;
+                            video.play().catch(() => {});
+                        } else {
+                            nextVideo();
+                        }
                     };
                 }
 

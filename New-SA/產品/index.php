@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../auth_check.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
-include __DIR__ . '/../db.php';
+if (!defined('BASE_URL')) require_once __DIR__ . '/../db.php';
+else include __DIR__ . '/../db.php';
 
 $sql = "SELECT *, id AS p_id FROM data ORDER BY created_at DESC LIMIT 8";
 $products  = $conn->query($sql)->fetchAll();   // 一次取完，避免邊 fetch 邊查
