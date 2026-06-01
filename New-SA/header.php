@@ -341,14 +341,17 @@ if (isset($_SESSION['user'])) {
   localStorage.setItem(KEY, '1');
   <?php elseif (isset($_SESSION['user'])): ?>
   // 已登入頁面：檢查 sessionStorage 標記是否存在
-  if (!sessionStorage.getItem(KEY)) {
-    if (localStorage.getItem(KEY)) {
-      // 另一個分頁有 session（新開分頁） → 繼承標記
-      sessionStorage.setItem(KEY, '1');
-    } else {
-      // 瀏覽器被關閉又重開 → 自動登出
-      window.location.replace('<?= BASE_URL ?>/首頁/logout.php?auto=1');
-    }
+  if (sessionStorage.getItem(KEY)) {
+    // 本分頁已登入 → 補回瀏覽器層級標記
+    // （修正：單分頁正常瀏覽時 beforeunload 會誤刪 localStorage 標記，
+    //   導致用 target="_blank" 開新分頁時被誤判為「瀏覽器重開」而自動登出）
+    localStorage.setItem(KEY, '1');
+  } else if (localStorage.getItem(KEY)) {
+    // 另一個分頁有 session（新開分頁） → 繼承標記
+    sessionStorage.setItem(KEY, '1');
+  } else {
+    // 瀏覽器被關閉又重開 → 自動登出
+    window.location.replace('<?= BASE_URL ?>/首頁/logout.php?auto=1');
   }
   <?php endif; ?>
 

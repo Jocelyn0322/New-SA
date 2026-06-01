@@ -290,7 +290,7 @@ if (empty($_SESSION[$viewedKey])) {
         <p id="colorUploadName" style="font-size:13px;color:var(--rose);margin-bottom:10px;"></p>
         <p style="font-size:12px;color:#888;margin-bottom:6px;">更換照片</p>
         <input type="file" id="colorImgInput" accept="image/*" style="font-size:13px;width:100%;margin-bottom:8px;">
-        <button onclick="uploadColorImg()" class="btn btn-primary" style="width:100%;margin-bottom:10px;">上傳到 Supabase</button>
+        <button onclick="uploadColorImg()" class="btn btn-primary" style="width:100%;margin-bottom:10px;">上傳</button>
         <hr style="border:none;border-top:1px solid var(--border);margin-bottom:10px;">
         <button onclick="deleteColor()" style="width:100%;padding:8px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--r-sm);color:var(--red);font-size:13px;cursor:pointer;">刪除此色號</button>
         <p id="colorUploadMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></p>

@@ -1,4 +1,4 @@
-ㄋㄚ<?php
+<?php
 /**
  * PDO session handler for Railway multi-instance deployment.
  * Auto-prepended via php.ini (auto_prepend_file) — runs before every PHP request.
