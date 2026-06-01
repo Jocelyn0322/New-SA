@@ -72,9 +72,7 @@ if (!empty($ids)) {
     <?php while ($row = $result->fetch()): ?>
       <div class="product-card">
         <div class="product-card-img">
-          <?php if (!empty($row['image_url'])): ?>
-            <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
-          <?php else: ?>💄<?php endif; ?>
+          <img src="<?= BASE_URL ?>/image_file.php?type=product&id=<?= $row['p_id'] ?>" alt="<?= htmlspecialchars($row['name']) ?>" onerror="this.style.display='none';this.parentElement.innerHTML='💄'" style="width:100%;height:100%;object-fit:contain;padding:8px;background:#f5f5f5;">
         </div>
 
         <form action="remove_favorite.php" method="POST" style="position:absolute;top:10px;right:10px;margin:0;">

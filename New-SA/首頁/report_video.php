@@ -43,11 +43,17 @@ if ($videoId <= 0 || $reason === '' || mb_strlen($description) < 10) {
 }
 
 try {
-    $checkVideo = $pdo->prepare("SELECT id FROM videos WHERE id = ?");
+    $checkVideo = $pdo->prepare("SELECT id, uploaded_by FROM videos WHERE id = ?");
     $checkVideo->execute([$videoId]);
-    if (!$checkVideo->fetch()) {
+    $video = $checkVideo->fetch();
+    if (!$video) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => '找不到該影片']);
+        exit;
+    }
+    if ($video['uploaded_by'] === $_SESSION['user']) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => '不能檢舉自己的影片']);
         exit;
     }
     // 檢查是否重複檢舉

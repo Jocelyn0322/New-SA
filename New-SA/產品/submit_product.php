@@ -18,12 +18,27 @@ $description = trim($data['description'] ?? '');
 $price       = trim($data['price']        ?? '');
 $purchaseLink = trim($data['purchase_link'] ?? '');
 
-if (!$productName) {
-    echo json_encode(['success' => false, 'message' => '產品名稱為必填']);
+if (!$productName || !$brand) {
+    echo json_encode(['success' => false, 'message' => '產品名稱與品牌為必填']);
     exit;
 }
 
 try {
+    // 查重：同品牌 + 同名稱已存在 data 表
+    $dup = $pdo->prepare("SELECT id FROM data WHERE name = ? AND brand = ? LIMIT 1");
+    $dup->execute([$productName, $brand]);
+    if ($dup->fetch()) {
+        echo json_encode(['success' => false, 'message' => '此產品已存在於資料庫中，無需重複新增']);
+        exit;
+    }
+    // 查重：同品牌 + 同名稱已有待審核申請
+    $dup2 = $pdo->prepare("SELECT id FROM product_requests WHERE product_name = ? AND brand = ? AND type = 'submission' AND status = 'pending' LIMIT 1");
+    $dup2->execute([$productName, $brand]);
+    if ($dup2->fetch()) {
+        echo json_encode(['success' => false, 'message' => '此產品已有待審核的申請，請等待管理員審核']);
+        exit;
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO product_requests (type, username, product_name, brand, category, description, price, purchase_link)
         VALUES ('submission', :username, :product_name, :brand, :category, :description, :price, :purchase_link)

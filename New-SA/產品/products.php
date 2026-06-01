@@ -92,6 +92,13 @@ if (!empty($products_raw)) {
     }
 }
 
+// 品牌清單（供 autocomplete 用）
+$brands_list = [];
+try {
+    $bRows = $conn->query("SELECT DISTINCT brand FROM data WHERE brand IS NOT NULL AND brand != '' ORDER BY brand")->fetchAll(PDO::FETCH_COLUMN);
+    $brands_list = $bRows;
+} catch (Exception $e) {}
+
 $categories_result = $conn->query("SELECT category FROM (SELECT DISTINCT category FROM data WHERE category IS NOT NULL AND category != '') sub ORDER BY CASE category
     WHEN '底妝' THEN 1 WHEN '遮瑕' THEN 2
     WHEN '眼影' THEN 3 WHEN '眼線' THEN 4 WHEN '睫毛膏' THEN 5
@@ -159,6 +166,7 @@ function page_url($p) {
     .modal-box2 input, .modal-box2 select, .modal-box2 textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 14px; font-family: inherit; outline: none; transition: border var(--t); box-sizing: border-box; }
     .modal-box2 input:focus, .modal-box2 select:focus, .modal-box2 textarea:focus { border-color: var(--rose); }
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; justify-content: center; }
     .modal-msg { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -305,7 +313,7 @@ function page_url($p) {
         $colors = $colorsMap[$row['p_id']] ?? [];
       ?>
       <div class="product-card">
-        <a class="card-link" href="product.php?id=<?= $row['p_id'] ?>" aria-label="<?= htmlspecialchars($row['name']) ?>"></a>
+        <a class="card-link" href="product.php?id=<?= $row['p_id'] ?>" tabindex="-1" aria-label="<?= htmlspecialchars($row['name']) ?>"></a>
         <?php if (isset($recommendedSet[(int)$row['p_id']])): ?>
           <span class="rec-badge">✨ 推薦您的產品</span>
         <?php endif; ?>
@@ -429,8 +437,16 @@ function page_url($p) {
       <p class="desc">填寫後由管理者審核，通過後將正式上架。</p>
       <label>產品名稱 <span style="color:var(--red)">*</span></label>
       <input type="text" id="sub_name" placeholder="例：超輕薄氣墊粉底">
-      <label>品牌</label>
-      <input type="text" id="sub_brand" placeholder="例：LANEIGE">
+      <label>品牌 <span style="color:var(--red)">*</span></label>
+      <div style="position:relative;">
+        <input type="text" id="sub_brand" placeholder="例：Dior 或 迪奧（支援中英搜尋）" autocomplete="off"
+               oninput="if(!_composing)brandSearch(this.value)"
+               oncompositionstart="_composing=true"
+               oncompositionend="_composing=false;brandSearch(this.value)"
+               onblur="setTimeout(()=>document.getElementById('brandDropdown').style.display='none',150)"
+               onfocus="if(this.value)brandSearch(this.value)">
+        <div id="brandDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--rose);border-radius:8px;max-height:180px;overflow-y:auto;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px;"></div>
+      </div>
       <label>分類</label>
       <select id="sub_category">
         <option value="">請選擇分類</option>
@@ -447,7 +463,7 @@ function page_url($p) {
       <input type="text" id="sub_link" placeholder="https://...（選填）">
       <div class="modal-actions">
         <button class="btn btn-outline" onclick="closeSubmitModal()">取消</button>
-        <button class="btn btn-primary" onclick="submitProduct()">送出申請</button>
+        <button id="submitProductBtn" class="btn btn-primary" onclick="submitProduct()">送出申請</button>
       </div>
       <p id="submitMsg" class="modal-msg"></p>
     </div>
@@ -582,7 +598,15 @@ let imgBase64 = null, imgMime = 'image/jpeg';
 
 function openImgSearch() { document.getElementById('imgSearchModal').style.display='flex'; resetImgSearch(); }
 function closeImgSearch() { document.getElementById('imgSearchModal').style.display='none'; }
-document.addEventListener('keydown', e => { if (e.key==='Escape') closeImgSearch(); });
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    closeImgSearch();
+    closeSubmitModal();
+    closeReportModal();
+  }
+});
+document.getElementById('submitModal').addEventListener('keydown', e => e.stopPropagation());
+document.getElementById('reportModal').addEventListener('keydown', e => e.stopPropagation());
 document.getElementById('imgSearchModal').addEventListener('click', function(e){ if(e.target===this) closeImgSearch(); });
 
 function resetImgSearch() {
@@ -661,7 +685,47 @@ async function runImgSearch() {
 }
 
 /* ── Submit / Report Modals ── */
-function openSubmitModal() { document.getElementById('submitModal').classList.add('active'); document.getElementById('submitMsg').textContent=''; }
+// 品牌清單（含中文別名，方便注音/中文輸入搜尋）
+var _composing = false;
+const _brandAliases = {
+  'CHANEL':'香奈兒', 'Dior':'迪奧', 'YSL':'聖羅蘭', 'Lancôme':'蘭蔻', 'Lancome':'蘭蔻',
+  'Estee Lauder':'雅詩蘭黛', 'MAC':'魅可', 'Clinique':'倩碧', 'Bobbi Brown':'芭比波朗',
+  'NARS':'娜斯', 'Giorgio Armani':'亞曼尼', 'Givenchy':'紀梵希', 'Charlotte Tilbury':'夏洛特蒂爾伯里',
+  'Benefit':'貝玲妃', 'Urban Decay':'城市衰敗', 'Too Faced':'兩面人', 'LANEIGE':'蘭芝',
+  'Sulwhasoo':'雪花秀', 'Innisfree':'悅詩風吟', 'MISSHA':'謎尚', 'Etude House':'伊蒂之屋',
+  'MAYBELLINE':'美寶蓮', 'L\'Oreal':'萊雅', "L'Oreal":'萊雅', 'Shiseido':'資生堂',
+  'SK-II':'SK2', 'CANMAKE':'井田', 'KATE':'凱婷', 'Biore':'蜜妮', 'ANESSA':'安耐曬',
+  'CeraVe':'適樂膚', 'La Roche-Posay':'理膚寶水', 'Kiehl\'s':'契爾氏', "Kiehl's":'契爾氏',
+  'Shu Uemura':'植村秀', 'ADDICTION':'安迪克申', 'HERA':'赫妍', '3CE':'三熹玉',
+};
+const _brandList = <?= json_encode($brands_list, JSON_UNESCAPED_UNICODE) ?>;
+
+function brandSearch(q) {
+  const dd = document.getElementById('brandDropdown');
+  if (!q) { dd.style.display = 'none'; return; }
+  const kw = q.toLowerCase();
+  const results = _brandList.filter(b => {
+    if (b.toLowerCase().includes(kw)) return true;
+    const zh = (_brandAliases[b] || '').toLowerCase();
+    return zh.includes(kw);
+  }).slice(0, 12);
+  if (!results.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = results.map(b => {
+    const zh = _brandAliases[b] ? `<span style="color:#aaa;font-size:12px;margin-left:6px;">${_brandAliases[b]}</span>` : '';
+    return `<div style="padding:9px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid #f5f5f5;"
+      onmousedown="document.getElementById('sub_brand').value='${b.replace(/'/g,"\\'")}';document.getElementById('brandDropdown').style.display='none'">
+      ${b}${zh}</div>`;
+  }).join('');
+  dd.style.display = 'block';
+}
+
+let _submitCloseTimer = null;
+function openSubmitModal() {
+  if (_submitCloseTimer) { clearTimeout(_submitCloseTimer); _submitCloseTimer = null; }
+  document.getElementById('submitModal').classList.add('active');
+  document.getElementById('submitMsg').textContent='';
+  setTimeout(() => document.getElementById('sub_name').focus(), 50);
+}
 function closeSubmitModal() { document.getElementById('submitModal').classList.remove('active'); }
 function openReportModal(id,name) {
   document.getElementById('report_product_id').value=id;
@@ -675,16 +739,35 @@ function closeReportModal() { document.getElementById('reportModal').classList.r
 
 async function submitProduct() {
   const name=document.getElementById('sub_name').value.trim();
-  if(!name){const m=document.getElementById('submitMsg');m.style.color='var(--red)';m.textContent='請填寫產品名稱';return;}
-  const payload={product_name:name,brand:document.getElementById('sub_brand').value.trim(),category:document.getElementById('sub_category').value,description:document.getElementById('sub_desc').value.trim(),price:document.getElementById('sub_price').value.trim(),purchase_link:document.getElementById('sub_link').value.trim()};
+  const brand=document.getElementById('sub_brand').value.trim();
+  if(!name||!brand){const m=document.getElementById('submitMsg');m.style.color='var(--red)';m.textContent='請填寫產品名稱與品牌';return;}
+  const submitBtn=document.getElementById('submitProductBtn');
+  const msg=document.getElementById('submitMsg');
+  submitBtn.disabled=true;
+  submitBtn.textContent='送出中…';
+  msg.style.color='var(--text-3)';
+  msg.textContent='';
+  const payload={product_name:name,brand:brand,category:document.getElementById('sub_category').value,description:document.getElementById('sub_desc').value.trim(),price:document.getElementById('sub_price').value.trim(),purchase_link:document.getElementById('sub_link').value.trim()};
   try {
     const resp=await fetch('submit_product.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const result=await resp.json();
-    const msg=document.getElementById('submitMsg');
     msg.style.color=result.success?'var(--green)':'var(--red)';
     msg.textContent=result.message;
-    if(result.success){['sub_name','sub_brand','sub_desc','sub_price','sub_link'].forEach(id=>document.getElementById(id).value='');document.getElementById('sub_category').value='';setTimeout(closeSubmitModal,2000);}
-  } catch(e){document.getElementById('submitMsg').textContent='網路錯誤，請稍後再試';}
+    if(result.success){
+      ['sub_name','sub_brand','sub_desc','sub_price','sub_link'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('sub_category').value='';
+      submitBtn.textContent='✓ 已送出';
+      _submitCloseTimer=setTimeout(()=>{closeSubmitModal();submitBtn.disabled=false;submitBtn.textContent='送出申請';_submitCloseTimer=null;},2000);
+    } else {
+      submitBtn.disabled=false;
+      submitBtn.textContent='送出申請';
+    }
+  } catch(e){
+    msg.style.color='var(--red)';
+    msg.textContent='網路錯誤，請稍後再試';
+    submitBtn.disabled=false;
+    submitBtn.textContent='送出申請';
+  }
 }
 
 async function submitReport() {

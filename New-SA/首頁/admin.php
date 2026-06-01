@@ -55,19 +55,19 @@ if (isset($_POST['restore_video'])) {
     $tab = 'videos';
 }
 
-// 強制刪除影片
+// 強制下架影片（軟刪除，保留資料供申訴）
 if (isset($_POST['force_delete_video'])) {
     $vid = (int)$_POST['video_id'];
-    $row = $pdo->prepare("SELECT file_path, title, uploaded_by FROM videos WHERE id = ?");
+    $row = $pdo->prepare("SELECT title, uploaded_by FROM videos WHERE id = ?");
     $row->execute([$vid]);
     $vrow = $row->fetch();
     if ($vrow) {
-        $fp = __DIR__ . '/' . $vrow['file_path'];
-        if (file_exists($fp) && is_file($fp)) unlink($fp);
-        $pdo->prepare("DELETE FROM videos WHERE id = ?")->execute([$vid]);
+        $pdo->prepare("UPDATE videos SET is_active = 0, removed_reason = '違反社群規範（強制下架）', removed_at = NOW() WHERE id = ?")
+            ->execute([$vid]);
         insertNotification($pdo, $vrow['uploaded_by'], 'video_removed',
-            "您的影片「{$vrow['title']}」已被管理員下架移除。", $adminUser);
-        $msg = '已刪除影片'; $msgType = 'success';
+            "您的影片「{$vrow['title']}」已被管理員強制下架。如有異議可提出申訴。",
+            $adminUser, $vid, $vrow['title']);
+        $msg = '⬇ 已強制下架「' . $vrow['title'] . '」'; $msgType = 'success';
     }
     $tab = isset($_POST['from_reports']) ? 'reports' : 'videos';
 }
@@ -1219,11 +1219,11 @@ function adminTakedownPrompt(form) {
               🔄 恢復上架
             </button>
           </form>
-          <form method="post" onsubmit="return confirm('確定永久刪除？此操作無法復原。')">
+          <form method="post" onsubmit="return confirm('確定強制下架？使用者將收到通知並可提出申訴。')">
             <input type="hidden" name="video_id" value="<?php echo (int)$iv['id']; ?>">
             <button type="submit" name="force_delete_video" value="1"
               style="padding:7px 14px;background:#fde8e8;border:1.5px solid #f5c6c6;color:#c0392b;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
-              🗑 永久刪除
+              ⬇ 強制下架
             </button>
           </form>
         </div>
@@ -1358,10 +1358,10 @@ function adminTakedownPrompt(form) {
           <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
           <button type="submit" name="dismiss_report" value="1" class="act-btn success">✓ 標記已處理</button>
         </form>
-        <form method="post" onsubmit="return confirm('確定強制刪除這部影片？')" style="margin:0;">
+        <form method="post" onsubmit="return confirm('確定強制下架？使用者將收到通知並可提出申訴。')" style="margin:0;">
           <input type="hidden" name="video_id" value="<?php echo (int)$rv['id']; ?>">
           <input type="hidden" name="from_reports" value="1">
-          <button type="submit" name="force_delete_video" value="1" class="act-btn danger">🗑 強制刪除</button>
+          <button type="submit" name="force_delete_video" value="1" class="act-btn danger">⬇ 強制下架</button>
         </form>
       </div>
     </div>

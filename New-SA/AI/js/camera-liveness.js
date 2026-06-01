@@ -54,6 +54,14 @@ const _runLiveCheck = async () => {
     if (!cameraActive.value || faceDetectionBusy.value) return;
     try {
         const face = await detectFacesInFrame();
+        const patch = sampleFacePatch(face, 128);
+
+        // 照片/紋理檢查優先：拿照片對鏡頭時先給正確提示，不誤報帽子口罩
+        const coherenceScore = analyzeSkinTextureCoherence(patch);
+        if (coherenceScore < 50) {
+            cameraWarning.value = '⚠️ 請對著鏡頭展示您的真實臉部，不支援使用照片或螢幕畫面';
+            return;
+        }
         // 帽子檢查
         try {
             const foreheadPatch = sampleForeheadPatch(face);
@@ -63,19 +71,12 @@ const _runLiveCheck = async () => {
             }
         } catch (e) {}
         // 口罩檢查
-        const patch = sampleFacePatch(face, 128);
         if (computeSkinRatioRegion(patch, 'lower') < 0.25) {
             cameraWarning.value = '⚠️ 偵測到口罩或下方遮擋物，請移除後再拍攝';
             return;
         }
         if (computeSkinRatioRegion(patch, 'upper') < 0.40) {
             cameraWarning.value = '⚠️ 偵測到眼部或上臉遮擋物，請撥開頭髮或移除遮擋物';
-            return;
-        }
-        // 照片/紋理檢查
-        const coherenceScore = analyzeSkinTextureCoherence(patch);
-        if (coherenceScore < 50) {
-            cameraWarning.value = '⚠️ 偵測到可能是照片或光線不足，請使用真實鏡頭並確保光線充足';
             return;
         }
         cameraWarning.value = '';
