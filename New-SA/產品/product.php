@@ -52,15 +52,7 @@ if ($id <= 0) {
     exit;
 }
 
-$sql = "SELECT d.*, d.id AS p_id,
-    po.name AS origin,
-    GROUP_CONCAT(i.name ORDER BY i.name SEPARATOR '、') AS ingredients
-FROM data d
-LEFT JOIN product_origins po ON d.origin_id = po.id
-LEFT JOIN product_ingredients pi ON d.id = pi.product_id
-LEFT JOIN ingredients i ON pi.ingredient_id = i.id
-WHERE d.id=$id
-GROUP BY d.id";
+$sql = "SELECT *, id AS p_id FROM data WHERE id=$id";
 $result = $conn->query($sql);
 if (!$result) {
     echo '<div class="products"><div class="empty-state"><h3>查詢失敗</h3><p>產品資料表可能尚未匯入，或資料庫連線名稱不正確。</p><p><a href="products.php">返回產品列表</a></p></div></div>';

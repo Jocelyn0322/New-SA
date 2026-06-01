@@ -142,7 +142,7 @@ const restartFromBeginning = () => {
     isAnalyzing.value = false;
     // quiz state
     toneQuizAnswers.value     = { t1: '', t2: '', t3: '' };
-    quizAnswers.value         = { q1: '', q2: '', q3: '', q4: '' };
+    quizAnswers.value         = { q1: '', q3: '', q4: '', q5: '' };
     toneQuizStep.value        = 1;
     skinQuizStep.value        = 1;
     toneQuizTyping.value      = false;
@@ -190,7 +190,7 @@ const goToMakeupStep = () => {
 
 const setQuizAnswer = (questionKey, optionValue) => {
     quizAnswers.value[questionKey] = optionValue;
-    const order = ['q1', 'q2', 'q3', 'q4'];
+    const order = ['q1', 'q3', 'q4', 'q5'];
     const idx = order.indexOf(questionKey);
     if (idx < 0) return;
     skinQuizTyping.value = true;
@@ -224,8 +224,8 @@ const setMakeupPreference = (key, value) => {
 };
 
 const ensureQuizCompleted = () => {
-    const { q1, q2, q3, q4 } = quizAnswers.value;
-    if (!q1 || !q2 || !q3 || !q4) {
+    const { q1, q3, q4, q5 } = quizAnswers.value;
+    if (!q1 || !q3 || !q4 || !q5) {
         alert('請先完成「膚質校正問卷（含反向驗證）」才能得到更準確的膚質判定。');
         return false;
     }

@@ -19,7 +19,7 @@ const skinTypeOptions       = ['混油皮', '乾性皮', '油性皮', '中性皮
 const toneQuizAnswers       = ref({ t1: '', t2: '', t3: '' });
 const toneGuess             = ref('');
 const toneFusionNote        = ref('');
-const quizAnswers           = ref({ q1: '', q2: '', q3: '', q4: '' });
+const quizAnswers           = ref({ q1: '', q3: '', q4: '', q5: '' });
 
 // ── Chat quiz step state ─────────────────────────────────────────
 const toneQuizStep    = ref(1);   // 1=Q1visible, 2=Q2, 3=Q3, 4=done
@@ -47,29 +47,31 @@ const toneQuizData = [
 
 const skinQuizData = [
     { key: 'q1', q: '洗臉後 30 分鐘，不擦任何保養品，臉的感覺？', opts: [
-        { val: 'A', label: '全臉緊繃，甚至脫皮' },
-        { val: 'B', label: 'T 區微出油，兩頰緊繃' },
-        { val: 'C', label: 'T 區出油明顯，兩頰還好' },
-        { val: 'D', label: '全臉都有明顯油光' },
-        { val: 'E', label: '不緊繃也不油，很舒適' }
+        { val: 'A', label: '全臉緊繃，甚至脫皮或有細紋感' },
+        { val: 'B', label: 'T 區微出油，但兩頰還是有點緊' },
+        { val: 'C', label: 'T 區出油明顯，兩頰感覺普通' },
+        { val: 'D', label: '全臉都有明顯油光，容易悶痘' },
+        { val: 'E', label: '不緊繃也不油，皮膚很舒適' }
     ]},
-    { key: 'q2', q: '觀察日常毛孔和膚質狀態？', opts: [
-        { val: 'A', label: '毛孔細緻，但容易有乾紋' },
-        { val: 'B', label: 'T 區毛孔大，兩頰細緻' },
-        { val: 'C', label: '全臉毛孔粗大，常有黑頭' },
-        { val: 'D', label: '皮膚平滑均勻' }
+    { key: 'q3', q: '下午 3–4 點，你的臉通常是？', opts: [
+        { val: 'A', label: '臉很乾、緊繃，偶有脫皮' },
+        { val: 'B', label: '鼻翼或T區輕微出油，臉頰偏乾' },
+        { val: 'C', label: 'T 區出油明顯，但臉頰還好' },
+        { val: 'D', label: '全臉都出油，臉摸起來很油膩' },
+        { val: 'E', label: '整體舒適，沒有特別乾或油' }
     ]},
-    { key: 'q3', q: '下午 3–4 點，上了妝的臉通常是？', opts: [
-        { val: 'A', label: '嚴重浮粉、起皮，妝吸不住' },
-        { val: 'B', label: '鼻翼脫妝掉粉，兩頰很乾' },
-        { val: 'C', label: 'T 區油光滿面，妝色暗沉' },
-        { val: 'D', label: '妝感完整，只有微出油' },
-        { val: 'E', label: '平時不化妝' }
+    { key: 'q4', q: '皮膚對外界刺激的耐受度？', hint: '敏感肌可以和其他膚質重疊，這個問題單獨評估耐受度', opts: [
+        { val: 'A', label: '常常泛紅、刺痛，新保養品很容易過敏' },
+        { val: 'B', label: '換季或壓力大時容易長疹子或泛紅' },
+        { val: 'C', label: '偶爾對特定成分有反應，但大多沒問題' },
+        { val: 'D', label: '很少不適，幾乎什麼都能用' }
     ]},
-    { key: 'q4', q: '皮膚對外界刺激的耐受度？', hint: '敏感肌可以和其他膚質重疊，這個問題單獨評估你的耐受度', opts: [
-        { val: 'A', label: '換季、新品容易泛紅刺痛' },
-        { val: 'B', label: '偶爾起疹，但很快恢復' },
-        { val: 'C', label: '很少不適，皮膚像城牆' }
+    { key: 'q5', q: '早上起床，臉的狀況通常是？', opts: [
+        { val: 'A', label: '非常乾，感覺緊繃甚至有脫皮' },
+        { val: 'B', label: '有點乾，需要趕快塗保濕' },
+        { val: 'C', label: 'T 區出油，兩頰還好' },
+        { val: 'D', label: '全臉都油，枕頭都有油印' },
+        { val: 'E', label: '皮膚感覺正常舒適' }
     ]},
 ];
 const skinCoordinate        = ref(null);

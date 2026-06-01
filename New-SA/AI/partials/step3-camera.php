@@ -78,7 +78,7 @@
             </button>
             <button @click="selectBase('D')" :class="selectedBase === 'D' ? 'border-emerald-400 bg-emerald-100 text-emerald-900' : 'border-emerald-200 bg-white text-gray-700 hover:bg-emerald-50'" class="w-full p-3 rounded-lg border transition text-left">
                 <p class="font-bold">選項 D（橄欖）</p>
-                <p class="text-xs text-gray-600 mt-1">膚色帶有微微的青綠色或「灰色感」，素顏時容易顯得「菜色」。</p>
+                <p class="text-xs text-gray-600 mt-1">膚色帶有微微的青綠色或「灰色感」，素顏時氣色較為暗沉。</p>
             </button>
         </div>
         <div class="mt-4 grid gap-2">
