@@ -31,20 +31,20 @@ const getCalibratedSkinType = (aiOrManualSkinType, aiConfidence = 0.5) => {
         aiScores[aiOrManualSkinType] += 4.0;
     }
 
-    const { q1, q2, q3, q4 } = quizAnswers.value;
+    const { q1, q3, q4, q5 } = quizAnswers.value;
 
     const answerVectorMap = {
         q1: { A: -2, B: -1, C: 1, D: 2, E: 0 },
-        q2: { A: -2, B: -1, C: 2, D: 0 },
-        q3: { A: -2, B: -1, C: 2, D: 0, E: 0 },
-        q4: { A: 2, B: 1, C: -2 },
+        q3: { A: -2, B: -1, C: 2, D: 2, E: 0 },
+        q4: { A: 2, B: 1.5, C: 0.5, D: -2 },
+        q5: { A: -2, B: -1, C: 1, D: 2, E: 0 },
     };
 
     const answerVector = [
         answerVectorMap.q1[q1] ?? 0,
-        answerVectorMap.q2[q2] ?? 0,
         answerVectorMap.q3[q3] ?? 0,
         answerVectorMap.q4[q4] ?? 0,
+        answerVectorMap.q5[q5] ?? 0,
     ];
 
     const stdDev          = calcStdDev(answerVector);
@@ -57,26 +57,27 @@ const getCalibratedSkinType = (aiOrManualSkinType, aiConfidence = 0.5) => {
         D: { '油性皮': 2.8, '敏感肌': 0.3 },
         E: { '中性皮': 2.8, '敏感肌': 0.2 },
     };
-    const q2Weights = {
-        A: { '乾性皮': 2.2, '混乾皮': 0.8, '敏感肌': 0.4 },
-        B: { '混乾皮': 2.0, '混油皮': 2.0, '敏感肌': 0.3 },
-        C: { '油性皮': 2.2, '混油皮': 1.0, '敏感肌': 0.3 },
-        D: { '中性皮': 2.2, '敏感肌': 0.2 },
-    };
     const q3Weights = {
         A: { '乾性皮': 2.2, '敏感肌': 0.5 },
         B: { '混乾皮': 2.0, '敏感肌': 0.6 },
         C: { '混油皮': 2.4, '油性皮': 1.2, '敏感肌': 0.5 },
-        D: { '中性皮': 2.4, '敏感肌': 0.2 },
-        E: { '中性皮': 1.0 },
+        D: { '油性皮': 2.8, '混油皮': 1.0, '敏感肌': 0.4 },
+        E: { '中性皮': 2.4, '敏感肌': 0.2 },
     };
     const q4Weights = {
         A: { '敏感肌': 5.5 },
-        B: { '敏感肌': 3.2 },
-        C: { '敏感肌': 0.0 },
+        B: { '敏感肌': 4.0 },
+        C: { '敏感肌': 2.0 },
+        D: { '敏感肌': 0.0 },
     };
-
-    [q1Weights[q1], q2Weights[q2], q3Weights[q3], q4Weights[q4]].forEach((weights) => {
+    const q5Weights = {
+        A: { '乾性皮': 2.0, '敏感肌': 0.5 },
+        B: { '乾性皮': 1.5, '混乾皮': 1.0 },
+        C: { '混油皮': 1.8, '混乾皮': 1.0 },
+        D: { '油性皮': 2.2, '混油皮': 0.8 },
+        E: { '中性皮': 2.0 },
+    };
+    [q1Weights[q1], q3Weights[q3], q4Weights[q4], q5Weights[q5]].forEach((weights) => {
         if (!weights) return;
         Object.entries(weights).forEach(([skinType, weight]) => {
             if (quizScores[skinType] !== undefined) quizScores[skinType] += weight;
