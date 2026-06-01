@@ -301,6 +301,7 @@ if (isset($_GET['clear'])) {
 <div class="cmp-wrap">
 <?php
 $ids = $_SESSION['compare'] ?? [];
+require_once __DIR__ . '/rating_attributes.php'; // $attributeMap / $defaultAttributes（與產品頁共用）
 if (empty($ids)):
 ?>
   <div class="cmp-empty">
@@ -439,6 +440,35 @@ if (empty($ids)):
               <?php else: ?>
                 <span style="color:var(--text-3);font-size:12px;">無色號</span>
               <?php endif; ?>
+            </td>
+            <?php endforeach; ?>
+          </tr>
+
+          <!-- 使用者評分（分項） -->
+          <tr>
+            <td>使用者評分</td>
+            <?php
+              $attrs   = $attributeMap[$category] ?? $defaultAttributes;
+              $attrAvg = $conn->prepare("SELECT AVG(score) a, COUNT(*) c FROM product_ratings WHERE product_id = ? AND attribute = ?");
+            ?>
+            <?php foreach ($group as $p): ?>
+            <td style="text-align:left;padding:12px 16px;">
+              <?php foreach ($attrs as $attr):
+                $attrAvg->execute([$p['p_id'], $attr]);
+                $ar  = $attrAvg->fetch();
+                $avg = ($ar && $ar['a'] !== null) ? round((float)$ar['a'], 1) : null;
+                $full = $avg !== null ? (int)round($avg) : 0;
+              ?>
+                <div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:13px;">
+                  <span style="min-width:70px;color:var(--text-2);"><?= htmlspecialchars($attr) ?></span>
+                  <?php if ($avg !== null): ?>
+                    <span style="color:#f5b301;letter-spacing:1px;"><?= str_repeat('★', $full) . str_repeat('☆', max(0, 5 - $full)) ?></span>
+                    <span style="color:var(--text-3);font-size:12px;"><?= number_format($avg, 1) ?>（<?= (int)$ar['c'] ?>）</span>
+                  <?php else: ?>
+                    <span style="color:var(--text-3);font-size:12px;">尚無評分</span>
+                  <?php endif; ?>
+                </div>
+              <?php endforeach; ?>
             </td>
             <?php endforeach; ?>
           </tr>

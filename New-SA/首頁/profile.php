@@ -297,7 +297,18 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
         <label class="form-label">請輸入目前密碼以確認修改</label>
         <input class="form-input" id="emailConfirmPwd" type="password" placeholder="目前密碼" style="max-width:320px;">
       </div>
-      <button class="btn btn-primary btn-sm" onclick="saveEmail()">儲存變更</button>
+      <button class="btn btn-primary btn-sm" id="emailSendBtn" onclick="saveEmail()">寄送驗證碼</button>
+      <div id="emailCodeRow" style="display:none;margin-top:12px;">
+        <label class="form-label" id="emailCodeLabel">輸入驗證碼</label>
+        <div style="display:flex;gap:8px;max-width:340px;">
+          <input class="form-input" id="emailCode" type="text" inputmode="numeric" maxlength="6" placeholder="6 位數驗證碼">
+          <button class="btn btn-primary btn-sm" onclick="emailVerify()" style="white-space:nowrap;">確認</button>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:18px;font-size:13px;">
+          <a href="#" onclick="emailResend();return false;" style="color:var(--rose);text-decoration:none;">沒收到？重新寄送</a>
+          <a href="#" onclick="emailCancel();return false;" style="color:var(--text-3);text-decoration:none;">取消</a>
+        </div>
+      </div>
       <div class="inline-msg" id="emailMsg"></div>
     </div>
 
@@ -315,7 +326,18 @@ $userInitial = mb_strtoupper(mb_substr($_SESSION['user'], 0, 1));
           <div style="font-size:12px;color:#aaa;margin-top:4px;">密碼需至少 6 個字元</div>
         </div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="savePwd()">更新密碼</button>
+      <button class="btn btn-primary btn-sm" id="pwdSendBtn" onclick="savePwd()">寄送驗證碼</button>
+      <div id="pwdCodeRow" style="display:none;margin-top:12px;">
+        <label class="form-label">輸入寄到信箱的驗證碼</label>
+        <div style="display:flex;gap:8px;max-width:340px;">
+          <input class="form-input" id="pwdCode" type="text" inputmode="numeric" maxlength="6" placeholder="6 位數驗證碼">
+          <button class="btn btn-primary btn-sm" onclick="pwdVerify()" style="white-space:nowrap;">確認</button>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:18px;font-size:13px;">
+          <a href="#" onclick="pwdResend();return false;" style="color:var(--rose);text-decoration:none;">沒收到？重新寄送</a>
+          <a href="#" onclick="pwdCancel();return false;" style="color:var(--text-3);text-decoration:none;">取消</a>
+        </div>
+      </div>
       <div class="inline-msg" id="pwdMsg"></div>
     </div>
 
@@ -558,49 +580,121 @@ function switchTab(i, el) {
   tabs.forEach((t,j) => t.style.display = j === i ? '' : 'none');
 }
 
-/* ── Email save ── */
+/* ── 改 Email（雙重驗證：原信箱 → 新信箱）── */
 const emailField = document.getElementById('emailField');
 const emailPwdRow = document.getElementById('emailPwdRow');
+let emailStage = null;  // 'old' | 'new'
 emailField.addEventListener('input', () => {
   emailPwdRow.style.display = emailField.value !== '<?= addslashes($currentEmail) ?>' ? '' : 'none';
 });
+function emShow(cls, t){ const m=document.getElementById('emailMsg'); m.className='inline-msg '+cls; m.textContent=t; }
+async function emPost(p){ const r=await fetch('update_account.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)}); return r.json(); }
+// 步驟1：寄驗證碼到「原信箱」
 async function saveEmail() {
   const newEmail = emailField.value.trim();
-  const msg = document.getElementById('emailMsg');
-  msg.className = 'inline-msg';
-  if (!newEmail) { msg.className = 'inline-msg err'; msg.textContent = '請填寫 Email'; return; }
-  if (newEmail === '<?= addslashes($currentEmail) ?>') { msg.className = 'inline-msg ok'; msg.textContent = '未做任何變更'; return; }
+  emShow('', '');
+  if (!newEmail) return emShow('err','請填寫 Email');
+  if (newEmail === '<?= addslashes($currentEmail) ?>') return emShow('ok','未做任何變更');
   const pwd = document.getElementById('emailConfirmPwd').value;
-  if (!pwd) { msg.className = 'inline-msg err'; msg.textContent = '請輸入目前密碼'; emailPwdRow.style.display = ''; return; }
+  if (!pwd) { emailPwdRow.style.display=''; return emShow('err','請輸入目前密碼'); }
+  emShow('', '寄送中…');
   try {
-    const res  = await fetch('update_account.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'update_info', email: newEmail, current_password: pwd }) });
-    const data = await res.json();
-    if (data.success) {
-      msg.className = 'inline-msg ok'; msg.textContent = data.message;
+    const d = await emPost({action:'email_request', email:newEmail, current_password:pwd});
+    if (!d.success) return emShow('err', d.message);
+    emailStage = 'old';
+    document.getElementById('emailCodeRow').style.display = '';
+    document.getElementById('emailCodeLabel').textContent = d.message;
+    document.getElementById('emailCode').value = '';
+    if (d.sent === false) emShow('err','⚠️ 驗證碼可能寄送失敗，請確認信箱或稍後再試'); else emShow('', '');
+  } catch(e){ emShow('err','網路錯誤'); }
+}
+// 步驟2/3：依目前階段驗證原信箱碼 / 新信箱碼
+async function emailVerify() {
+  const code = document.getElementById('emailCode').value.trim();
+  if (!code) return emShow('err','請輸入驗證碼');
+  emShow('', '驗證中…');
+  try {
+    const action = emailStage === 'old' ? 'email_verify_old' : 'email_verify_new';
+    const d = await emPost({action, code});
+    if (!d.success) return emShow('err', d.message);
+    if (d.stage === 'new') {            // 原信箱通過 → 改驗證新信箱
+      emailStage = 'new';
+      document.getElementById('emailCodeLabel').textContent = d.message;
+      document.getElementById('emailCode').value = '';
+      emShow('ok', '');
+    } else if (d.stage === 'done') {    // 完成
+      emShow('ok', d.message);
+      document.getElementById('emailCodeRow').style.display = 'none';
       emailPwdRow.style.display = 'none';
       document.getElementById('emailConfirmPwd').value = '';
-    } else { msg.className = 'inline-msg err'; msg.textContent = data.message; }
-  } catch(e) { msg.className = 'inline-msg err'; msg.textContent = '網路錯誤'; }
+      setTimeout(()=>location.reload(), 1200);
+    }
+  } catch(e){ emShow('err','網路錯誤'); }
+}
+// 重新寄送（依目前階段寄到原/新信箱）
+async function emailResend() {
+  emShow('', '重新寄送中…');
+  try { const d = await emPost({action:'email_resend'});
+    emShow(d.success ? (d.sent===false?'err':'ok') : 'err', d.message);
+  } catch(e){ emShow('err','網路錯誤'); }
+}
+// 取消 → 還原 email、收起驗證碼區
+async function emailCancel() {
+  try { await emPost({action:'email_cancel'}); } catch(e){}
+  emailStage = null;
+  document.getElementById('emailCodeRow').style.display = 'none';
+  document.getElementById('emailCode').value = '';
+  emailField.value = '<?= addslashes($currentEmail) ?>';
+  emailPwdRow.style.display = 'none';
+  document.getElementById('emailConfirmPwd').value = '';
+  emShow('ok', '已取消，Email 維持原本的');
 }
 
-/* ── Password save ── */
+/* ── 改密碼（寄驗證碼到信箱）── */
+function pwShow(cls, t){ const m=document.getElementById('pwdMsg'); m.className='inline-msg '+cls; m.textContent=t; }
+async function pwPost(p){ const r=await fetch('update_account.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)}); return r.json(); }
+// 步驟1：寄驗證碼到信箱
 async function savePwd() {
-  const msg = document.getElementById('pwdMsg');
-  msg.className = 'inline-msg';
+  pwShow('', '');
+  const cur = document.getElementById('pwdCurrent').value;
   const newPwd = document.getElementById('pwdNew').value;
-  if (newPwd.length < 6) {
-    msg.className = 'inline-msg err';
-    msg.textContent = '新密碼至少需要 6 個字元';
-    return;
-  }
+  if (!cur) return pwShow('err','請輸入目前密碼');
+  if (newPwd.length < 6) return pwShow('err','新密碼至少需要 6 個字元');
+  pwShow('', '寄送中…');
   try {
-    const res  = await fetch('update_account.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'update_password', current_password: document.getElementById('pwdCurrent').value, new_password: newPwd, confirm_password: newPwd }) });
-    const data = await res.json();
-    if (data.success) {
-      msg.className = 'inline-msg ok'; msg.textContent = data.message;
-      ['pwdCurrent','pwdNew'].forEach(id => document.getElementById(id).value = '');
-    } else { msg.className = 'inline-msg err'; msg.textContent = data.message; }
-  } catch(e) { msg.className = 'inline-msg err'; msg.textContent = '網路錯誤'; }
+    const d = await pwPost({action:'pwd_request', current_password:cur, new_password:newPwd});
+    if (!d.success) return pwShow('err', d.message);
+    document.getElementById('pwdCodeRow').style.display = '';
+    document.getElementById('pwdCode').value = '';
+    pwShow(d.sent === false ? 'err' : 'ok', d.sent === false ? '⚠️ 驗證碼可能寄送失敗' : d.message);
+  } catch(e){ pwShow('err','網路錯誤'); }
+}
+// 步驟2：驗證 → 更新密碼
+async function pwdVerify() {
+  const code = document.getElementById('pwdCode').value.trim();
+  if (!code) return pwShow('err','請輸入驗證碼');
+  pwShow('', '驗證中…');
+  try {
+    const d = await pwPost({action:'pwd_verify', code});
+    if (!d.success) return pwShow('err', d.message);
+    pwShow('ok', d.message);
+    ['pwdCurrent','pwdNew','pwdCode'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('pwdCodeRow').style.display = 'none';
+  } catch(e){ pwShow('err','網路錯誤'); }
+}
+// 重新寄送驗證碼到信箱
+async function pwdResend() {
+  pwShow('', '重新寄送中…');
+  try { const d = await pwPost({action:'pwd_resend'});
+    pwShow(d.success ? (d.sent===false?'err':'ok') : 'err', d.message);
+  } catch(e){ pwShow('err','網路錯誤'); }
+}
+// 取消改密碼
+async function pwdCancel() {
+  try { await pwPost({action:'pwd_cancel'}); } catch(e){}
+  document.getElementById('pwdCodeRow').style.display = 'none';
+  ['pwdCurrent','pwdNew','pwdCode'].forEach(id => document.getElementById(id).value='');
+  pwShow('ok', '已取消');
 }
 
 /* ── Avatar upload ── */

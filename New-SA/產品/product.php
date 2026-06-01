@@ -3,25 +3,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 if (!defined('BASE_URL')) require_once __DIR__ . '/../db.php';
 else include __DIR__ . '/../db.php';
 
-// 依分類決定評分屬性
-$attributeMap = [
-    '粉底'   => ['控油力', '延展性', '易上色', '持久度', '遮瑕力'],
-    '底妝'   => ['控油力', '延展性', '易上色', '持久度', '遮瑕力'],
-    '氣墊'   => ['控油力', '延展性', '易上色', '持久度', '遮瑕力'],
-    '口紅'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
-    '唇釉'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
-    '唇膏'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
-    '唇彩'   => ['顯色度', '持久度', '滋潤度', '發色效果'],
-    '護唇'   => ['保濕度', '滋潤度', '吸收速度', '持久度'],
-    '眼影'   => ['顯色度', '延展性', '持久度', '不易暈染'],
-    '眼線'   => ['顯色度', '持久度', '不易暈染', '易上色'],
-    '睫毛膏' => ['拉長效果', '增量效果', '持久度', '不易暈染'],
-    '腮紅'   => ['顯色度', '延展性', '持久度', '自然感'],
-    '修容'   => ['顯色度', '延展性', '自然感', '易上色'],
-    '打亮'   => ['顯色度', '自然感', '持久度', '易上色'],
-    '護膚'   => ['保濕度', '吸收速度', '延展性', '滋潤度'],
-];
-$defaultAttributes = ['顯色度', '持久度', '易上色', '延展性'];
+// 依分類決定評分屬性（與比較頁共用同一份清單）
+require_once __DIR__ . '/rating_attributes.php';
 ?>
 
 <!DOCTYPE html>
@@ -51,9 +34,7 @@ $defaultAttributes = ['顯色度', '持久度', '易上色', '延展性'];
         border:2px solid rgba(0,0,0,.1); flex-shrink:0;
     }
     .color-label { font-size:11px; color:#888; text-align:center; max-width:60px; line-height:1.3; }
-    .color-has-img::after {
-        content:'📷'; position:absolute; top:2px; right:2px; font-size:9px;
-    }
+    /* 色號上的相機圖示已移除 */
     .colors-flex { display:flex; flex-wrap:wrap; gap:8px; }
     </style>
 </head>
