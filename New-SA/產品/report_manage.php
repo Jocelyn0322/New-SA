@@ -23,22 +23,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     exit;
 }
 
-// 刪除整個產品
+// 封存表（可復原）
+$pdo->exec("CREATE TABLE IF NOT EXISTS deleted_products (
+    id INT PRIMARY KEY, name VARCHAR(255), brand VARCHAR(255), category VARCHAR(255),
+    snapshot LONGTEXT, deleted_by VARCHAR(100), deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// 刪除整個產品（封存可復原；只移除 data 與 products 鏡像，其餘關聯保留以便復原）
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_product_id'])) {
     $pid = intval($_POST['delete_product_id']);
     if ($pid > 0) {
-        foreach (['product_colors','product_ratings'] as $tbl) {
-            try { $pdo->prepare("DELETE FROM $tbl WHERE " . ($tbl === 'product_colors' ? 'p_id' : 'product_id') . " = ?")->execute([$pid]); } catch (Exception $e) {}
+        $dr = $pdo->prepare("SELECT * FROM data WHERE id = ?");
+        $dr->execute([$pid]);
+        $drow = $dr->fetch(PDO::FETCH_ASSOC);
+        if ($drow) {
+            $pdo->prepare("INSERT INTO deleted_products (id, name, brand, category, snapshot, deleted_by)
+                           VALUES (?,?,?,?,?,?)
+                           ON DUPLICATE KEY UPDATE name=VALUES(name), brand=VALUES(brand),
+                               category=VALUES(category), snapshot=VALUES(snapshot),
+                               deleted_by=VALUES(deleted_by), deleted_at=NOW()")
+                ->execute([$pid, $drow['name'] ?? '', $drow['brand'] ?? '', $drow['category'] ?? '',
+                           json_encode($drow, JSON_UNESCAPED_UNICODE), $adminUser]);
+            try { $pdo->prepare("DELETE FROM data WHERE id = ?")->execute([$pid]); } catch (Exception $e) {}
+            try { $pdo->prepare("DELETE FROM products WHERE p_id = ?")->execute([$pid]); } catch (Exception $e) {}
+            try { $pdo->prepare("UPDATE product_requests SET status = 'resolved' WHERE product_id = ? AND type = 'report'")->execute([$pid]); } catch (Exception $e) {}
         }
-        try { $pdo->prepare("DELETE FROM product_requests WHERE product_id = ? AND type = 'report'")->execute([$pid]); } catch (Exception $e) {}
-        try { $pdo->prepare("DELETE FROM data WHERE id = ?")->execute([$pid]); } catch (Exception $e) {}
     }
-    header('Location: report_manage.php?status=pending');
+    header('Location: report_manage.php?status=' . ($_GET['status'] ?? 'pending'));
+    exit;
+}
+
+// 恢復產品
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['restore_product_id'])) {
+    $pid = intval($_POST['restore_product_id']);
+    if ($pid > 0) {
+        $sr = $pdo->prepare("SELECT snapshot FROM deleted_products WHERE id = ?");
+        $sr->execute([$pid]);
+        $snap = $sr->fetchColumn();
+        $row  = $snap ? json_decode($snap, true) : null;
+        if ($row && is_array($row)) {
+            try {
+                $cols   = array_keys($row);
+                $colSql = implode(',', array_map(fn($c) => "`$c`", $cols));
+                $place  = implode(',', array_fill(0, count($cols), '?'));
+                $pdo->prepare("INSERT INTO data ($colSql) VALUES ($place)")->execute(array_values($row));
+                $pdo->prepare("DELETE FROM deleted_products WHERE id = ?")->execute([$pid]);
+            } catch (Throwable $e) {}
+        }
+    }
+    header('Location: report_manage.php?status=' . ($_GET['status'] ?? 'pending'));
     exit;
 }
 
 $statusFilter = $_GET['status'] ?? 'pending';
-$whereStatus  = $statusFilter === 'all' ? '' : "AND (r.status IS NULL OR r.status = 'pending')";
+$whereStatus  = $statusFilter === 'resolved'
+    ? "AND r.status = 'resolved'"
+    : "AND (r.status IS NULL OR r.status = 'pending')";
+
+// 已刪除（可復原）的產品
+try {
+    $deletedProducts = $pdo->query("SELECT id, name, brand, category, deleted_by, deleted_at
+                                    FROM deleted_products ORDER BY deleted_at DESC")->fetchAll();
+} catch (Throwable $e) { $deletedProducts = []; }
 
 try {
     $reports = $pdo->query("
@@ -265,11 +311,11 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
     <div class="stat-row">
       <div class="stat-card">
         <div class="stat-icon" style="background:#fff0f0;">⏳</div>
-        <div><div class="stat-num" style="color:#c0392b;"><?= $pendingCount ?></div><div class="stat-label">待處理回報</div></div>
+        <div><div class="stat-num" style="color:#c0392b;"><?= $pendingCount ?></div><div class="stat-label">待審核回報</div></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background:#eafaf1;">✅</div>
-        <div><div class="stat-num" style="color:#27ae60;"><?= $resolvedCount ?></div><div class="stat-label">已處理</div></div>
+        <div><div class="stat-num" style="color:#27ae60;"><?= $resolvedCount ?></div><div class="stat-label">已審核</div></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background:#f0eef8;">📋</div>
@@ -279,8 +325,8 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 
     <!-- 篩選 -->
     <div class="filter-row">
-      <a href="?status=pending" class="filter-tab <?= $statusFilter !== 'all' ? 'active' : '' ?>">待處理</a>
-      <a href="?status=all"     class="filter-tab <?= $statusFilter === 'all'  ? 'active' : '' ?>">全部</a>
+      <a href="?status=pending"  class="filter-tab <?= $statusFilter !== 'resolved' ? 'active' : '' ?>">待審核</a>
+      <a href="?status=resolved" class="filter-tab <?= $statusFilter === 'resolved' ? 'active' : '' ?>">已審核</a>
     </div>
 
     <?php if (!empty($dbError)): ?>
@@ -288,7 +334,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
     <?php elseif (empty($reports)): ?>
       <div class="empty-state">
         <div class="empty-icon">📭</div>
-        目前沒有<?= $statusFilter !== 'all' ? '待處理的' : '' ?>回報
+        目前沒有<?= $statusFilter === 'resolved' ? '已審核的' : '待審核的' ?>回報
       </div>
     <?php else: ?>
     <div class="rp-list">
@@ -332,7 +378,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
           <?php if (!$resolved): ?>
           <form method="POST" style="margin:0;">
             <input type="hidden" name="resolve_id" value="<?= $r['id'] ?>">
-            <button type="submit" class="rp-btn rp-resolve">✔ 標記已處理</button>
+            <button type="submit" class="rp-btn rp-resolve">✔ 標記已審核</button>
           </form>
           <?php endif; ?>
           <form method="POST" style="margin:0;" onsubmit="return confirm('確定刪除此回報記錄？');">
@@ -340,7 +386,7 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
             <button type="submit" class="rp-btn rp-del-report">刪除回報</button>
           </form>
           <?php if ($r['product_id']): ?>
-          <form method="POST" style="margin:0;" onsubmit="return confirm('⚠️ 確定刪除整個商品「<?= addslashes(htmlspecialchars($r['product_name'] ?? '')) ?>」？\n此操作無法復原。');">
+          <form method="POST" style="margin:0;" onsubmit="return confirm('⚠️ 確定刪除整個商品「<?= addslashes(htmlspecialchars($r['product_name'] ?? '')) ?>」？\n（已留存於資料庫，可在下方「已刪除產品」恢復）');">
             <input type="hidden" name="delete_product_id" value="<?= (int)$r['product_id'] ?>">
             <button type="submit" class="rp-btn rp-del-product">🗑 刪除產品</button>
           </form>
@@ -349,6 +395,40 @@ body { font-family: 'Noto Sans TC', -apple-system, system-ui, sans-serif; backgr
 
       </div>
       <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- 已刪除產品（可復原）：只在「已審核」分頁顯示 -->
+    <?php if ($statusFilter === 'resolved' && !empty($deletedProducts)): ?>
+    <div style="margin-top:26px;">
+      <div style="font-size:15px;font-weight:700;color:#9c2132;margin-bottom:12px;">🗑 已刪除產品（可復原）</div>
+      <div class="rp-list">
+        <?php foreach ($deletedProducts as $dp): ?>
+        <div class="rp-card resolved">
+          <div class="rp-product">
+            <div class="rp-id">#<?= (int)$dp['id'] ?></div>
+            <div class="rp-name"><?= htmlspecialchars($dp['name'] ?? '') ?></div>
+            <div class="rp-brand">
+              <?= htmlspecialchars($dp['brand'] ?? '') ?>
+              <?php if (!empty($dp['category'])): ?> · <?= htmlspecialchars($dp['category']) ?><?php endif; ?>
+            </div>
+          </div>
+          <div class="rp-content">
+            <div class="rp-badges"><span class="badge badge-gray">已刪除</span></div>
+            <div class="rp-who">
+              刪除者：<?= htmlspecialchars($dp['deleted_by'] ?? '—') ?> ·
+              <?= $dp['deleted_at'] ? substr($dp['deleted_at'], 0, 16) : '—' ?>
+            </div>
+          </div>
+          <div class="rp-actions">
+            <form method="POST" style="margin:0;" onsubmit="return confirm('確定恢復此產品？');">
+              <input type="hidden" name="restore_product_id" value="<?= (int)$dp['id'] ?>">
+              <button type="submit" class="rp-btn rp-resolve">↩ 恢復產品</button>
+            </form>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
     </div>
     <?php endif; ?>
 
