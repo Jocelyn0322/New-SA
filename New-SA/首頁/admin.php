@@ -79,9 +79,17 @@ if (isset($_POST['toggle_role'])) {
     $currentRole = trim($_POST['current_role'] ?? '');
     if ($targetUser && $targetUser !== $adminUser) {
         $newRole = ($currentRole === 'admin') ? 'user' : 'admin';
-        $pdo->prepare("UPDATE users SET role = ? WHERE username = ?")
-            ->execute([$newRole, $targetUser]);
-        $msg = "已將「{$targetUser}」改為 {$newRole}"; $msgType = 'success';
+        // 已停用的帳號不能升為管理員
+        $st = $pdo->prepare("SELECT COALESCE(status,'active') FROM users WHERE username = ?");
+        $st->execute([$targetUser]);
+        $targetStatus = $st->fetchColumn();
+        if ($newRole === 'admin' && $targetStatus === 'suspended') {
+            $msg = "「{$targetUser}」已停用，請先恢復帳號才能升為管理員"; $msgType = 'error';
+        } else {
+            $pdo->prepare("UPDATE users SET role = ? WHERE username = ?")
+                ->execute([$newRole, $targetUser]);
+            $msg = "已將「{$targetUser}」改為 {$newRole}"; $msgType = 'success';
+        }
     }
     $tab = 'users';
 }
@@ -529,36 +537,32 @@ if ($tab === 'videos') {
 }
 
 if ($tab === 'users') {
-    // 自動停用：過去30天內被管理員標記的違規留言 >= 5 次
+    // 違規 = 近30天「留言被刪除」(comment_appeals，排除已通過申訴) ＋「影片被強制下架」(排除使用者自刪)
+    $vioCommentSub = "(SELECT COUNT(*) FROM comment_appeals ca
+                        WHERE ca.username COLLATE utf8mb4_general_ci = u.username COLLATE utf8mb4_general_ci
+                          AND ca.status <> 'approved'
+                          AND ca.created_at >= NOW() - INTERVAL 30 DAY)";
+    $vioVideoSub   = "(SELECT COUNT(*) FROM videos v
+                        WHERE v.uploaded_by COLLATE utf8mb4_general_ci = u.username COLLATE utf8mb4_general_ci
+                          AND v.is_active = 0
+                          AND v.removed_at >= NOW() - INTERVAL 30 DAY
+                          AND (v.removed_reason IS NULL OR v.removed_reason COLLATE utf8mb4_general_ci <> '使用者刪除'))";
+
+    // 自動停用：近30天違規 >= 3 次
     try {
-        $pdo->query("
-            UPDATE users SET status = 'suspended', suspended_at = NOW()
-            WHERE username IN (
-                SELECT vc.username
-                FROM video_comments vc
-                JOIN comment_reports cr ON cr.comment_id = vc.id
-                WHERE cr.status = 'resolved'
-                  AND cr.created_at >= NOW() - INTERVAL 30 DAY
-                GROUP BY vc.username
-                HAVING COUNT(cr.id) >= 5
-            ) AND status = 'active' AND role != 'admin'
+        $pdo->exec("
+            UPDATE users u SET u.status = 'suspended', u.suspended_at = NOW()
+            WHERE COALESCE(u.status,'active') = 'active' AND u.role <> 'admin'
+              AND ($vioCommentSub + $vioVideoSub) >= 3
         ");
     } catch (Throwable $e) { /* ignore */ }
 
     // 查詢會員清單，含本月違規次數
     $allUsers = $pdo->query("
         SELECT u.username, u.email, u.role, u.email_verified, u.created_at,
-               COALESCE(u.status, 'active') AS status,
-               u.suspended_at,
-               COUNT(cr.id) AS monthly_violations
+               COALESCE(u.status, 'active') AS status, u.suspended_at,
+               ($vioCommentSub + $vioVideoSub) AS monthly_violations
         FROM users u
-        LEFT JOIN video_comments vc ON vc.username = u.username
-        LEFT JOIN comment_reports cr
-               ON cr.comment_id = vc.id
-              AND cr.status = 'resolved'
-              AND cr.created_at >= NOW() - INTERVAL 30 DAY
-        GROUP BY u.username, u.email, u.role, u.email_verified,
-                 u.created_at, u.status, u.suspended_at
         ORDER BY u.role DESC, monthly_violations DESC, u.created_at DESC
     ")->fetchAll();
 }
@@ -1688,7 +1692,7 @@ function adminTakedownPrompt(form) {
 
 <?php
 $suspendedCount = count(array_filter($allUsers, fn($u) => ($u['status'] ?? 'active') === 'suspended'));
-$warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violations'] ?? 0) >= 3 && ($u['status'] ?? 'active') !== 'suspended'));
+$warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violations'] ?? 0) >= 2 && ($u['status'] ?? 'active') !== 'suspended'));
 ?>
 
 <div class="sec-header">
@@ -1718,7 +1722,7 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
     <div class="card-header-title">會員清單</div>
     <span class="badge badge-blue"><?php echo count($allUsers); ?> 位</span>
     <div class="card-header-spacer"></div>
-    <span style="font-size:12px;color:var(--text-3);">ℹ️ 30天內留言被標記達 5 次即自動停用</span>
+    <span style="font-size:12px;color:var(--text-3);">ℹ️ 30天內違規（刪留言＋強制下架影片）達 3 次即自動停用</span>
   </div>
 
 <?php if (empty($allUsers)): ?>
@@ -1742,7 +1746,7 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
         <?php foreach ($allUsers as $u):
           $isSuspended = ($u['status'] ?? 'active') === 'suspended';
           $violations  = (int)($u['monthly_violations'] ?? 0);
-          $isWarning   = $violations >= 3 && !$isSuspended;
+          $isWarning   = $violations >= 2 && !$isSuspended;
         ?>
         <tr class="<?php echo $isSuspended ? 'tr-suspended' : ''; ?>">
           <td>
@@ -1777,13 +1781,13 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
             <?php if ($u['role'] === 'admin'): ?>
               <span style="color:var(--text-3);font-size:12px;">—</span>
             <?php else: ?>
-              <div class="vio-bar" title="本月違規 <?php echo $violations; ?>/5 次">
-                <?php for ($vi = 1; $vi <= 5; $vi++): ?>
+              <div class="vio-bar" title="本月違規 <?php echo $violations; ?>/3 次">
+                <?php for ($vi = 1; $vi <= 3; $vi++): ?>
                   <div class="vio-dot <?php echo $vi <= $violations ? 'filled' : 'empty'; ?>"></div>
                 <?php endfor; ?>
               </div>
-              <span style="font-size:11px;color:<?php echo $violations>=5?'#c05050':($isWarning?'#c08020':'var(--text-3)'); ?>;margin-left:4px;">
-                <?php echo $violations; ?>/5<?php if ($violations>=5): ?> 已達上限<?php elseif ($isWarning): ?> ⚠️<?php endif; ?>
+              <span style="font-size:11px;color:<?php echo $violations>=3?'#c05050':($isWarning?'#c08020':'var(--text-3)'); ?>;margin-left:4px;">
+                <?php echo $violations; ?>/3<?php if ($violations>=3): ?> 已達上限<?php elseif ($isWarning): ?> ⚠️<?php endif; ?>
               </span>
             <?php endif; ?>
           </td>
@@ -1801,11 +1805,15 @@ $warningCount   = count(array_filter($allUsers, fn($u) => ($u['monthly_violation
             <?php if ($u['username'] !== $adminUser): ?>
               <div class="btn-group">
                 <?php if ($u['role'] !== 'admin'): ?>
+                  <?php if ($isSuspended): ?>
+                    <button type="button" class="act-btn neutral" disabled style="opacity:.45;cursor:not-allowed;" title="已停用的帳號需先恢復才能升為管理員">升為管理員</button>
+                  <?php else: ?>
                   <form method="post" onsubmit="return confirm('確定變更「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」的身份？')">
                     <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">
                     <input type="hidden" name="current_role" value="<?php echo htmlspecialchars($u['role']); ?>">
                     <button type="submit" name="toggle_role" value="1" class="act-btn neutral">升為管理員</button>
                   </form>
+                  <?php endif; ?>
                 <?php else: ?>
                   <form method="post" onsubmit="return confirm('確定降級「<?php echo htmlspecialchars(addslashes($u['username'])); ?>」？')">
                     <input type="hidden" name="target_user"  value="<?php echo htmlspecialchars($u['username']); ?>">

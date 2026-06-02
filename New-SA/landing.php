@@ -508,6 +508,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           👀 以訪客身分瀏覽產品
         </a>
         <p style="font-size:11px;color:#b0a0b0;margin-top:8px;">登入後可使用收藏、AI 檢測、評分等功能</p>
+        <p style="font-size:11px;color:#b0a0b0;margin-top:10px;border-top:1px solid #f0e6ea;padding-top:10px;">
+          帳號問題請聯絡管理員：<a href="mailto:jocelynfan.tw@gmail.com" style="color:#6b2d3e;font-weight:600;text-decoration:none;">jocelynfan.tw@gmail.com</a>
+        </p>
       </div>
     </div>
   </div>
