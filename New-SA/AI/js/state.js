@@ -89,6 +89,7 @@ const ingredientAdvice      = ref(null);
 const ingredientLoading     = ref(false);
 const quizDerivedSkinType   = ref('');
 const aiDetectedSkinType    = ref('');
+const aiDetectedSkinTone    = ref(''); // 原始 AI 偵測到的膚色 tone，供色卡比對用
 const analysisHistory       = ref([]);
 const isAnalyzing           = ref(false);
 const faceDetectionBusy     = ref(false);
@@ -107,6 +108,7 @@ const selectedHueBias       = ref('');
 const matchedFinalTone      = ref(null);
 const toneMismatchWarning   = ref('');
 const showSwatchCard        = ref(false);
+const systemSkinTone        = ref(''); // 系統（AI或手動問卷）第一次給出的膚色，供色卡參考用
 
 const canChooseMakeupPreference = computed(() => confirmedSkinTone.value && confirmedSkinType.value);
 

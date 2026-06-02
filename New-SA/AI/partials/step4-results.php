@@ -28,7 +28,51 @@
                 <button @click="showSwatchCard = false"
                     style="background:none;border:none;font-size:20px;cursor:pointer;color:#9b7b84;line-height:1;padding:4px;">✕</button>
             </div>
-            <p style="font-size:12px;color:#9b7b84;margin:0 0 20px;">點選色卡可更換你的膚色，選完會自動關閉</p>
+            <p style="font-size:12px;color:#9b7b84;margin:0 0 16px;">點選色卡可更換你的膚色，確認後點右上角 ✕ 關閉</p>
+
+            <!-- 自行驗證引導 -->
+            <div style="background:#fdf2f4;border:1.5px solid #f5c6d0;border-radius:14px;padding:14px 16px;margin-bottom:20px;">
+                <p style="font-size:13px;font-weight:700;color:#6b2d3e;margin:0 0 8px;">📱 想自己確認膚色？</p>
+                <ol style="margin:0;padding-left:18px;font-size:12px;color:#9b7b84;line-height:1.9;">
+                    <li>找到下方最接近你的色卡</li>
+                    <li>對此頁面截圖</li>
+                    <li>開啟自己的照片，用手機「吸色」功能點你的臉頰</li>
+                    <li>比對吸出的顏色與色卡是否接近</li>
+                </ol>
+                <p style="font-size:11px;color:#c09aaa;margin:8px 0 0;">💡 iPhone 可用「放大鏡」App 吸色；Android 可在相簿編輯時使用調色工具</p>
+            </div>
+
+            <!-- 目前選擇 + 系統原始結果 -->
+            <div v-if="skinCoordinate" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+                <!-- 目前選擇 -->
+                <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #e8dde8;border-radius:12px;padding:10px 12px;">
+                    <div :style="{ width:'40px', height:'40px', borderRadius:'50%', background: skinCoordinate.hex, border:'2px solid rgba(0,0,0,.1)', flexShrink:0 }"></div>
+                    <div style="min-width:0;">
+                        <p style="font-size:10px;color:#c09aaa;margin:0 0 2px;">目前選擇</p>
+                        <p style="font-size:13px;font-weight:700;color:#3d1520;margin:0;word-break:keep-all;">{{ skinTone }}</p>
+                        <p style="font-size:10px;color:#9b7b84;margin:2px 0 0;">{{ skinCoordinate.hex }}</p>
+                    </div>
+                </div>
+                <!-- 系統原始結果 -->
+                <div v-if="systemSkinTone"
+                     style="display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;"
+                     :style="systemSkinTone !== skinTone
+                         ? 'background:#fdf2f4;border:1.5px solid #f5c6d0;'
+                         : 'background:#f0fdf4;border:1.5px solid #86efac;'">
+                    <div :style="{ width:'40px', height:'40px', borderRadius:'50%', flexShrink:0,
+                        background: skinTonesData.find(t => t.toneName === systemSkinTone)?.hex || '#e5c8c8',
+                        border: '2px solid rgba(0,0,0,.1)' }"></div>
+                    <div style="min-width:0;">
+                        <p style="font-size:10px;margin:0 0 2px;"
+                           :style="systemSkinTone !== skinTone ? 'color:#c26b7c;' : 'color:#16a34a;'">
+                            {{ aiDetectedSkinTone ? 'AI 偵測結果' : '問卷推測結果' }}
+                            <span v-if="systemSkinTone === skinTone" style="font-size:9px;">（與目前相同）</span>
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#3d1520;margin:0;word-break:keep-all;">{{ systemSkinTone }}</p>
+                        <p v-if="systemSkinTone !== skinTone" style="font-size:9px;color:#c09aaa;margin:2px 0 0;">點色卡可切回此顏色</p>
+                    </div>
+                </div>
+            </div>
 
             <!-- 色卡群組 -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -37,7 +81,7 @@
                     <div style="display:flex;flex-wrap:wrap;gap:6px;">
                         <div v-for="tone in group.tones" :key="tone.toneName"
                             style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;"
-                            @click="selectToneFromSwatch(tone.toneName); showSwatchCard = false">
+                            @click="selectToneFromSwatch(tone.toneName)">
                             <div :style="{
                                 width:'40px', height:'40px', borderRadius:'50%',
                                 background: tone.hex,
@@ -125,12 +169,24 @@
                         <option disabled value="">— 選擇其他膚色 —</option>
                         <option v-for="t in skinTonesData" :key="t.toneName" :value="t.toneName">{{ t.toneName }}</option>
                     </select>
-                    <button @click="showSwatchCard = true" v-show="!confirmedSkinTone"
-                        title="查看色卡"
-                        style="flex-shrink:0;padding:8px 10px;border-radius:12px;border:1.5px solid #f5c6d0;background:#fff;color:#6b2d3e;font-size:13px;cursor:pointer;transition:background .15s;white-space:nowrap;disabled:opacity:.4;"
-                        onmouseover="this.style.background='#fdf2f4'" onmouseout="this.style.background='#fff'">
-                        🎨 色卡
-                    </button>
+                    <div v-show="!confirmedSkinTone" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                        <div style="position:relative;display:inline-block;">
+                            <span style="position:absolute;inset:-3px;border-radius:14px;background:linear-gradient(135deg,#f5c6d0,#c26b7c);opacity:.35;animation:swatchPulse 1.8s ease-in-out infinite;"></span>
+                            <button @click="showSwatchCard = true"
+                                title="點我對照色卡確認膚色"
+                                style="position:relative;flex-shrink:0;padding:8px 14px;border-radius:12px;border:none;background:linear-gradient(135deg,#c26b7c,#6b2d3e);color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.03em;box-shadow:0 2px 8px rgba(107,45,62,.35);"
+                                onmouseover="this.style.background='linear-gradient(135deg,#d07a8c,#7a3548)'" onmouseout="this.style.background='linear-gradient(135deg,#c26b7c,#6b2d3e)'">
+                                🎨 色卡
+                            </button>
+                        </div>
+                        <span style="font-size:9px;color:#c09aaa;white-space:nowrap;">對照確認膚色</span>
+                    </div>
+                    <style>
+                    @keyframes swatchPulse {
+                        0%,100% { transform:scale(1); opacity:.35; }
+                        50%      { transform:scale(1.12); opacity:.6; }
+                    }
+                    </style>
                 </div>
             </div>
 
