@@ -71,10 +71,22 @@ if ($recommended_filter) {
 }
 
 $where_clause = !empty($wheres) ? " WHERE " . implode(" AND ", $wheres) : "";
+
+// 預設「推薦排序」：每位使用者每天固定一個亂數種子打散順序，
+// 讓每天看到的排列不同，但同一天翻頁順序維持穩定（分頁不重複/漏項）
+$today = date('Y-m-d');
+$seedKey = ($_SESSION['user'] ?? 'guest') . '|' . $today;
+if (($_SESSION['prod_seed_key'] ?? '') !== $seedKey) {
+    $_SESSION['prod_seed']     = mt_rand(1, 1000000);
+    $_SESSION['prod_seed_key'] = $seedKey;
+}
+$shuffleSeed = (int)($_SESSION['prod_seed'] ?? 1);
+
 $order = match($sort) {
   'oldest' => "ORDER BY p.id ASC",
   'brand'  => "ORDER BY p.brand ASC, p.name ASC",
-  default  => "ORDER BY p.brand ASC, p.name ASC",
+  'latest' => "ORDER BY p.id DESC",
+  default  => "ORDER BY RAND($shuffleSeed)",   // 推薦排序（每日輪替）
 };
 if ($recommended_filter) $order = "ORDER BY FIELD(p.id, $rec_id_list)";
 
@@ -278,7 +290,8 @@ function page_url($p) {
       <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
     </form>
     <select class="sort-select" onchange="applySort(this.value)">
-      <option value="newest" <?= $sort==='newest'?'selected':'' ?>>最新上架</option>
+      <option value="newest" <?= $sort==='newest'?'selected':'' ?>>推薦排序</option>
+      <option value="latest" <?= $sort==='latest'?'selected':'' ?>>最新上架</option>
       <option value="oldest" <?= $sort==='oldest'?'selected':'' ?>>最早上架</option>
       <option value="brand"  <?= $sort==='brand' ?'selected':'' ?>>品牌 A→Z</option>
     </select>
