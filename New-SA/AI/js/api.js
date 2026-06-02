@@ -227,6 +227,7 @@ const analyzeWithGroq = async () => {
         const baseSkinType = manualSkinType.value || analysis.skin_type || '';
         const fused        = getCalibratedSkinType(baseSkinType, Number(analysis.confidence_score ?? 0.5));
         aiDetectedSkinType.value  = analysis.skin_type || '';
+        aiDetectedSkinTone.value  = skinTone.value || '';
         quizDerivedSkinType.value = fused.quizTopType  || '';
         skinTypeResult.value        = fused.finalType;
         skinTypeSecondary.value     = fused.secondaryType || skinTypeSecondary.value || '';
@@ -250,6 +251,7 @@ const analyzeWithGroq = async () => {
 
         await loadAnalysisHistory();
         if (!isAnalyzing.value) return;
+        systemSkinTone.value = skinTone.value;
         currentStep.value = 4;
         await saveProfileSilent();
     } catch (error) {
@@ -459,5 +461,6 @@ const analyzeSkinTone = async () => {
     }
 
     isAnalyzing.value = false;
+    systemSkinTone.value = skinTone.value;
     currentStep.value = 4;
 };
